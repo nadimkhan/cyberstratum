@@ -316,6 +316,17 @@ Stop:
 "$REDIS_DIR/redis-cli.exe" -p 6379 shutdown nosave
 ```
 
+Two things Redis reports at start-up, both expected here:
+
+- **No authentication.** Redis accepts connections from any local client.
+  It is bound to `127.0.0.1` and is not reachable from the network, which is
+  why this is acceptable for local development. A shared machine would need
+  `requirepass` set in `redis.conf`.
+- **`maxclients` reduced to 3168.** Redis asks for 10 000 clients but the
+  session cannot raise the open-file limit, so it lowers the ceiling to
+  match. This is far more than one worker needs; it only matters if the
+  worker is ever scaled out.
+
 ### 4.3 The API
 
 ```bash
