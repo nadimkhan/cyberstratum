@@ -1,0 +1,65 @@
+[project]
+name = "cyberstratum"
+version = "0.1.0"
+description = "CyberStratum — bytecode-first EVM security analysis platform"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "sqlalchemy>=2.0.36",
+  "alembic>=1.14",
+  "psycopg[binary]>=3.2",
+  "redis>=5.2",
+  "rq>=2.0",
+  "python-multipart>=0.0.12",
+  "argon2-cffi>=23.1",
+  "pyjwt>=2.9",
+  "httpx>=0.27",
+  "structlog>=24.4",
+]
+
+[project.optional-dependencies]
+ml = [
+  "scikit-learn>=1.5",
+  "pandas>=2.2",
+  "numpy>=2.0",
+  "joblib>=1.4",
+]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+  "httpx>=0.27",
+  "ruff>=0.7",
+  "mypy>=1.13",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["apps/api/app", "workers"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "S", "C4", "SIM"]
+ignore = ["S101", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "N"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]
