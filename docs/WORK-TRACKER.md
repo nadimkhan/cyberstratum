@@ -310,4 +310,13 @@ be run at all, and a check that the three exit codes stay distinct.
   instructions, 4/4 interesting opcodes mapped to exact source lines,
   exit `0`.
 - Windows quality gate: Ruff clean, mypy clean across 60 source files,
-  `429` pytest passed (the five new cases included).
+  `434` pytest passed.
+- WSL quality gate on the committed code (`234438b`): Ruff clean, mypy
+  clean across 60 source files, `434` pytest passed, correspondence live
+  check 4/4 opcode-to-source-line mappings.
+- Frontend gate: `57` Vitest tests passed across 7 files, `tsc --noEmit`
+  clean.
+- Environment restored afterwards: the Windows isolated cluster on 5433
+  and the WSL CyberStratum cluster on 5433 are both stopped; the unrelated
+  Windows PostgreSQL on 5432 is still `RUNNING` and untouched; the WSL
+  systemd PostgreSQL and Redis are both `active` and Redis answers `PONG`.
