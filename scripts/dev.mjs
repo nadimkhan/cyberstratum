@@ -728,6 +728,37 @@ async function checkEverything() {
   }
   if (problems === 0) console.log(`${COLOURS.green}[dev]${COLOURS.reset} every path resolves.`);
   else fail(`${problems} path(s) do not resolve.`);
+
+  checkEditableInstall();
+}
+
+/**
+ * Report whether the project is installed so that the working tree is what
+ * actually runs.
+ *
+ * A non-editable install leaves a copy of the application package in
+ * site-packages, and that copy shadows the working tree. The API and the
+ * worker would then run code that is not the code in the repository, and
+ * the tests would certify that stale copy rather than the real thing.
+ */
+function checkEditableInstall() {
+  const python = path.join(root, ".venv", IS_WINDOWS ? "Scripts" : "bin",
+    IS_WINDOWS ? "python.exe" : "python");
+  if (!existsSync(python)) return;
+
+  const probe = spawnSync(python, ["-c",
+    "import app, os; print(os.path.dirname(os.path.abspath(app.__file__)))"],
+    { encoding: "utf8", windowsHide: true });
+  if (probe.status !== 0) return;
+
+  const resolved = (probe.stdout || "").trim();
+  const expected = path.join(root, "apps", "api", "app");
+  if (!resolved) return;
+  if (path.resolve(resolved) === path.resolve(expected)) return;
+
+  fail("the app package resolves outside the working tree, so an installed");
+  console.log(`         copy would shadow it: ${resolved}`);
+  console.log(`         Fix with: uv pip install -e .`);
 }
 
 /* ----------------------------------------------------------------- front */
