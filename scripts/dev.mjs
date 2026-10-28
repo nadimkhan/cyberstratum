@@ -409,7 +409,9 @@ async function supervisorMain() {
     return;
   }
 
-  appendToLog("\nCyberStratum is up.\n");
+  // The launcher prints the banner, so the log line adds what the banner
+  // cannot show: that the worker is registered and will pick up scans.
+  appendToLog("\nthe RQ worker is registered on cyberstratum:scans.\n");
   log("the stack is up");
 }
 
