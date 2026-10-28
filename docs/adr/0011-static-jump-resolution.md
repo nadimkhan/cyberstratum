@@ -98,6 +98,28 @@ jump we leave unresolved is reported as a metric, not a failure: the
 analysis is conservative by design, and the disagreement is a coverage
 limit rather than a defect.
 
+### What the correction bought
+
+Measured over the same seven contracts, comparing the implementation before
+this change with the one after it:
+
+| | before | after |
+|---|---|---|
+| unique resolved jump targets | 1 284 | 1 316 |
+| unresolved CFG edges | 199 | 148 |
+
+The unresolved-edge count is the number that matters for the product: every
+unresolved edge is a candidate for the "control flow contains unresolved
+dynamic jumps" finding, so removing 51 of them removes that many false
+positives from a check that would otherwise fire on every real contract.
+
+The correction did not reach parity with `evmole`, and it was not expected
+to. The residual gap is values carried across shared utility blocks, where
+several paths merge and no single merged window can prove the value. A
+path-sensitive variant was tried and measured: keeping up to eight incoming
+windows per block moved the agreement from 1 686 to 1 687 static jumps, so
+it was not worth the complexity and was removed.
+
 ## Known limitation
 
 Roughly one static jump in ten is left unresolved. The cause is a value that

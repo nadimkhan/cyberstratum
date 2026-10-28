@@ -393,7 +393,9 @@ block counts that match **exactly** on all seven, and **0 wrong jump
 destinations**. The resolver agrees with `evmole` on 1 686 of the 1 891
 statically resolvable jumps (89.2 %). The remaining 11 % are values carried
 across shared utility blocks, where the merge correctly gives up; they are
-reported as unresolved rather than guessed. See
+reported as unresolved rather than guessed. Across the seven contracts the
+corrected resolver raises the unique resolved-target count from 1 284 to
+1 316 and lowers the unresolved edge count from 199 to 148. See
 [ADR-0011](adr/0011-static-jump-resolution.md).
 
 ### 2.6 Stage 4 — Feature extraction
