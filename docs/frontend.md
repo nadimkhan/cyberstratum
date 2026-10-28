@@ -34,11 +34,12 @@ npm install
 
 ## Configuration
 
-The only environment variable the UI needs is the backend base URL:
+The UI needs two environment variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `NEXT_PUBLIC_API_BASE_URL` | `http://127.0.0.1:8000` | Base URL of the FastAPI backend, **without** the `/api/v1` prefix (the client appends the versioned prefix itself). |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://127.0.0.1:8000` | Base URL of the FastAPI backend, **without** the `/api/v1` prefix (the client appends the versioned prefix itself). Public: it is inlined into the browser bundle. |
+| `API_KEY` | *(empty)* | The backend API key, sent as the `X-API-Key` header. **Server-only** — it is not prefixed with `NEXT_PUBLIC_`, so Next.js strips it from the browser bundle. |
 
 Copy the example file to get started:
 
@@ -47,10 +48,22 @@ cd apps/web
 cp .env.example .env.local
 ```
 
-`.env.local` is git-ignored. The value is inlined into the browser bundle at build time, so
-restart the dev server (or rebuild) after changing it. No credentials or API keys are required;
-if you ever need to reference a secret in configuration, use the literal placeholder
-`[REDACTED]`.
+`.env.local` is git-ignored.
+
+### Why the API key stays server-side
+
+The backend requires an API key on every route, and the key must not reach the browser. The
+web app gets this for free: every call to the backend is made from a **server component** or a
+**server route handler** (`src/lib/api.ts` is never imported by a `"use client"` module), so
+the header is attached on the server and the secret never enters the bundle.
+
+If you ever add a client component that needs the backend directly, do **not** add a
+`NEXT_PUBLIC_` copy of the key. Add a route handler under `app/api/` that forwards the request
+and attaches the key server-side, the way `app/api/scans/route.ts` already does.
+
+Set `API_KEY` to the same value as the `API_KEY` key in the repository `.env`. The local
+development default is `dev-api-key-change-me`; change it before exposing anything beyond
+`127.0.0.1`.
 
 ## Run the dev server
 

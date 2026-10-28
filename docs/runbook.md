@@ -304,6 +304,7 @@ cd /e/projects/cyberstratum
 > | `GET` | `/api/v1/scans/{scan_id}` |
 > | `GET` | `/api/v1/findings` |
 > | `GET` | `/api/v1/findings/summary` |
+> | `GET` | `/api/v1/scans/{scan_id}/findings` |
 >
 > Every route except `/health` requires an `X-API-Key` header. The OpenAPI
 > document is at `/openapi.json` and Swagger UI at `/docs`.
@@ -344,11 +345,15 @@ npm run dev
 
 > **Status:** working. `apps/web` is a full Next.js 15.5 App Router project
 > with 6 pages under `apps/web/app/` (Overview, Scans, New scan, Scan detail,
-> Findings, Reproducibility). Set `NEXT_PUBLIC_API_BASE_URL` in
-> `apps/web/.env.local` (see `apps/web/.env.example`).
+> Findings, Reproducibility). Set `NEXT_PUBLIC_API_BASE_URL` **and** `API_KEY`
+> in `apps/web/.env.local` (see `apps/web/.env.example`).
 >
-> **Known gap:** the API client sends no `X-API-Key` header, so authenticated
-> calls return `401` until an API-key mechanism is added to the frontend.
+> The backend requires an API key on every route, so the key must be set or
+> every call returns `401` and the pages render the "Backend unreachable"
+> panel. `API_KEY` is **server-only** (no `NEXT_PUBLIC_` prefix): every call
+> to the backend is made from a server component or route handler, so the
+> header is attached on the server and the secret never enters the browser
+> bundle. The value must match the `API_KEY` key in the repository `.env`.
 
 ---
 
@@ -361,9 +366,11 @@ directory is `apps/api/alembic/versions/`. The `alembic.ini` file is at the
 `prepend_sys_path` at `apps/api`, so the commands run from the repo root with
 no `-c` flag.
 
-> **Status:** working. One revision exists —
-> `6d0038e2fcb8_initial_schema.py` — and the development database is at
-> `head`.
+> **Status:** working. Two revisions exist —
+> `6d0038e2fcb8_initial_schema.py` and
+> `9f4c1a2b7e10_add_inline_bytecode.py` (the nullable `inline_bytecode`
+> column that lets a target carry user-supplied bytes) — and the development
+> database is at `head`.
 
 ```bash
 cd /e/projects/cyberstratum

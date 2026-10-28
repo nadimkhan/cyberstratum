@@ -15,7 +15,7 @@ from app.db.enums import ScanJobStatus, ScanJobType, ScanStatus
 from app.db.models.identity import Chain, ContractTarget, Workspace
 from app.db.models.scans import Finding, Scan, ScanJob
 from app.queue.connection import get_queue
-from app.schemas.findings import FindingRead
+from app.schemas.findings import FindingListResponse, FindingRead
 from app.schemas.scans import (
     ScanAcceptedResponse,
     ScanCreateRequest,
@@ -291,6 +291,52 @@ def get_scan(
     detail.finding_counts = counts
     detail.total_findings = sum(counts.values())
     return detail
+
+
+@router.get(
+    "/{scan_id}/findings",
+    response_model=FindingListResponse,
+    summary="List the findings of one scan",
+)
+def list_scan_findings(
+    scan_id: uuid.UUID,
+    session: SessionDep,
+    principal: CurrentPrincipal,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> FindingListResponse:
+    """Return the findings produced by one scan, newest first.
+
+    This is the per-scan view of the findings resource. The workspace-wide
+    list lives at ``GET /api/v1/findings``.
+    """
+    scan = session.get(Scan, scan_id)
+    if scan is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Scan {scan_id} not found."
+        )
+
+    workspace_filter = principal.workspace_id
+    if workspace_filter is not None and scan.workspace_id != workspace_filter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Scan {scan_id} not found."
+        )
+
+    stmt = (
+        select(Finding)
+        .where(Finding.scan_id == scan_id)
+        .order_by(Finding.created_at.desc())
+    )
+    count_stmt = select(func.count()).select_from(Finding).where(Finding.scan_id == scan_id)
+
+    total = session.scalar(count_stmt) or 0
+    rows = session.scalars(stmt.offset(offset).limit(limit)).all()
+    return FindingListResponse(
+        items=[FindingRead.model_validate(row) for row in rows],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 __all__ = ["router"]

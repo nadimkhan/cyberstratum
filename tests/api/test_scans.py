@@ -192,6 +192,60 @@ def test_submit_scan_rejects_odd_length_bytecode(
     assert response.status_code == 422
 
 
+def test_scan_findings_route_lists_the_findings_of_one_scan(
+    client: TestClient,
+    api_headers: dict[str, str],
+    captured_enqueue: list[Any],
+    db_session: Session,
+) -> None:
+    """The per-scan findings route returns that scan's findings only."""
+    from app.db.enums import FindingStatus, Severity
+    from app.db.models.scans import Finding
+
+    response = client.post(
+        "/api/v1/scans",
+        json={"contract_address": "0x" + "bb" * 20, "chain_id": 1},
+        headers=api_headers,
+    )
+    assert response.status_code == 202
+    scan = db_session.get(Scan, uuid.UUID(response.json()["id"]))
+    assert scan is not None
+
+    db_session.add(
+        Finding(
+            workspace_id=scan.workspace_id,
+            scan_id=scan.id,
+            detector_id="baseline.delegatecall",
+            detector_version="0.1.0",
+            category="delegatecall_usage",
+            title="DELEGATECALL usage",
+            description="The contract uses DELEGATECALL.",
+            severity=Severity.HIGH,
+            confidence=0.7,
+            status=FindingStatus.NEW,
+            evidence_json={"offsets": [4]},
+            limitations="Presence of DELEGATECALL does not imply a vulnerable proxy.",
+        )
+    )
+    db_session.flush()
+
+    detail = client.get(f"/api/v1/scans/{scan.id}/findings", headers=api_headers)
+    assert detail.status_code == 200
+    body = detail.json()
+    assert body["total"] == 1
+    assert body["items"][0]["detector_id"] == "baseline.delegatecall"
+    assert body["items"][0]["severity"] == "high"
+    assert body["items"][0]["evidence"] == {"offsets": [4]}
+
+
+def test_scan_findings_route_404s_for_an_unknown_scan(
+    client: TestClient, api_headers: dict[str, str]
+) -> None:
+    """An unknown scan id returns 404 on the per-scan findings route."""
+    response = client.get(f"/api/v1/scans/{uuid.uuid4()}/findings", headers=api_headers)
+    assert response.status_code == 404
+
+
 def test_get_unknown_scan_returns_404(client: TestClient, api_headers: dict[str, str]) -> None:
     """An unknown scan id returns 404."""
     response = client.get(f"/api/v1/scans/{uuid.uuid4()}", headers=api_headers)
