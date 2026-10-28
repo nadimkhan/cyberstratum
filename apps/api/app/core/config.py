@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     api_port: int = Field(default=8000, alias="API_PORT")
     api_base_url: str = Field(default="http://127.0.0.1:8000", alias="API_BASE_URL")
     web_base_url: str = Field(default="http://localhost:3000", alias="WEB_BASE_URL")
+    # Additional browser origins allowed to call the API. The frontend is
+    # deployed to Netlify, which gives every site a distinct
+    # `https://<site>.netlify.app` origin, and preview deploys add more.
+    # Keeping these separate from WEB_BASE_URL lets a local development
+    # origin stay allowed while production origins are added on the VPS.
+    cors_extra_origins: str = Field(default="", alias="CORS_EXTRA_ORIGINS")
 
     # --- Database --------------------------------------------------------
     database_url: str = Field(
@@ -123,6 +129,22 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() == "production"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Every browser origin allowed to call the API.
+
+        `WEB_BASE_URL` is the primary origin. `CORS_EXTRA_ORIGINS` carries any
+        additional ones as a comma-separated list, which is how the Netlify
+        deploy origin and its preview-deploy origins are added on the VPS.
+        """
+        origins: list[str] = []
+        for candidate in (self.web_base_url, self.cors_extra_origins):
+            for origin in candidate.split(","):
+                trimmed = origin.strip().rstrip("/")
+                if trimmed and trimmed not in origins:
+                    origins.append(trimmed)
+        return origins
 
 
 @lru_cache

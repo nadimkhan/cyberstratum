@@ -1,0 +1,51 @@
+# systemd units for the CyberStratum backend on a Linux VPS.
+#
+# Layout assumed on the VPS:
+#
+#   /opt/cyberstratum/app        the repository (git clone)
+#   /opt/cyberstratum/app/.venv  the Python virtualenv
+#   /etc/cyberstratum/app.env    the environment (mode 600, root-owned)
+#   /var/lib/cyberstratum        artifact storage
+#   /var/log/cyberstratum        service logs
+#
+# Install:
+#   sudo cp deploy/systemd/*.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now cyberstratum-api cyberstratum-worker
+#
+# The database and Redis are NOT managed here. Use the managed PostgreSQL and
+# Redis instances the VPS provider supplies, or run them under a separate
+# unit; the backend only needs the connection strings in app.env.
+
+[Unit]
+Description=CyberStratum API (FastAPI + uvicorn)
+Documentation=https://github.com/nadimkhan/cyberstratum
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=cyberstratum
+Group=cyberstratum
+WorkingDirectory=/opt/cyberstratum/app
+EnvironmentFile=/etc/cyberstratum/app.env
+ExecStart=/opt/cyberstratum/app/.venv/bin/uvicorn app.main:app \
+    --app-dir apps/api \
+    --host 127.0.0.1 \
+    --port 8000 \
+    --proxy-headers \
+    --forwarded-allow-ips='*'
+Restart=always
+RestartSec=5
+# The API process must not read the repo's .env file implicitly; every value
+# comes from EnvironmentFile so the deployment is explicit and auditable.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/cyberstratum
+StandardOutput=append:/var/log/cyberstratum/api.log
+StandardError=append:/var/log/cyberstratum/api.err
+
+[Install]
+WantedBy=multi-user.target

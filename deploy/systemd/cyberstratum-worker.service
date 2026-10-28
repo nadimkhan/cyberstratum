@@ -1,0 +1,25 @@
+[Unit]
+Description=CyberStratum RQ worker (scans + discovery)
+Documentation=https://github.com/nadimkhan/cyberstratum
+After=network-online.target cyberstratum-api.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=cyberstratum
+Group=cyberstratum
+WorkingDirectory=/opt/cyberstratum/app
+EnvironmentFile=/etc/cyberstratum/app.env
+ExecStart=/opt/cyberstratum/app/.venv/bin/python -m app.worker
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/cyberstratum
+StandardOutput=append:/var/log/cyberstratum/worker.log
+StandardError=append:/var/log/cyberstratum/worker.err
+
+[Install]
+WantedBy=multi-user.target

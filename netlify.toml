@@ -1,0 +1,32 @@
+# Netlify deployment for the CyberStratum frontend.
+#
+# The frontend is a server-rendered Next.js App Router application: every
+# page is a server component that reads the FastAPI backend through
+# `apps/web/src/lib/api.ts`, and the browser never talks to the backend
+# directly. That is deliberate — it keeps the API key out of the browser.
+#
+# Because the pages read live scan data at request time, this must NOT be a
+# static export. Netlify runs the Next.js runtime and the publish directory
+# is the standard `.next` output.
+
+[build]
+  command = "npm run build:web"
+  publish = "apps/web/.next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # The web app is a workspace member, so the workspace root must be installed.
+  NPM_FLAGS = "--include-workspace-root"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# `NEXT_PUBLIC_API_BASE_URL` is inlined at build time and must point at the
+# public URL of the Linux VPS backend. It is set in the Netlify site
+# environment, not here, because it differs per deploy target.
+#
+# `API_KEY` is a server-only variable. It is read in `src/lib/api.ts` and
+# sent as the `X-API-Key` header. Never rename it to `NEXT_PUBLIC_API_KEY`:
+# that would ship the key to every browser.
+#
+# Netlify redirects all traffic to HTTPS, so the API base URL must be https.
