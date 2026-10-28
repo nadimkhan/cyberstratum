@@ -24,6 +24,7 @@ from app.services.slither import (
     SlitherUnavailableError,
     normalize_detector,
     normalize_severity,
+    parse_slither_envelope,
     parse_slither_json,
     solc_version_from_string,
     vector_for,
@@ -194,6 +195,96 @@ def test_unusable_json_yields_no_findings() -> None:
     assert parse_slither_json("not json at all") == ()
     assert parse_slither_json("") == ()
     assert parse_slither_json('{"success": false}') == ()
+
+
+# -- the failure envelope ------------------------------------------------
+
+
+def test_a_failed_run_is_not_a_clean_contract() -> None:
+    """Slither reports internal failures in the envelope, not in the exit code.
+
+    Slither's JSON output is ``{"success": error is None, "error": ...,
+    "results": {...}}``. A run that failed part-way through still emits a
+    well-formed envelope with no detectors in it, so reading only the
+    detectors would record a failed audit as a clean contract.
+    """
+    payload = json.dumps(
+        {
+            "success": False,
+            "error": "InvalidCompilation: could not compile the target",
+            "results": {},
+        }
+    )
+    findings, error = parse_slither_envelope(payload)
+    assert findings == ()
+    assert error is not None
+    assert "InvalidCompilation" in error
+
+
+def test_a_successful_run_reports_no_error() -> None:
+    """A clean run is a verdict, and says so."""
+    findings, error = parse_slither_envelope(json.dumps(SLITHER_OUTPUT))
+    assert len(findings) == 3
+    assert error is None
+
+
+def test_a_failed_run_that_still_found_something_is_still_a_failure() -> None:
+    """Detectors produced before a crash do not make the run complete."""
+    payload = json.dumps(
+        {
+            "success": False,
+            "error": "Analysis failed",
+            "results": {"detectors": SLITHER_OUTPUT["results"]["detectors"]},
+        }
+    )
+    findings, error = parse_slither_envelope(payload)
+    assert error == "Analysis failed"
+    # The findings are still parsed, but the caller must not treat this as a
+    # completed audit; the runner turns a non-empty error into a skip.
+    assert len(findings) == 3
+
+
+def test_non_json_output_is_reported_as_an_error() -> None:
+    """Output that is not JSON is a failure, not a clean result."""
+    findings, error = parse_slither_envelope("not json at all")
+    assert findings == ()
+    assert error == "non_json_output"
+
+
+def test_the_runner_turns_an_engine_failure_into_a_skip(tmp_path: Path) -> None:
+    """End to end: a failed Slither run is a skip, never a clean contract."""
+    _make_solc(tmp_path)
+    fake = _fake_executable(
+        tmp_path,
+        "import sys\n"
+        "sys.stdout.write('{\"success\": false, \"error\": \"boom\", "
+        "\"results\": {}}')\n",
+    )
+
+    runner = SlitherRunner(executable=str(fake), solc_artifacts=str(tmp_path))
+    result = runner.run(SAMPLE_SOURCE, "Vault")
+
+    assert result.ran is False
+    assert result.skipped == "engine_error"
+    assert result.findings == ()
+
+
+def test_the_runner_keeps_a_clean_run_a_verdict(tmp_path: Path) -> None:
+    """A successful run with no detectors is genuinely a clean contract."""
+    _make_solc(tmp_path)
+    fake = _fake_executable(
+        tmp_path,
+        "import sys\n"
+        "sys.stdout.write('{\"success\": true, \"error\": null, "
+        "\"results\": {\"detectors\": []}}')\n",
+    )
+
+    runner = SlitherRunner(executable=str(fake), solc_artifacts=str(tmp_path))
+    result = runner.run(SAMPLE_SOURCE, "Vault")
+
+    assert result.ran is True
+    assert result.skipped is None
+    assert result.findings == ()
 
 
 def test_a_description_is_truncated() -> None:

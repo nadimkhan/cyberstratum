@@ -101,6 +101,76 @@ Gate 5 is the one that stops tool-count inflation. Popularity is not evidence.
 - Mythril's `swc-id` values map 1:1 onto the SWC registry, which gives us a
   clean join key against the dataset side.
 
+#### Mythril's silent-zero-failure mode — a trap for the engine contract
+
+Mythril does **not** fail loudly when it cannot find a compiler. It logs
+
+```
+mythril.interfaces.cli [ERROR]: Compiler not found. Make sure that solc is
+installed and in PATH, or set the SOLC environment variable.
+```
+
+and still emits well-formed JSON:
+
+```json
+{"success": false, "error": "Compiler not found. ...", "issues": []}
+```
+
+The trap: the `issues` array is empty, so a consumer that reads only
+`issues[]` sees **zero findings and concludes the contract is clean**. An
+early fixture run in this project produced `issues: 0` and looked like
+non-determinism; it was actually this failure, and the same fixture produced
+a real SWC-107 finding once `SOLC` was set explicitly.
+
+The engine contract therefore has two hard requirements, both of which apply
+to every engine and not just Mythril:
+
+1. **`success` and `error` are checked before `issues` are trusted.** A
+   non-empty `error` means the run produced no verdict at all, and the result
+   must be classified `skipped` with the reason, never `completed` with zero
+   findings.
+2. **The compiler is always passed explicitly.** Mythril resolves `solc` from
+   `PATH` or the `SOLC` environment variable, which is unreliable across the
+   Windows/WSL boundary. The runner resolves the exact `solc` binary from the
+   verified contract's compiler version and sets it in the child's
+   environment.
+
+A "clean" result and a "did not run" result are different facts and the
+platform must never confuse them.
+
+#### The same trap existed in our own Slither integration — and is now fixed
+
+Slither's JSON output uses the same envelope shape:
+
+```json
+{"success": <error is None>, "error": <message or null>, "results": {...}}
+```
+
+Verified against the installed Slither 0.11.6: the envelope is written by
+`slither/utils/output.py`, and `success` is literally `error is None`. A run
+that fails part-way through still emits a well-formed envelope with a
+`results` object and **no detectors in it**.
+
+The integration read only `results.detectors`, so an internal Slither failure
+was recorded as "the source engine ran and found nothing" — a failed audit
+reported as a clean contract. This was a real defect, not a hypothetical.
+
+The fix is in `apps/api/app/services/slither.py`:
+
+- `parse_slither_envelope()` returns `(findings, error)` and reads `error`
+  alongside `success`.
+- The runner turns any non-empty `error` into `skipped="engine_error"`, so the
+  scan records *no verdict* rather than a clean result.
+- `parse_slither_json()` is kept as the findings-only convenience wrapper.
+
+Regression coverage lives in `tests/unit/test_slither.py`, including an
+end-to-end test that a failed engine run is a skip and a successful run with
+no detectors remains a genuine clean verdict.
+
+The same rule now applies to every engine the platform will ever run: the
+envelope is checked first, and only a successful verdict with an empty finding
+list means "clean".
+
 ### Echidna, Halmos, Medusa, Manticore — deferred, not rejected
 
 These are property/fuzzing engines. They need a generated harness, a seed

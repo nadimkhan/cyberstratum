@@ -496,7 +496,18 @@ class SlitherRunner:
             )
             return SlitherResult(findings=(), skipped="no_output")
 
-        findings = parse_slither_json(completed.stdout)
+        findings, engine_error = parse_slither_envelope(completed.stdout)
+        if engine_error:
+            # Slither failed part-way through. It may still have produced
+            # detectors before failing, but it did not complete, so the run
+            # is reported as a skip rather than as a clean contract. A
+            # failed audit and a clean contract are different facts.
+            log.info(
+                "Slither failed on %s: %s",
+                contract_name,
+                engine_error[:300],
+            )
+            return SlitherResult(findings=(), skipped="engine_error")
         return SlitherResult(findings=findings)
 
 
@@ -545,14 +556,43 @@ def parse_slither_json(payload: str) -> tuple[SlitherFinding, ...]:
     Returns:
         The normalised findings, empty when the payload is not usable.
     """
+    findings, _ = parse_slither_envelope(payload)
+    return findings
+
+
+def parse_slither_envelope(
+    payload: str,
+) -> tuple[tuple[SlitherFinding, ...], str | None]:
+    """Normalise Slither's JSON output *and* report whether it was a verdict.
+
+    Slither always emits an envelope::
+
+        {"success": <error is None>, "error": <message or null>,
+         "results": {...}}
+
+    When Slither fails part-way through, ``success`` is ``false``, ``error``
+    carries the reason, and ``results`` is present but may hold no detectors.
+    Treating that as "zero findings" would record a failed audit as a clean
+    contract, so the error is surfaced and the caller turns it into a skip.
+
+    Args:
+        payload: The raw stdout.
+
+    Returns:
+        The normalised findings and the engine's error message, if it failed.
+    """
     try:
         parsed: Any = json.loads(payload)
     except json.JSONDecodeError:
         log.warning("Slither returned non-JSON output")
-        return ()
+        return (), "non_json_output"
 
+    error: str | None = None
     detectors: Any = parsed
     if isinstance(parsed, Mapping):
+        raw_error = parsed.get("error")
+        if raw_error:
+            error = str(raw_error)[:300]
         results = parsed.get("results")
         if isinstance(results, Mapping):
             detectors = results.get("detectors", [])
@@ -561,7 +601,7 @@ def parse_slither_json(payload: str) -> tuple[SlitherFinding, ...]:
         else:
             detectors = parsed.get("detectors", [])
     if not isinstance(detectors, Sequence) or isinstance(detectors, (str, bytes)):
-        return ()
+        return (), error or "unusable_output"
 
     findings: list[SlitherFinding] = []
     for entry in detectors:
@@ -584,4 +624,4 @@ def parse_slither_json(payload: str) -> tuple[SlitherFinding, ...]:
                 contract_path=contract_path,
             )
         )
-    return tuple(findings)
+    return tuple(findings), error

@@ -259,10 +259,36 @@ reported as a *skip* with a reason, and the caller carries on:
 | `compilation_failed` | The source does not compile. Worth telling apart from silence — it is a defect in the contract. |
 | `timeout` | The run exceeded its budget. |
 | `no_output` | Slither ran and said nothing. |
+| `engine_error` | Slither produced a valid JSON envelope whose `error` field was set, so the run did not complete. |
 
 `compilation_failed` is separated from `no_output` on purpose. "The contract
 does not compile" and "the contract is clean" are very different statements,
 and collapsing them into one would hide a real defect.
+
+### The envelope is checked before the findings
+
+Slither's JSON output is always an envelope:
+
+```json
+{"success": <error is None>, "error": <message or null>, "results": {...}}
+```
+
+`success` is literally `error is None` in Slither's own output writer. A run
+that fails part-way through still emits a well-formed envelope, with a
+`results` object and **no detectors in it**.
+
+So the finding list alone cannot tell you whether the audit happened. The
+integration reads the envelope first:
+
+- `error` set → the run produced **no verdict**. It is recorded as
+  `skipped="engine_error"`, not as a clean contract.
+- `error` null → the verdict is real. An empty detector list then genuinely
+  means "clean".
+
+This matters because a failed audit reported as a clean contract is worse than
+no audit at all: it is a false negative that looks like a positive result. It
+is the same failure mode Mythril has, and the rule is now enforced for every
+engine the platform runs.
 
 ---
 
