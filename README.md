@@ -523,6 +523,22 @@ finding.
 | [`docs/BLOCKSCOUT-ROUTES.md`](docs/BLOCKSCOUT-ROUTES.md) | The measured per-chain Blockscout capability table: 60 chains, what works, what does not, and why |
 | [`docs/SOURCE-AUDIT.md`](docs/SOURCE-AUDIT.md) | The source engine: running Slither as an external tool without touching its AGPL licence, the detector map, and how it runs alongside the bytecode engine in one scan |
 | [`docs/DISCOVERY-FEED.md`](docs/DISCOVERY-FEED.md) | The continuous discovery feed: how new contracts are found across the chains, and why a failing chain cannot take the feed down |
+| [`docs/NEXT-ROUND-PLAN.md`](docs/NEXT-ROUND-PLAN.md) | The decided design for the next round: engine portfolio, dataset and model lifecycle, update policy, mainnet scanning, the source↔bytecode evidence model, and PDF reporting |
+
+### Decided for the next round
+
+The next round is designed but **not implemented**. Six decision records cover
+it, and one document ties them together with the measurements behind them:
+
+| Record | Decides |
+| --- | --- |
+| [ADR-0014](docs/adr/0014-multi-engine-portfolio.md) | The engine portfolio: Mythril admitted as the first symbolic engine, the six admission gates, the shared external-engine contract |
+| [ADR-0015](docs/adr/0015-dataset-and-model-lifecycle.md) | Dataset ingestion, family-level splits, label tiers, and the model promotion gate |
+| [ADR-0016](docs/adr/0016-update-monitoring-not-auto-upgrade.md) | Check dependencies daily, but upgrade them through gated CI — never automatically |
+| [ADR-0017](docs/adr/0017-evidence-model-and-source-bytecode-correspondence.md) | Why exact source lines need a proven source↔bytecode chain, and the five links of that chain |
+| [ADR-0018](docs/adr/0018-authorised-scanning-and-disclosure.md) | Read-only scanning is in scope; automated submission and live testing are not |
+| [ADR-0019](docs/adr/0019-deterministic-pdf-reporting.md) | Deterministic PDF disclosure reports with ReportLab |
+
 
 ### The stack contradiction, and how it was resolved
 
