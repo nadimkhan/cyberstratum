@@ -524,6 +524,7 @@ finding.
 | [`docs/SOURCE-AUDIT.md`](docs/SOURCE-AUDIT.md) | The source engine: running Slither as an external tool without touching its AGPL licence, the detector map, and how it runs alongside the bytecode engine in one scan |
 | [`docs/DISCOVERY-FEED.md`](docs/DISCOVERY-FEED.md) | The continuous discovery feed: how new contracts are found across the chains, and why a failing chain cannot take the feed down |
 | [`docs/NEXT-ROUND-PLAN.md`](docs/NEXT-ROUND-PLAN.md) | The decided design for the next round: engine portfolio, dataset and model lifecycle, update policy, mainnet scanning, the source↔bytecode evidence model, and PDF reporting |
+| [`docs/WORK-TRACKER.md`](docs/WORK-TRACKER.md) | The live work tracker: what is done, what remains in priority order, and where the environment lives |
 
 ### Decided for the next round
 
