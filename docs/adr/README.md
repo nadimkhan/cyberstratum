@@ -24,6 +24,7 @@ governs.** Every corrected section of the design document carries a dated
 | [0008](0008-no-airdrop-bounty-or-campaign-promises.md) | No airdrop, bounty, or campaign promises | Accepted | 2026-10-28 |
 | [0009](0009-sourcify-bytecode-acquisition.md) | Sourcify as the bytecode source; RPC and user-supplied bytes | Accepted | 2026-10-28 |
 | [0010](0010-server-only-frontend-api-key.md) | The frontend API key is server-only | Accepted | 2026-10-28 |
+| [0011](0011-static-jump-resolution.md) | Static jump resolution with an abstract stack, and its limits | Accepted | 2026-10-28 |
 
 ## Format
 

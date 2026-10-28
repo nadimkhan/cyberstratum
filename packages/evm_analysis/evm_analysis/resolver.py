@@ -8,41 +8,33 @@ branch is a ``PUSH``" is not a complete rule.
 
 This module runs a small abstract interpreter over the block graph:
 
-* the stack depth at every block entry is computed by a forward dataflow
-  fixpoint, so loops converge;
+* a top-anchored window of known stack constants is propagated forward
+  through the graph;
 * each block is then simulated to track which stack slots hold known
   constants, and a branch whose destination slot holds a constant is
   resolved;
 * anything that cannot be resolved stays unresolved -- the resolver never
   guesses.
 
+Two paths that reach the same block are merged conservatively: a slot that
+only one of them knows becomes unknown, because the other path may hold a
+different value there. The merge is aligned at the *top* of the stack,
+because that is the end of the stack the window describes.
+
 The fixpoint is deterministic: blocks are always processed in ascending
-offset order and conflicts are resolved by marking a block's depth unknown
-rather than by picking a winner.
+offset order and the target map only ever grows.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
 from .cfg import ControlFlowGraph, Edge, EdgeType
 from .disassembler import Disassembly
-from .stack import UNKNOWN_DEPTH, BlockSimulation, Slot, Stack, simulate_block
+from .stack import Slot, Stack, simulate_block
 
 #: Maximum number of dataflow rounds before the fixpoint gives up. Loops
 #: converge quickly in practice; the cap only exists so that a pathological
 #: input cannot hang the scanner.
 _MAX_ROUNDS = 16
-
-
-@dataclass(slots=True)
-class _EntryState:
-    """The abstract stack state at the entry of a block."""
-
-    depth: int = UNKNOWN_DEPTH
-    slots: Stack = field(default_factory=list)
-    poisoned: bool = False
-    """Set when two paths disagree, which makes the depth unknowable."""
 
 
 def resolve_jump_targets(
@@ -54,17 +46,44 @@ def resolve_jump_targets(
     destination offset. Instructions that are not in the mapping are
     genuinely unresolved.
     """
+    states, resolved = run_dataflow(disassembly, cfg)
+
+    # Only keep targets that really are jump destinations.
+    jumpdests = set(disassembly.jumpdests)
+    return {
+        offset: target
+        for offset, target in resolved.items()
+        if target in jumpdests and target in cfg.blocks
+    }
+
+
+def run_dataflow(
+    disassembly: Disassembly, cfg: ControlFlowGraph
+) -> tuple[dict[int, Stack | None], dict[int, int]]:
+    """Run the dataflow fixpoint and return the block states.
+
+    The first element maps a block's start offset to the stack window known
+    on entry to it, or to ``None`` when no path has reached the block yet.
+    The second element maps the offset of a jump instruction to the
+    destination the analysis could determine.
+
+    The function is public so that diagnostics can inspect the same states
+    the resolver actually uses, instead of re-implementing the fixpoint.
+    """
     if not cfg.blocks:
-        return {}
+        return {}, {}
 
     by_offset = {instr.offset: instr for instr in disassembly.instructions}
     if not by_offset:
-        return {}
+        return {}, {}
 
-    states: dict[int, _EntryState] = {start: _EntryState() for start in cfg.blocks}
-
-    entry = cfg.entry_offset if cfg.entry_offset in cfg.blocks else min(cfg.blocks)
-    states[entry] = _EntryState(depth=0, slots=[])
+    # The window known on entry to each block, top-anchored. ``None`` means
+    # "nothing has arrived yet" and is *not* the same as an empty window:
+    # merging an empty window with an incoming one is a real conflict
+    # between two paths, while merging the initial state simply takes the
+    # first path that reaches the block. Treating them alike throws away
+    # every value the first arriving path brought with it.
+    states: dict[int, Stack | None] = dict.fromkeys(cfg.blocks)
 
     resolved: dict[int, int] = {}
 
@@ -77,14 +96,9 @@ def resolve_jump_targets(
         changed = False
 
         for start in sorted(cfg.blocks):
-            state = states[start]
-            if state.poisoned and state.depth == UNKNOWN_DEPTH:
-                # Nothing can be said about this block's entry stack.
-                continue
-
-            simulation = simulate_block(
-                cfg.blocks[start].instructions, state.depth, state.slots
-            )
+            known = states[start]
+            entry = known if known is not None else []
+            simulation = simulate_block(cfg.blocks[start].instructions, entry)
             resolved.update(simulation.jump_targets)
 
             for edge in out_edges.get(start, ()):
@@ -95,81 +109,51 @@ def resolve_jump_targets(
                     # that belongs to a single path, and the resulting
                     # contradictions would poison the whole dataflow.
                     # Blocks that are only reachable dynamically therefore
-                    # keep an unknown entry stack, which is the honest
-                    # answer.
+                    # keep an empty window, which is the honest answer.
                     continue
 
-                incoming_depth, incoming_slots = _incoming_stack(edge, simulation)
-                target = edge.target
-                if target not in states:
+                if edge.target not in states:
                     continue
-                if _merge(states[target], incoming_depth, incoming_slots):
+                current = states[edge.target]
+                if current is None:
+                    # First path to reach this block: take its window as is.
+                    states[edge.target] = list(simulation.exit_slots)
+                    changed = True
+                    continue
+                merged, did_change = _merge(current, simulation.exit_slots)
+                if did_change:
+                    states[edge.target] = merged
                     changed = True
 
         if not changed:
             break
 
-    # Only keep targets that really are jump destinations.
-    jumpdests = set(disassembly.jumpdests)
-    return {
-        offset: target
-        for offset, target in resolved.items()
-        if target in jumpdests and target in cfg.blocks
-    }
+    return states, resolved
 
 
-def _incoming_stack(edge: Edge, simulation: BlockSimulation) -> tuple[int, Stack]:
-    """The stack state seen by the destination of ``edge``."""
-    depth = simulation.exit_depth
-    slots = list(simulation.exit_slots)
-    if depth == UNKNOWN_DEPTH:
-        return UNKNOWN_DEPTH, []
-    return depth, slots
+def _merge(current: Stack, incoming: Stack) -> tuple[Stack, bool]:
+    """Merge an incoming stack window into the one already known.
 
-
-def _merge(state: _EntryState, depth: int, slots: Stack) -> bool:
-    """Merge an incoming stack state into ``state``.
-
-    Returns ``True`` when the merged state differs from the previous one.
+    The windows are aligned at the top of the stack. A slot that both paths
+    agree on is known; a slot that only one path knows, or that the paths
+    disagree on, becomes unknown -- keeping one path's value would be a
+    guess.
     """
-    if depth == UNKNOWN_DEPTH:
-        if not state.poisoned:
-            state.poisoned = True
-            state.depth = UNKNOWN_DEPTH
-            state.slots = []
-            return True
-        return False
+    size = max(len(current), len(incoming))
+    left = [None] * (size - len(current)) + list(current)
+    right = [None] * (size - len(incoming)) + list(incoming)
 
-    if state.poisoned:
-        # The depth was already found to be contradictory; keep it unknown.
-        return False
-
-    if state.depth == UNKNOWN_DEPTH:
-        state.depth = depth
-        state.slots = list(slots)
-        return True
-
-    if state.depth != depth:
-        # Two paths reach this block with different stack depths: the depth
-        # is genuinely unknowable.
-        state.poisoned = True
-        state.depth = UNKNOWN_DEPTH
-        state.slots = []
-        return True
-
-    # Same depth: merge the known constants slot by slot.
+    merged = list(left)
     changed = False
-    merged = list(state.slots)
-    for index, value in enumerate(slots):
-        if index >= len(merged):
-            merged.append(value)
+    for index, (a, b) in enumerate(zip(left, right, strict=False)):
+        if a is not None and b is not None and a == b:
+            continue
+        if (a is not None or b is not None) and merged[index] is not None:
+            merged[index] = None
             changed = True
-        elif merged[index] is None and value is not None:
-            merged[index] = value
-            changed = True
-    if changed:
-        state.slots = merged
-    return changed
+    if not changed and merged != current:
+        changed = True
+    return merged, changed
 
 
 def resolved_targets_by_offset(
@@ -186,4 +170,5 @@ __all__ = [
     "Stack",
     "resolved_targets_by_offset",
     "resolve_jump_targets",
+    "run_dataflow",
 ]

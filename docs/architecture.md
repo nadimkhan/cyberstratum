@@ -130,7 +130,7 @@ graph TB
 | Opcode generator | `scripts/generate_opcodes.mjs` | **Complete** — pinned sources, fail-loud validation |
 | Cross-validation scripts | `scripts/crosscheck_evmole.py`, `scripts/validate_real_bytecode.py` | **Complete** — manual, network-dependent |
 | Fixture dataset builder | `scripts/build_fixture_dataset.py` | **Complete** — builds the smoke JSONL fixture |
-| Tests | `tests/unit/`, `tests/api/` | **138 Python tests** across 12 modules — 8 unit modules + 4 API modules, all passing |
+| Tests | `tests/unit/`, `tests/api/` | **163 Python tests** across 12 modules — 8 unit modules + 4 API modules, all passing |
 | Web tests | `apps/web/src/lib/*.test.ts` | **4 Vitest suites** — `api`, `format`, `severity`, `status` |
 
 ### 1.2 Not yet built
@@ -326,24 +326,37 @@ flow can never reach.
 
 **Implemented** across `resolver.py` and `stack.py`.
 
-`build_cfg` resolves jump targets in **two passes**:
+`build_cfg` resolves jump targets by **iterating two passes** until the
+target map stops growing (at most 8 rounds, because the resolver needs the
+edges it discovers in order to reach the blocks those edges lead to):
 
 1. **Heuristic pass.** The narrow "the instruction immediately before the jump
-   is a `PUSHn`" rule. This is enough to give the dataflow fixpoint a graph
-   to walk.
+   is a `PUSHn`" rule. A branch's destination is the top of the stack
+   (`JUMPI` jumps to `mu_s[0]` when `mu_s[1]` is non-zero), so a `PUSHn`
+   immediately before the branch *is* the destination. This is enough to give
+   the dataflow fixpoint a graph to walk.
 2. **Abstract-simulation pass.** `resolve_jump_targets(disassembly, cfg)` runs a
    small abstract interpreter over the block graph:
-   - a forward dataflow fixpoint computes the stack depth at each block entry,
-     so **loops converge**;
+   - a forward dataflow fixpoint computes the stack window known at each block
+     entry, so **loops converge**;
    - each block is then simulated to track which stack slots hold known
      constants;
    - a branch whose destination slot holds a constant is resolved.
 
-The abstract stack (`stack.py`) tracks **shape** and **known constants**. A slot
-holds either a known constant or `None` (unknown). `PUSH` pushes its immediate;
-`DUP`/`SWAP` shuffle; `POP` pops. Any other instruction consumes `stack_in`
-slots and produces `stack_out` unknown slots — and if the modelled depth is too
-shallow, the whole stack is **cleared rather than silently mis-modelled**.
+The abstract stack (`stack.py`) tracks a **top-anchored window** of known
+constants. A slot holds either a known constant or `None` (unknown). `PUSH`
+pushes its immediate; `DUP`/`SWAP` shuffle; `POP` pops. Any other instruction
+consumes `stack_in` slots and produces `stack_out` unknown slots.
+
+The window is **top-anchored** and the absolute stack depth is deliberately
+*not* tracked: `solc` joins paths that reach one block with different stack
+heights, so an absolute depth is unknowable for most blocks, and gating the
+analysis on it would discard jumps that are in fact statically determinable.
+
+`DUPn` and `SWAPn` use their **legacy** EVM semantics (they peek, they do not
+consume). EIP-5450 redefines them for EOF, and both upstream stack-effect
+sources report the EOF behaviour, so `scripts/generate_opcodes.mjs` applies an
+explicit legacy override for these opcodes.
 
 This matters because `solc` frequently shuffles the destination before
 branching:
@@ -355,11 +368,15 @@ JUMPI
 ```
 
 Here the destination is on top of the stack at the branch but is *not* the
-instruction immediately before it, so the heuristic alone would miss it.
+instruction immediately before it, so the heuristic alone would miss it. It is
+also frequently pushed in one block and consumed several blocks later.
 
 **The resolver never guesses.** Where two paths reach a block with different
-stack depths, the depth is marked **unknown** rather than resolved to a
-winner, and the branch stays unresolved. Blocks reachable only through a
+values, the slot is marked **unknown** rather than resolved to a winner, and
+the branch stays unresolved. A block that no path has reached yet is *not* the
+same as a block reached with an empty stack: the former means "no
+information", the latter is a real path, and merging the two destroys every
+value the first arriving path carried. Blocks reachable only through a
 dynamic transfer keep an unknown entry stack — propagating a single path's
 shape through a dynamic edge would flood every `JUMPDEST` block and poison the
 dataflow. The fixpoint is bounded at 16 rounds so a pathological input cannot
@@ -368,6 +385,16 @@ the result is deterministic.
 
 Finally, a resolved target is kept only if it is a real `JUMPDEST` **and** a
 real block.
+
+**Measured against `evmole`.** `scripts/crosscheck_evmole.py` compares the
+analysis with the independent Rust implementation on seven mainnet contracts:
+31 504 instructions cross-checked with **0 instruction mismatches**, reachable
+block counts that match **exactly** on all seven, and **0 wrong jump
+destinations**. The resolver agrees with `evmole` on 1 686 of the 1 891
+statically resolvable jumps (89.2 %). The remaining 11 % are values carried
+across shared utility blocks, where the merge correctly gives up; they are
+reported as unresolved rather than guessed. See
+[ADR-0011](adr/0011-static-jump-resolution.md).
 
 ### 2.6 Stage 4 — Feature extraction
 

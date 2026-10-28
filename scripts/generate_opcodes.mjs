@@ -104,13 +104,35 @@ for (const [key, entry] of Object.entries(stackDelta)) {
   })
 }
 
+// EIP-5450 (EOF) redefines DUPn and SWAPn so that they *consume* their
+// operands, because EOF has no free access to the stack below the top. Both
+// upstream sources report those EOF effects, but the contracts this project
+// analyses are deployed legacy bytecode, where DUPn peeks and pushes one
+// item (0 in, 1 out) and SWAPn exchanges the top two items without changing
+// the stack height (0 in, 0 out). The net height change happens to be the
+// same in both models, but the *consumed* items differ, and a dataflow that
+// tracks values must not treat DUP1 as consuming the item it duplicates.
+//
+// The legacy values are therefore stated explicitly here.
+const legacyDupSwap = new Map()
+for (let n = 1; n <= 16; n++) {
+  legacyDupSwap.set(0x7f + n, { inputs: 0, outputs: 1, terminating: false })
+  legacyDupSwap.set(0x8f + n, { inputs: 0, outputs: 0, terminating: false })
+}
+
 // Merge: prefer the modern table where present, fall back to legacy.
 // Where both cover an opcode they must agree exactly — a disagreement means
-// one source is wrong and we refuse to emit a table.
+// one source is wrong and we refuse to emit a table. DUPn/SWAPn are the one
+// documented exception: the sources agree on the EOF effects, and the
+// legacy values above deliberately override them.
 const stack = new Map()
 const conflicts = []
 for (const [code, entry] of modernStack) {
   const legacy = legacyStack.get(code)
+  if (legacyDupSwap.has(code)) {
+    stack.set(code, legacyDupSwap.get(code))
+    continue
+  }
   if (legacy && (legacy.inputs !== entry.inputs || legacy.outputs !== entry.outputs)) {
     conflicts.push(
       `0x${code.toString(16).padStart(2, '0')}: evm-opcodes ` +
@@ -122,6 +144,9 @@ for (const [code, entry] of modernStack) {
 }
 for (const [code, entry] of legacyStack) {
   if (!stack.has(code)) stack.set(code, entry)
+}
+for (const [code, entry] of legacyDupSwap) {
+  if (stack.has(code)) stack.set(code, entry)
 }
 if (conflicts.length) {
   console.error('Stack effect sources disagree:')

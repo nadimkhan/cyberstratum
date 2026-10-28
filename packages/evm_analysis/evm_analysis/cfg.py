@@ -51,6 +51,10 @@ class Resolution(StrEnum):
     """The destination depends on a runtime stack value and is not known."""
 
 
+#: How many times the resolver's findings are fed back into its own
+#: dataflow before the CFG is considered final.
+_MAX_RESOLUTION_ROUNDS = 8
+
 #: Instructions that end a basic block because control does not fall through.
 _TERMINATORS = {
     "STOP",
@@ -239,13 +243,16 @@ def _constant_push_before(
 ) -> int | None:
     """Return the constant target of a jump, when it is statically derivable.
 
-    A jump target is statically known when the instruction immediately
-    preceding the jump is a ``PUSHn`` whose value is a valid ``JUMPDEST``
-    offset. Anything else depends on runtime state and stays unresolved.
+    The destination of a branch is the top of the stack (Yellow Paper:
+    ``JUMPI`` jumps to ``mu_s[0]`` when ``mu_s[1]`` is non-zero), and a
+    ``PUSHn`` immediately before the branch puts its value on top. The
+    condition of a ``JUMPI`` is therefore pushed *before* the destination,
+    so the rule holds for both branch kinds.
 
     This is the *fallback* rule. :mod:`evm_analysis.resolver` runs a full
     abstract stack simulation, which resolves strictly more targets; this
-    rule is kept as a safety net for the cases the simulation cannot model.
+    rule is kept as a bootstrap so the dataflow has a graph to walk on the
+    first round.
     """
     idx = index_by_offset.get(instruction.offset)
     if idx is None or idx == 0:
@@ -316,13 +323,26 @@ def build_cfg(disassembly: Disassembly) -> ControlFlowGraph:
             if value is not None:
                 heuristic[instr.offset] = value
 
-    cfg.edges = _build_edges(cfg, heuristic, jumpdest_offsets)
-
     # Imported here because the resolver depends on this module.
     from .resolver import resolve_jump_targets
 
+    # The resolver's dataflow walks the CFG edges, and the CFG edges are
+    # built from the resolver's own findings. That circularity has to be
+    # broken by iterating: each round the resolver sees the edges the
+    # previous round discovered, so a block that is only reachable through
+    # a resolver-discovered jump finally receives a stack state.
+    #
+    # The target map only ever grows, so the loop converges; the round
+    # cap is a safety net for pathological inputs.
     combined = dict(heuristic)
-    combined.update(resolve_jump_targets(disassembly, cfg))
+    for _ in range(_MAX_RESOLUTION_ROUNDS):
+        cfg.edges = _build_edges(cfg, combined, jumpdest_offsets)
+        resolved = resolve_jump_targets(disassembly, cfg)
+        updated = dict(combined)
+        updated.update(resolved)
+        if updated == combined:
+            break
+        combined = updated
     cfg.edges = _build_edges(cfg, combined, jumpdest_offsets)
 
     for edge in cfg.edges:

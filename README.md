@@ -285,7 +285,7 @@ REDIS_DIR=E:/tools/redis8/Redis-8.10.3-Windows-x64-msys2
 ## Running things
 
 ```bash
-# Tests (159 Python tests + 57 Vitest tests)
+# Tests (163 Python tests + 57 Vitest tests)
 npm test              # web tests, then python tests
 npm run test:py       # python tests only
 npm run test:web      # web tests only
@@ -367,13 +367,14 @@ Both need network access and are manual tools, not CI tests.
 |---|---|
 | **EVM analysis engine** (`packages/evm_analysis`) | Opcode table loader, tokenizer, CBOR metadata detection, basic blocks + CFG, abstract-stack jump resolver, deterministic feature extraction. Complete and unit-tested. |
 | **Vendored fork-aware opcode table** | 14 forks, `frontier` → `prague` (129 → 148 opcodes). Generated from pinned sources, committed, fail-loud validation. |
+| **Jump resolver, cross-validated** | 31 504 instructions of 7 mainnet contracts cross-checked against `evmole`: 0 instruction mismatches, identical reachable-block counts, 0 wrong destinations, 89.2 % of static jumps agreed. See [ADR-0011](docs/adr/0011-static-jump-resolution.md). |
 | **FastAPI backend** (`apps/api/app`) | `main.py` app factory, three routers (health, scans, findings), Pydantic schemas, service layer, API-key auth, structured logging, error envelope. |
 | **RQ worker** (`apps/api/app/worker.py`) | `enqueue_scan()` + `process_scan_job()`. Drives fetch → disassemble → CFG → features → detectors and writes results to PostgreSQL. |
 | **6 baseline detectors** (`apps/api/app/services/rules.py`) | call-before-state-write, delegatecall, selfdestruct, tx.origin, unresolved jumps, stack underflow. Severity and confidence are separate fields. |
 | **ORM + migrations** | 15 tables, Alembic environment with 2 revisions (initial schema + `inline_bytecode`). |
 | **ML baseline package** (`packages/ml_baseline/evm_ml`) | TF-IDF tokenizer, dataset with family-level splits, `SklearnTfidfAdapter`, evaluation, manifest, model card. Offline; **not** wired into the scan pipeline. |
 | **Web app** (`apps/web`) | Next.js 15 App Router, 6 pages + 1 server route, typed API client, 9 UI primitives, 57 Vitest tests in 7 suites. |
-| **Tests** | 159 Python tests across 12 modules, all passing. Plus 57 Vitest tests in 7 suites. |
+| **Tests** | 163 Python tests across 12 modules, all passing. Plus 57 Vitest tests in 7 suites. |
 | **Local infrastructure** | PostgreSQL 17.11 on 5433 and Redis 8.10.3 on 6379 are installed and working. |
 
 ### Known gaps
@@ -390,6 +391,7 @@ check calls `/api/health`, which the backend serves.
 | **The audit log is never written** | The `audit_events` table exists, but nothing inserts into it, so there is no record of who looked at or changed a target. |
 | **No report builder** | The `reports` table, the report generator, and the reviewer-approval gate do not exist. Findings are read from the API instead. |
 | **ML is not in the pipeline** | `packages/ml_baseline` is standalone. `ENABLE_EXPERIMENTAL_ML` defaults to `false` and no scan attaches an ML score. |
+| **~11 % of static jumps stay unresolved** | A value pushed in one block and consumed several blocks later, across a shared utility block, cannot be proven by the merged-stack analysis. Such jumps are reported as unresolved rather than guessed, so the "unresolved dynamic jump" detector over-reports by roughly that margin. |
 | **No sandbox runner** | `workers/sandbox_runner/` does not exist and `SANDBOX_ENABLED=false`. |
 | **No browser-level end-to-end tests** | The API pipeline has end-to-end coverage in `tests/e2e/`, but there is no Playwright suite driving the UI. The UI is verified by Vitest unit tests plus a manual pass over the live stack. |
 

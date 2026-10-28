@@ -136,6 +136,44 @@ def our_jump_targets(cfg) -> set[int]:
     }
 
 
+def evmole_static_jumps(blocks, disassembly) -> dict[int, int]:
+    """Map the offset of every statically resolved jump to its destination.
+
+    ``evmole`` stores the branch inside the block it ends, and the block's
+    ``end`` is the offset of that branch instruction rather than an
+    exclusive upper bound, so the branch is the last instruction at or
+    before ``block.end``.
+    """
+    offsets = [i.offset for i in disassembly.instructions]
+    jumps: dict[int, int] = {}
+    for block in blocks:
+        btype = block.btype
+        kind = type(btype).__name__
+        if kind == "Jump":
+            destination = btype.to
+        elif kind == "Jumpi":
+            destination = btype.true_to
+        else:
+            continue
+        candidates = [o for o in offsets if block.start <= o <= block.end]
+        if not candidates:
+            continue
+        jumps[max(candidates)] = destination
+    return jumps
+
+
+def our_static_jumps(cfg) -> dict[int, int]:
+    """Map the offset of every resolved jump to its destination."""
+    from evm_analysis.cfg import EdgeType
+
+    jump_types = {EdgeType.UNCONDITIONAL_JUMP, EdgeType.CONDITIONAL_JUMP}
+    return {
+        e.instruction_offset: e.target
+        for e in cfg.edges
+        if e.target is not None and e.edge_type in jump_types
+    }
+
+
 def main() -> int:
     table = load_fork("cancun")
     failures = 0
@@ -173,6 +211,22 @@ def main() -> int:
         only_ours = our_targets - their_targets
         only_theirs = their_targets - our_targets
 
+        # The strongest invariant: for every jump both engines resolve, the
+        # destination must be the same. A jump we resolve to a different
+        # place is a wrong edge in the CFG; a jump we do not resolve is a
+        # limitation, not an error, because the analysis reports it as
+        # unresolved instead of guessing.
+        their_jumps = evmole_static_jumps(info.control_flow_graph.blocks, disassembly)
+        our_jumps = our_static_jumps(cfg)
+        disagreements = {
+            offset: (destination, their_jumps[offset])
+            for offset, destination in our_jumps.items()
+            if offset in their_jumps and their_jumps[offset] != destination
+        }
+        missed = sorted(set(their_jumps) - set(our_jumps))
+        common = sorted(set(their_jumps) & set(our_jumps))
+        agreed = sum(1 for o in common if their_jumps[o] == our_jumps[o])
+
         metadata = disassembly.metadata
         # evmole only builds blocks for reachable code, so the reachable
         # block count is the apples-to-apples figure. The total also counts
@@ -182,6 +236,8 @@ def main() -> int:
         status = "OK" if not mismatches else f"FAIL ({len(mismatches)} mismatches)"
         if only_ours:
             status += f" FALSE-POSITIVE TARGETS {sorted(only_ours)[:5]}"
+        if disagreements:
+            status += f" WRONG DESTINATION {sorted(disagreements)[:5]}"
         print(
             f"{label:<26} ours={len(ours):>6} instr  evmole={len(theirs):>6} instr  "
             f"blocks ours={reachable:>5} evmole={their_blocks:>5} "
@@ -191,6 +247,17 @@ def main() -> int:
             f"    jump targets: ours={len(our_targets):>4} evmole={len(their_targets):>4} "
             f"| only ours={sorted(only_ours)[:6]} only evmole={sorted(only_theirs)[:6]}"
         )
+        if their_jumps:
+            rate = 100.0 * agreed / len(their_jumps)
+            print(
+                f"    static jumps: evmole={len(their_jumps):>4} agreed={agreed:>4} "
+                f"({rate:5.1f}%)  unresolved by us={len(missed):>3}  "
+                f"wrong destination={len(disagreements):>3}"
+            )
+        for offset, (ours_, theirs_) in sorted(disagreements.items())[:5]:
+            print(
+                f"    jump at {offset}: ours={ours_} evmole={theirs_}"
+            )
         if metadata is not None:
             print(
                 f"    metadata: {metadata.length} bytes at offset {metadata.start_offset}, "
@@ -201,7 +268,7 @@ def main() -> int:
                 f"    idx {mismatch.index}: offset {mismatch.offset} "
                 f"ours={mismatch.ours} evmole={mismatch.theirs}"
             )
-        if mismatches or only_ours:
+        if mismatches or only_ours or disagreements:
             failures += 1
 
     print(f"\ntotal instructions cross-checked: {total_instructions}")

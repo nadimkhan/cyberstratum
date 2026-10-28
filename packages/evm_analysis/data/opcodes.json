@@ -726,256 +726,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
@@ -1760,256 +1760,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
@@ -2802,256 +2802,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
@@ -3844,256 +3844,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
@@ -4902,256 +4902,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
@@ -6008,256 +6008,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
@@ -7122,256 +7122,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
@@ -8252,256 +8252,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
@@ -9382,256 +9382,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
@@ -10520,256 +10520,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
@@ -11658,256 +11658,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
@@ -12804,256 +12804,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
@@ -13990,256 +13990,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
@@ -15176,256 +15176,256 @@
         "code": 128,
         "name": "DUP1",
         "pushBytes": 0,
-        "stackIn": 1,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 129,
         "name": "DUP2",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 130,
         "name": "DUP3",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 131,
         "name": "DUP4",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 132,
         "name": "DUP5",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 133,
         "name": "DUP6",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 134,
         "name": "DUP7",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 135,
         "name": "DUP8",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 136,
         "name": "DUP9",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 137,
         "name": "DUP10",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 138,
         "name": "DUP11",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 139,
         "name": "DUP12",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 140,
         "name": "DUP13",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 141,
         "name": "DUP14",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 142,
         "name": "DUP15",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 143,
         "name": "DUP16",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 1,
         "terminating": false
       },
       {
         "code": 144,
         "name": "SWAP1",
         "pushBytes": 0,
-        "stackIn": 2,
-        "stackOut": 2,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 145,
         "name": "SWAP2",
         "pushBytes": 0,
-        "stackIn": 3,
-        "stackOut": 3,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 146,
         "name": "SWAP3",
         "pushBytes": 0,
-        "stackIn": 4,
-        "stackOut": 4,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 147,
         "name": "SWAP4",
         "pushBytes": 0,
-        "stackIn": 5,
-        "stackOut": 5,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 148,
         "name": "SWAP5",
         "pushBytes": 0,
-        "stackIn": 6,
-        "stackOut": 6,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 149,
         "name": "SWAP6",
         "pushBytes": 0,
-        "stackIn": 7,
-        "stackOut": 7,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 150,
         "name": "SWAP7",
         "pushBytes": 0,
-        "stackIn": 8,
-        "stackOut": 8,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 151,
         "name": "SWAP8",
         "pushBytes": 0,
-        "stackIn": 9,
-        "stackOut": 9,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 152,
         "name": "SWAP9",
         "pushBytes": 0,
-        "stackIn": 10,
-        "stackOut": 10,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 153,
         "name": "SWAP10",
         "pushBytes": 0,
-        "stackIn": 11,
-        "stackOut": 11,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 154,
         "name": "SWAP11",
         "pushBytes": 0,
-        "stackIn": 12,
-        "stackOut": 12,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 155,
         "name": "SWAP12",
         "pushBytes": 0,
-        "stackIn": 13,
-        "stackOut": 13,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 156,
         "name": "SWAP13",
         "pushBytes": 0,
-        "stackIn": 14,
-        "stackOut": 14,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 157,
         "name": "SWAP14",
         "pushBytes": 0,
-        "stackIn": 15,
-        "stackOut": 15,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 158,
         "name": "SWAP15",
         "pushBytes": 0,
-        "stackIn": 16,
-        "stackOut": 16,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
         "code": 159,
         "name": "SWAP16",
         "pushBytes": 0,
-        "stackIn": 17,
-        "stackOut": 17,
+        "stackIn": 0,
+        "stackOut": 0,
         "terminating": false
       },
       {
