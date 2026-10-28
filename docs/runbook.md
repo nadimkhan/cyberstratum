@@ -679,6 +679,7 @@ from Sourcify and compare the instruction stream against the independent
 | `redis-server.exe: command not found` / `cannot open` | MSYS path used for a native binary | Use the native forward-slash path: `E:/tools/redis8/Redis-8.10.3-Windows-x64-msys2/redis-server.exe`. |
 | `redis-cli ping` → `NOAUTH` | `requirepass` set in `redis.conf` | Pass `-a [REDACTED]`, or remove `requirepass` for local-only development (Redis listens on 127.0.0.1 only). |
 | `Error: connect ECONNREFUSED 127.0.0.1:6379` | Redis is not running | Start it per §4.2 and confirm `redis-cli ping` → `PONG`. |
+| `pg_ctl start` → `could not bind IPv4 address "127.0.0.1" ... Only one usage of each socket address` | **WSL holds the port.** A WSL service listening on `127.0.0.1:5433` makes Windows create a `wslrelay.exe` that occupies the same address, so the Windows cluster cannot bind | Check who owns it: `Get-NetTCPConnection -State Listen \| Where-Object LocalPort -eq 5433` — a `wslrelay.exe` owner means WSL. Stop the WSL side (`pg_ctl -D ~/.cyberstratum/pgdata stop`) or use a different port for one of them. |
 | `ModuleNotFoundError: No module named 'evm_analysis'` | The package is not installed in the venv | `uv pip install -e packages/evm_analysis` |
 | `ModuleNotFoundError: No module named 'app'` | Running from the wrong directory | Use `--app-dir apps/api` (uvicorn) or `sys.path.insert(0,'apps/api')`. |
 | `opcode table not found at .../data/opcodes.json` | The generated artifact is missing | `npm install && npm run generate:opcodes` |

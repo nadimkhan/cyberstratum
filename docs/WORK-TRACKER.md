@@ -146,6 +146,11 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
 | Linux solc | `~/.solc-select/artifacts/solc-0.4.24` | — |
 | Unrelated PostgreSQL (Windows, out of scope) | `C:\Program Files\PostgreSQL\17` | 5432 |
 
+> **Port clash.** WSL's cluster on `5433` makes Windows create a `wslrelay.exe`
+> that holds `127.0.0.1:5433`, so the Windows cluster cannot bind that port.
+> The launcher fails loudly rather than pretending it started. Stop the WSL
+> side, or give one of them a different port.
+
 Commands (from WSL, project root): `npm run dev` · `npm run stop` · `npm run logs`
 
 ---
@@ -174,6 +179,7 @@ Commands (from WSL, project root): `npm run dev` · `npm run stop` · `npm run l
 | 18 | Compiler discovery | `SOLC_ARTIFACTS_DIR` honoured; WSL solc installed | `5edaa40` |
 | 19 | ADR-0017 corrected | the gate is metadata-aware, not whole-byte | `61f7bb9` |
 | 20 | Stale-install guard | a shadowing install now fails the suite and `npm run check` | `ecf1fca`, `9c9e0cf` |
+| 21 | Docs | editable-install warning in README + runbook; WSL port clash documented | `9822640` |
 
 ---
 
