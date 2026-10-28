@@ -67,10 +67,17 @@ We have proven this end-to-end on live mainnet contracts. The chain:
    compiler version is taken from the verification record and the matching
    `solc` binary is located locally.
 
-3. **Byte-for-byte comparison with the deployed runtime.** This is the gate.
-   If the recompiled runtime is not identical to what is on chain, the source
-   does **not** describe the deployed contract and **no source line may be
-   claimed**.
+3. **Metadata-aware comparison of the executable code with the deployed
+   runtime.** This is the gate. The metadata trailer is separated first, and
+   the **executable code** is compared byte-for-byte. If it differs, the
+   source does **not** describe the deployed contract and **no source line may
+   be claimed**.
+
+   The gate must *not* be whole-runtime equality. That is a false negative:
+   the metadata trailer holds a content hash that legitimately differs
+   between two otherwise identical builds, so whole-runtime equality rejects
+   genuine correspondences. It must also *not* be a loose prefix or fuzzy
+   match — that would accept a contract the source does not describe.
 
 4. **Source map → instruction index.** The compiler emits
    `evm.deployedBytecode.sourceMap`. Its entries are indexed by *instruction
@@ -116,6 +123,16 @@ recompilation still uses the verification's own compiler options) and must
 distinguish "solc emitted nothing" from "solc emitted different code". The
 live check is `scripts/live_check_correspondence.py`; the comparison logic is
 covered by `tests/unit/test_correspondence.py`.
+
+**A third trap: the compiler must be the one that built the contract.**
+The recompilation only means anything if it runs the exact compiler version
+from the verification record. Locating that binary is not always trivial:
+`solc-select` keeps each version in its own directory, some setups use a
+flatter layout, and the location is overridable via `SOLC_ARTIFACTS_DIR`.
+The correspondence check and the product's Slither runner must search the
+same places, so both agree on which compiler produced a given contract. When
+no matching compiler is available the check reports a **skip**, not a
+failure — a missing compiler is not evidence against a correspondence.
 
 **Where correspondence legitimately fails.** Some deployments cannot be
 reproduced exactly and must be reported as bytecode-only. We measured this on

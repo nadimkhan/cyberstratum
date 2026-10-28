@@ -138,7 +138,8 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
 | FastAPI (WSL) | uvicorn | 8000 |
 | Next.js (WSL) | dev server | 3100 |
 | Mythril venv (WSL) | `~/venvs/mythril` | — |
-| Linux solc | `~/bin/solc-0.8.26` | — |
+| Linux solc | `~/.solc-select/artifacts/solc-0.8.26` | — |
+| Linux solc | `~/.solc-select/artifacts/solc-0.4.24` | — |
 | Unrelated PostgreSQL (Windows, out of scope) | `C:\Program Files\PostgreSQL\17` | 5432 |
 
 Commands (from WSL, project root): `npm run dev` · `npm run stop` · `npm run logs`
@@ -165,6 +166,8 @@ Commands (from WSL, project root): `npm run dev` · `npm run stop` · `npm run l
 | 14 | WSL environment | PostgreSQL 14 non-root, Node 22, Python 3.12 | — |
 | 15 | Cross-platform launcher | verified on Windows and WSL | see §8 |
 | 16 | Deployment config | Netlify + systemd + CORS | `835ce16` |
+| 17 | Correspondence proof | script + unit tests, live on Windows and WSL | `3ca708d` |
+| 18 | Compiler discovery | `SOLC_ARTIFACTS_DIR` honoured; WSL solc installed | `5edaa40` |
 
 ---
 

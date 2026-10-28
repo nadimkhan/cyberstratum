@@ -576,6 +576,33 @@ Check the whole thing, both engines, on a real contract:
 node scripts/py.mjs --cwd . -m scripts.live_check_merged_engine
 ```
 
+### 6.2 The correspondence check
+
+The correspondence check proves that a deployed runtime really is the
+compiled form of a given source file, so a finding may carry an exact
+source line rather than a guess. It needs the **exact** compiler the
+contract was verified with, which `solc-select` installs under
+`~/.solc-select/artifacts`. The location can be overridden with
+`SOLC_ARTIFACTS_DIR`.
+
+```bash
+solc-select install 0.4.24     # the version the contract was built with
+node scripts/py.mjs scripts/live_check_correspondence.py
+```
+
+The check runs against a live mainnet contract and prints the byte offsets
+that map to exact source lines:
+
+```
+offset    opcode         file:line                     source
+0x2e6     CALL           FiatTokenProxy.sol:262        address(this).call.value(msg.value)(data)
+0x690     DELEGATECALL   FiatTokenProxy.sol:41         delegatecall(gas, implementation, 0, calldat
+```
+
+It **skips** rather than fails when a required compiler is not installed,
+and it never prints a source line it could not prove. The comparison rules
+themselves are covered by `tests/unit/test_correspondence.py`.
+
 ## 7. Regenerating the opcode table
 
 The opcode table `packages/evm_analysis/data/opcodes.json` is a committed,
