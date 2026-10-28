@@ -231,7 +231,44 @@ mkdir -p /e/data/cyberstratum
 
 ## 4. Daily start-up
 
-Run these in three separate terminals (or as background processes).
+### 4.0 One command
+
+```bash
+cd /e/projects/cyberstratum
+npm run dev
+```
+
+This starts everything: PostgreSQL 17.11 on port 5433, Redis 8.10.3 on port
+6379, the API on `http://127.0.0.1:8000`, the RQ worker, and the Next.js
+dev server on `http://127.0.0.1:3100`. It runs `alembic upgrade head`
+first, so the schema is current. Anything already running is left alone, so
+the command is safe to re-run.
+
+To stop everything:
+
+```bash
+npm run stop
+```
+
+`npm run stop` is the reliable stop. `Ctrl+C` also asks the stack to stop,
+but npm sits between the terminal and the script and tears its own process
+tree down, so the cleanup is not guaranteed to finish. `npm run stop` is
+idempotent and leaves nothing behind — including the `postmaster.pid` that a
+hard kill leaves behind.
+
+The running services are owned by a detached supervisor process. Everything
+the stack writes goes to `.dev-logs/dev.log`:
+
+```bash
+npm run logs
+```
+
+Flags: `--no-infra`, `--no-migrate`, `--prod`, `--api-port N`, `--web-port N`.
+The paths for PostgreSQL and Redis can be moved with the `PG_BIN`, `PG_DATA`,
+`PG_LOG` and `REDIS_BIN` environment variables.
+
+The sections below describe each service on its own, which is useful when
+something needs to be restarted or debugged in isolation.
 
 ### 4.1 PostgreSQL 17.11
 

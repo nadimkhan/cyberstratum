@@ -251,38 +251,81 @@ AUTH_SECRET=[REDACTED]
 
 `.env.example` ships `CHANGE_ME` placeholders on purpose. Leave them there.
 
-### Start PostgreSQL 17.11
+`npm run dev` (see below) starts PostgreSQL and Redis for you, so the manual
+steps are only needed for first-time initialisation or for recovering a
+cluster that was stopped by hand. First-time cluster creation, role creation,
+and database creation are in [`docs/runbook.md`](docs/runbook.md) §3.4–§3.5.
 
-Binaries at `E:/tools/pg17/pgsql/bin`, data directory
-`E:/data/cyberstratum/pgdata`, port **5433**:
+The services themselves live at:
 
-```bash
-PG_BIN=E:/tools/pg17/pgsql/bin
-PG_DATA=E:/data/cyberstratum/pgdata
-
-"$PG_BIN/pg_ctl.exe" -D "$PG_DATA" -l E:/data/cyberstratum/pg17.log -o "-p 5433" start
-"$PG_BIN/pg_isready.exe" -h 127.0.0.1 -p 5433
-```
-
-First-time initialisation, role creation, and database creation are in
-[`docs/runbook.md`](docs/runbook.md) §3.4–§3.5.
-
-### Start Redis 8.10.3
-
-Binaries at `E:/tools/redis8/Redis-8.10.3-Windows-x64-msys2`, port **6379**:
-
-```bash
-REDIS_DIR=E:/tools/redis8/Redis-8.10.3-Windows-x64-msys2
-
-"$REDIS_DIR/redis-server.exe" "$REDIS_DIR/redis.conf" \
-  --port 6379 --dir E:/data/cyberstratum --logfile E:/data/cyberstratum/redis.log
-
-"$REDIS_DIR/redis-cli.exe" -p 6379 ping     # -> PONG
-```
+| Service | Location | Port |
+|---|---|---|
+| PostgreSQL 17.11 | `E:/tools/pg17/pgsql/bin`, data in `E:/data/cyberstratum/pgdata` | 5433 |
+| Redis 8.10.3 | `E:/tools/redis8/Redis-8.10.3-Windows-x64-msys2` | 6379 |
 
 ---
 
 ## Running things
+
+### One command
+
+```bash
+cd /e/projects/cyberstratum
+npm run dev
+```
+
+That is the whole thing. It starts, in order:
+
+1. **PostgreSQL** on `127.0.0.1:5433` (the isolated cluster, never the
+   PostgreSQL 17 that already occupies port 5432 on this machine)
+2. **Redis** on `127.0.0.1:6379`
+3. **the API** on `http://127.0.0.1:8000`
+4. **the RQ worker**
+5. **the web UI** on `http://127.0.0.1:3100`
+
+It also runs `alembic upgrade head` first, so the database schema is always
+current. Services that are already running are left alone, so the command is
+safe to re-run.
+
+```
+CyberStratum is up.
+  web UI      http://127.0.0.1:3100
+  API         http://127.0.0.1:8000
+  API docs    http://127.0.0.1:8000/docs
+  health      http://127.0.0.1:8000/api/health
+  PostgreSQL  127.0.0.1:5433     Redis  127.0.0.1:6379
+```
+
+To stop it again:
+
+```bash
+npm run stop
+```
+
+`npm run stop` is the reliable way to stop the stack. It stops the
+application processes, the worker, Redis and PostgreSQL, and removes the
+stale `postmaster.pid` that a hard kill leaves behind. `Ctrl+C` also asks it
+to stop, but npm sits between the terminal and the script, so `npm run stop`
+is the one to reach for.
+
+The running services are owned by a detached supervisor process, and
+everything the stack logs goes to `.dev-logs/dev.log`:
+
+```bash
+npm run logs          # tail the development log
+```
+
+Useful flags:
+
+| Flag | Effect |
+|---|---|
+| `npm run dev -- --no-infra` | do not start PostgreSQL or Redis |
+| `npm run dev -- --no-migrate` | do not run the migrations |
+| `npm run dev -- --prod` | serve the web UI from the production build |
+| `npm run dev -- --api-port 9000` | use a different API port |
+| `npm run dev -- --web-port 4000` | use a different web UI port |
+
+### Everything else
 
 ```bash
 # Tests (169 Python tests + 57 Vitest tests)
@@ -304,11 +347,8 @@ npm run worker        # the RQ worker (python -m app.worker)
 npm run dev:web       # next dev
 npm run build:web     # next build
 npm run start:web     # next start
-```
 
-Database migrations:
-
-```bash
+# Database migrations
 npm run migrate
 ```
 

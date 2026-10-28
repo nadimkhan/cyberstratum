@@ -34,3 +34,7 @@ var/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local development stack state and logs
+.dev-session.json
+.dev-logs/
