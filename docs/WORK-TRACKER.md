@@ -34,7 +34,7 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
 - [x] Root one-command launcher — `npm run dev` / `stop` / `logs`. `76399b1`
 - [x] Launcher no longer reports success when the worker fails to register. `be49493`
 - [x] Ctrl+C console isolation (`0xC000013A` fix, detached supervisor). `492933c`
-- [x] **Launcher made cross-platform** — one script now runs on Windows and WSL/Linux. See §8.
+- [x] **Launcher made cross-platform** — one script now runs on Windows and WSL/Linux. See §8. `bc38687`
 
 ### Watchdog merge
 - [x] Merge proposal + licensing posture (FastAPI MIT, Slither AGPL-3.0 out-of-process). `5e9cb81`
@@ -224,3 +224,7 @@ Every path is overridable from the environment: `PG_BIN`, `PG_DATA`, `PG_LOG`,
   PostgreSQL on 5432 left.
 - Windows quality gate after the port: Ruff clean, mypy clean across 60
   source files, `414` pytest passed.
+- WSL re-verified on the committed code (`bc38687`): `npm run dev` → API
+  healthy, web UI `HTTP 200`, worker registered; `npm run stop` →
+  PostgreSQL stopped cleanly (`pg_ctl: no server running`), the systemd
+  Redis and PostgreSQL left active, no leftover project processes.
