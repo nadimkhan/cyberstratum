@@ -285,7 +285,7 @@ REDIS_DIR=E:/tools/redis8/Redis-8.10.3-Windows-x64-msys2
 ## Running things
 
 ```bash
-# Tests (163 Python tests + 57 Vitest tests)
+# Tests (169 Python tests + 57 Vitest tests)
 npm test              # web tests, then python tests
 npm run test:py       # python tests only
 npm run test:web      # web tests only
@@ -298,7 +298,7 @@ npm run typecheck     # mypy, then tsc
 npm run api           # uvicorn on http://127.0.0.1:8000
 
 # RQ worker
-npm run worker        # rq worker on redis://127.0.0.1:6379
+npm run worker        # the RQ worker (python -m app.worker)
 
 # Web app
 npm run dev:web       # next dev
@@ -374,7 +374,7 @@ Both need network access and are manual tools, not CI tests.
 | **ORM + migrations** | 15 tables, Alembic environment with 2 revisions (initial schema + `inline_bytecode`). |
 | **ML baseline package** (`packages/ml_baseline/evm_ml`) | TF-IDF tokenizer, dataset with family-level splits, `SklearnTfidfAdapter`, evaluation, manifest, model card. Offline; **not** wired into the scan pipeline. |
 | **Web app** (`apps/web`) | Next.js 15 App Router, 6 pages + 1 server route, typed API client, 9 UI primitives, 57 Vitest tests in 7 suites. |
-| **Tests** | 163 Python tests across 12 modules, all passing. Plus 57 Vitest tests in 7 suites. |
+| **Tests** | 169 Python tests across 12 modules, all passing. Plus 57 Vitest tests in 7 suites. |
 | **Local infrastructure** | PostgreSQL 17.11 on 5433 and Redis 8.10.3 on 6379 are installed and working. |
 
 ### Known gaps

@@ -8,6 +8,12 @@
 //
 //   node scripts/py.mjs -m pytest -q
 //   node scripts/py.mjs -m ruff check apps packages tests scripts
+//
+// A module that must be imported by its package name rather than by path
+// needs that package's directory on the working directory. Pass --cwd to
+// set it:
+//
+//   node scripts/py.mjs --cwd apps/api -m app.worker
 
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -33,8 +39,22 @@ if (!venv) {
   );
 }
 
-const result = spawnSync(interpreter, process.argv.slice(2), {
-  cwd: root,
+// Parse --cwd <dir> out of the argument list; everything else is passed
+// through to Python untouched.
+const argv = process.argv.slice(2);
+let cwd = root;
+if (argv[0] === "--cwd") {
+  const requested = argv[1];
+  if (!requested) {
+    console.error("[cyberstratum] --cwd needs a directory argument.");
+    process.exit(1);
+  }
+  cwd = path.resolve(root, requested);
+  argv.splice(0, 2);
+}
+
+const result = spawnSync(interpreter, argv, {
+  cwd,
   stdio: "inherit",
 });
 

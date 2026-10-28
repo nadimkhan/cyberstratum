@@ -130,7 +130,7 @@ graph TB
 | Opcode generator | `scripts/generate_opcodes.mjs` | **Complete** — pinned sources, fail-loud validation |
 | Cross-validation scripts | `scripts/crosscheck_evmole.py`, `scripts/validate_real_bytecode.py` | **Complete** — manual, network-dependent |
 | Fixture dataset builder | `scripts/build_fixture_dataset.py` | **Complete** — builds the smoke JSONL fixture |
-| Tests | `tests/unit/`, `tests/api/` | **163 Python tests** across 12 modules — 8 unit modules + 4 API modules, all passing |
+| Tests | `tests/unit/`, `tests/api/` | **169 Python tests** across 12 modules — 8 unit modules + 4 API modules, all passing |
 | Web tests | `apps/web/src/lib/*.test.ts` | **4 Vitest suites** — `api`, `format`, `severity`, `status` |
 
 ### 1.2 Not yet built

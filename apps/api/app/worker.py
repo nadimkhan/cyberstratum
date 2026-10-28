@@ -14,7 +14,9 @@ from __future__ import annotations
 import os
 import sys
 import uuid
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
+from typing import Any
 
 from rq import SimpleWorker, Worker
 from rq.worker import BaseWorker
@@ -28,6 +30,13 @@ from app.queue.connection import get_queue, get_redis
 from app.services.pipeline import run_scan
 
 log = get_logger(__name__)
+
+#: The name the worker registers itself under in Redis.
+WORKER_NAME = "cyberstratum-worker"
+
+
+class WorkerAlreadyRunningError(RuntimeError):
+    """Raised when a live worker already holds the worker name."""
 
 
 def _now() -> datetime:
@@ -122,6 +131,109 @@ def enqueue_scan(scan_id: uuid.UUID, job_id: uuid.UUID | None = None) -> str:
     return rq_job.id
 
 
+def _windows_process_is_alive(pid: int) -> bool:
+    """Return whether a Windows process id still names a live process.
+
+    ``os.kill(pid, 0)`` cannot be used on Windows: CPython implements it by
+    calling ``TerminateProcess``, so the "probe" would actually kill the
+    target. The Win32 API is queried directly instead.
+    """
+    import ctypes
+
+    process_query_limited_information = 0x1000
+    still_active = 259
+
+    # ``ctypes.WinDLL`` only exists on Windows, so it is looked up
+    # dynamically: the module must stay importable on POSIX, and the type
+    # checker must stay happy when it runs there.
+    win_dll = getattr(ctypes, "WinDLL")  # noqa: B009
+    kernel32 = win_dll("kernel32", use_last_error=True)
+    kernel32.OpenProcess.restype = ctypes.c_void_p
+    kernel32.OpenProcess.argtypes = (ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32)
+    kernel32.GetExitCodeProcess.restype = ctypes.c_int
+    kernel32.GetExitCodeProcess.argtypes = (ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong))
+    kernel32.CloseHandle.restype = ctypes.c_int
+    kernel32.CloseHandle.argtypes = (ctypes.c_void_p,)
+
+    handle = kernel32.OpenProcess(process_query_limited_information, False, pid)
+    if not handle:
+        return False
+    try:
+        exit_code = ctypes.c_ulong()
+        if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            return False
+        return exit_code.value == still_active
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def _process_is_alive(pid: int | None) -> bool:
+    """Return whether *pid* names a process that is still running.
+
+    A pid that cannot be inspected at all is reported as dead: the
+    registration it belongs to should not be able to block a restart.
+    """
+    if pid is None or pid <= 0:
+        return False
+    if os.name == "nt":
+        return _windows_process_is_alive(pid)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        # The process exists but belongs to another user.
+        return True
+    return True
+
+
+def clear_stale_worker_registrations(
+    workers: Iterable[Any] | None = None,
+    *,
+    name: str = WORKER_NAME,
+    is_alive: Callable[[int | None], bool] = _process_is_alive,
+) -> list[str]:
+    """Clear Redis worker registrations whose process no longer exists.
+
+    RQ keeps a worker's registration in Redis until the worker reports its
+    own death. A worker that is killed hard - a console kill, a crash, a
+    power cut - never gets that chance, and the next worker then refuses to
+    start with *"There exists an active worker named ... already"*. That
+    failure is confusing because the worker really is gone.
+
+    Only registrations whose process cannot be found are cleared. A
+    registration whose process is still alive is a real conflict and raises
+    :class:`WorkerAlreadyRunningError` rather than being silently removed,
+    because two workers consuming the same queue is a worse problem than a
+    failed restart.
+
+    Args:
+        workers: The registrations to consider. Defaults to every worker
+            registered in Redis.
+        name: The worker name to reconcile.
+        is_alive: Predicate deciding whether a process is running.
+
+    Returns:
+        The names of the registrations that were cleared.
+    """
+    if workers is None:
+        workers = Worker.all(connection=get_redis())
+
+    cleared: list[str] = []
+    for worker in workers:
+        if getattr(worker, "name", None) != name:
+            continue
+        pid = getattr(worker, "pid", None)
+        if is_alive(pid):
+            raise WorkerAlreadyRunningError(
+                f"A worker named {name!r} is already running (pid {pid}). "
+                "Stop it before starting another one."
+            )
+        worker.register_death()
+        cleared.append(name)
+    return cleared
+
+
 def build_worker() -> BaseWorker:
     """Create the RQ worker for this platform.
 
@@ -132,14 +244,21 @@ def build_worker() -> BaseWorker:
     queue = get_queue()
     connection = get_redis()
     if hasattr(os, "fork"):
-        return Worker([queue], connection=connection, name="cyberstratum-worker")
-    return SimpleWorker([queue], connection=connection, name="cyberstratum-worker")
+        return Worker([queue], connection=connection, name=WORKER_NAME)
+    return SimpleWorker([queue], connection=connection, name=WORKER_NAME)
 
 
 def main() -> int:
     """Run the worker until interrupted."""
     configure_logging()
     queue = get_queue()
+    try:
+        cleared = clear_stale_worker_registrations()
+    except WorkerAlreadyRunningError as exc:
+        log.error("worker_already_running", detail=str(exc))
+        return 1
+    if cleared:
+        log.warning("stale_worker_registrations_cleared", count=len(cleared))
     log.info("worker_starting", queue=queue.name)
     worker = build_worker()
     try:

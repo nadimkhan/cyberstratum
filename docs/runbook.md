@@ -322,13 +322,30 @@ cd /e/projects/cyberstratum
 ### 4.4 The RQ worker
 
 ```bash
-cd /e/projects/cyberstratum
-.venv/Scripts/python.exe -m rq worker scans --url redis://127.0.0.1:6379
+cd /e/projects/cyberstratum/apps/api
+../../.venv/Scripts/python.exe -m app.worker
 ```
 
 The queue names come from `.env`: `SCAN_QUEUE_NAME=scans` and
 `SANDBOX_QUEUE_NAME=sandbox`. The sandbox queue is **disabled by default**
 (`SANDBOX_ENABLED=false`) and has no worker.
+
+The worker registers itself in Redis under the name `cyberstratum-worker`.
+RQ keeps that registration until the worker reports its own death, so a
+worker that is killed hard — a console kill, a crash, a power cut — leaves
+the registration behind, and the next worker would otherwise refuse to start
+with *"There exists an active worker named 'cyberstratum-worker' already"*.
+On startup the worker therefore reconciles that registration: a
+registration whose process no longer exists is cleared, and one whose
+process **is** still alive is left alone and reported as
+
+```text
+A worker named 'cyberstratum-worker' is already running (pid 23580).
+Stop it before starting another one.
+```
+
+That is a real conflict, not a stale entry: two workers on one queue would
+process scans concurrently, so the second one refuses to start.
 
 > **Status:** working. The job function is `process_scan_job()` in
 > `apps/api/app/worker.py`; the API enqueues onto the `scans` queue via

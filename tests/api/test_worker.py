@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import uuid
 from collections.abc import Iterator
 from typing import Any
@@ -14,7 +15,13 @@ from app.db.enums import ScanJobStatus, ScanStatus
 from app.db.models.scans import Scan
 from app.services import pipeline as pipeline_service
 from app.services.bytecode import BytecodeArtifact, BytecodeUnavailableError
-from app.worker import process_scan_job
+from app.worker import (
+    WORKER_NAME,
+    WorkerAlreadyRunningError,
+    _process_is_alive,
+    clear_stale_worker_registrations,
+    process_scan_job,
+)
 
 #: Runtime bytecode with a DELEGATECALL so the baseline rules produce a finding.
 DELEGATECALL_BYTECODE = bytes.fromhex("60006000f4")
@@ -126,3 +133,67 @@ def test_worker_handles_missing_scan(worker_session: Session) -> None:
     """An unknown scan id is reported rather than raising."""
     result = process_scan_job(str(uuid.uuid4()))
     assert result["status"] == "not_found"
+
+
+class FakeRegistration:
+    """Stand-in for an RQ worker registration."""
+
+    def __init__(self, name: str, pid: int | None) -> None:
+        self.name = name
+        self.pid = pid
+        self.death_registered = False
+
+    def register_death(self) -> None:
+        self.death_registered = True
+
+
+def test_a_registration_whose_process_is_gone_is_cleared() -> None:
+    """A worker killed hard leaves its registration behind; it is cleared."""
+    stale = FakeRegistration(WORKER_NAME, 999999)
+
+    cleared = clear_stale_worker_registrations([stale], is_alive=lambda pid: False)
+
+    assert cleared == [WORKER_NAME]
+    assert stale.death_registered is True
+
+
+def test_a_registration_whose_process_is_alive_is_kept_and_reported() -> None:
+    """A genuinely running worker is not removed: that would double the queue."""
+    live = FakeRegistration(WORKER_NAME, 4242)
+
+    with pytest.raises(WorkerAlreadyRunningError) as excinfo:
+        clear_stale_worker_registrations([live], is_alive=lambda pid: True)
+
+    assert "already running" in str(excinfo.value)
+    assert live.death_registered is False
+
+
+def test_registrations_with_another_name_are_left_alone() -> None:
+    """Only this deployment's worker name is reconciled."""
+    other = FakeRegistration("some-other-worker", 999999)
+
+    cleared = clear_stale_worker_registrations([other], is_alive=lambda pid: False)
+
+    assert cleared == []
+    assert other.death_registered is False
+
+
+def test_a_missing_pid_is_treated_as_a_dead_process() -> None:
+    """A registration whose pid cannot be resolved must not block a restart."""
+    unknown = FakeRegistration(WORKER_NAME, None)
+
+    cleared = clear_stale_worker_registrations([unknown], is_alive=_process_is_alive)
+
+    assert cleared == [WORKER_NAME]
+    assert unknown.death_registered is True
+
+
+def test_the_current_process_is_reported_as_alive() -> None:
+    assert _process_is_alive(os.getpid()) is True
+
+
+def test_an_impossible_pid_is_reported_as_dead() -> None:
+    # 0 is never a valid process id on Windows or POSIX.
+    assert _process_is_alive(0) is False
+    assert _process_is_alive(-1) is False
+    assert _process_is_alive(None) is False

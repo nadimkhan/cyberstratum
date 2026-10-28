@@ -21,7 +21,7 @@
     "typecheck:web": "npm run typecheck --workspace @cyberstratum/web",
     "migrate": "node scripts/py.mjs -m alembic upgrade head",
     "api": "node scripts/py.mjs -m uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000",
-    "worker": "node scripts/py.mjs -m rq worker scans --url redis://127.0.0.1:6379"
+    "worker": "node scripts/py.mjs --cwd apps/api -m app.worker"
   },
   "devDependencies": {
     "@ethereumjs/common": "^10.1.3",
