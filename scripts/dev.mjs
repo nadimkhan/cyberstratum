@@ -152,6 +152,36 @@ async function waitForHttp(url, label, timeoutMs = 60_000) {
   return false;
 }
 
+/**
+ * Whether a worker is registered on the RQ queue.
+ *
+ * The worker has no port of its own, so a worker that failed to start is
+ * invisible to the port checks. A stack with no worker accepts scans that
+ * are then never processed, so this is checked explicitly.
+ */
+function workerIsRegistered() {
+  const cli = redisTool("redis-cli");
+  if (!existsSync(cli)) return true; // cannot check, so do not block the start
+  const result = spawnSync(cli, ["-h", "127.0.0.1", "-p", String(REDIS_PORT),
+    "--scan", "--pattern", "rq:worker:*"], { encoding: "utf8", shell: false });
+  if (result.status !== 0) return true;
+  return (result.stdout ?? "").includes("cyberstratum-worker");
+}
+
+async function waitForWorker(timeoutMs = 30_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    // A worker child that has already died will never register.
+    if (loadState().workerFailed) return false;
+    if (workerIsRegistered()) {
+      // Re-check, in case it died in the same moment it registered.
+      return !loadState().workerFailed;
+    }
+    await sleep(500);
+  }
+  return false;
+}
+
 /* ------------------------------------------------------------------ state */
 
 function saveState(state) {
@@ -232,6 +262,19 @@ function supervise(name, command, args, options = {}) {
       `(code ${code}, signal ${signal ?? "none"})\n`;
     appendToLog(text);
     if (!SUPERVISOR) process.stderr.write(text);
+    if (name === "worker") {
+      // Record it, so the launcher can tell the user instead of reporting
+      // a stack that will never process a scan.
+      const state = loadState();
+      state.workerFailed = true;
+      saveState(state);
+      // The usual cause is a worker of the same name that is still alive.
+      const hint = `${COLOURS.yellow}[dev]${COLOURS.reset} the worker could not ` +
+        `register: a worker named 'cyberstratum-worker' is most likely still ` +
+        `running. Run "npm run stop" and then "npm run dev" again.\n`;
+      appendToLog(hint);
+      if (!SUPERVISOR) process.stderr.write(hint);
+    }
   });
   return child;
 }
@@ -310,6 +353,7 @@ async function supervisorMain() {
   mkdirSync(logDir, { recursive: true });
   const state = loadState();
   state.supervisor = { pid: process.pid, startedAt: new Date().toISOString() };
+  state.workerFailed = false;
   saveState(state);
 
   appendToLog(`\n=== CyberStratum starting at ${new Date().toISOString()} ===\n`);
@@ -354,6 +398,16 @@ async function supervisorMain() {
 
   await waitForHttp(`http://127.0.0.1:${API_PORT}/api/health`, "The API");
   await waitForHttp(`http://127.0.0.1:${WEB_PORT}/`, "The web UI");
+
+  // The worker has no port, so it is checked explicitly. A stack without a
+  // worker accepts scans that are then never processed, and saying "up"
+  // would be a lie.
+  const workerReady = await waitForWorker(20_000);
+  if (!workerReady) {
+    fail("the RQ worker did not register on the queue.");
+    fail("The stack will not process scans. Check .dev-logs/dev.log.");
+    return;
+  }
 
   appendToLog("\nCyberStratum is up.\n");
   log("the stack is up");
@@ -565,8 +619,15 @@ async function main() {
   const ready = await waitForHttp(`http://127.0.0.1:${API_PORT}/api/health`,
     "The API", 120_000);
   const webReady = await waitForHttp(`http://127.0.0.1:${WEB_PORT}/`, "The web UI", 120_000);
+  const workerReady = await waitForWorker(30_000);
 
-  if (ready && webReady) {
+  if (!workerReady) {
+    fail("the RQ worker did not register on the queue.");
+    fail("A worker named 'cyberstratum-worker' is most likely still running.");
+    fail("Run \"npm run stop\" and then \"npm run dev\" again.");
+  }
+
+  if (ready && webReady && workerReady) {
     console.log(`
 ${COLOURS.green}${COLOURS.bold}CyberStratum is up.${COLOURS.reset}
   web UI      http://127.0.0.1:${WEB_PORT}
@@ -581,6 +642,7 @@ ${COLOURS.green}${COLOURS.bold}CyberStratum is up.${COLOURS.reset}
   } else if (!alreadyRunning) {
     fail("the stack did not come up - check .dev-logs/dev.log");
   }
+
 }
 
 main().catch((error) => {

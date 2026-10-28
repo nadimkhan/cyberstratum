@@ -315,6 +315,12 @@ everything the stack logs goes to `.dev-logs/dev.log`:
 npm run logs          # tail the development log
 ```
 
+`npm run dev` also checks that the RQ worker actually registered. The
+worker has no port of its own, so a stack whose worker failed to start
+would otherwise look healthy while never processing a scan. The usual
+cause is a worker of the same name that is still running, and the command
+says so instead of reporting success.
+
 Useful flags:
 
 | Flag | Effect |
