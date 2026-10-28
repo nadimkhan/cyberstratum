@@ -100,17 +100,65 @@ def test_no_vendored_agpl_source() -> None:
             )
 
 
-def test_slither_is_invoked_only_as_a_subprocess() -> None:
-    """If we mention Slither, we do it by running the executable."""
+#: A string literal, in any of the forms Python allows.
+STRING_LITERAL_PATTERN = re.compile(
+    r"\"\"\".*?\"\"\"" r"|\'\'\'.*?\'\'\'" r"|\"[^\"\\\n]*\"" r"|\'[^\'\\\n]*\'",
+    re.DOTALL,
+)
+
+#: A comment, in either the hash or the triple-quoted form.
+COMMENT_PATTERN = re.compile(r"#[^\n]*|\"\"\".*?\"\"\"", re.DOTALL)
+
+#: A dynamic import, which would evade the import pattern above.
+DYNAMIC_IMPORT_PATTERN = re.compile(
+    r"import_module\(\s*[\"\'](?P<module>[\w.]+)[\"\']"
+    r"|__import__\(\s*[\"\'](?P<direct>[\w.]+)[\"\']"
+)
+
+
+def _code_only(text: str) -> str:
+    """Return the text with its string literals and comments removed.
+
+    A mention of Slither inside a string -- a database constraint value, an
+    environment variable name, a command line -- is data, not an import of
+    AGPL code. Only a mention in *code* matters for this check.
+    """
+    without_strings = STRING_LITERAL_PATTERN.sub(" ", text)
+    return COMMENT_PATTERN.sub(" ", without_strings)
+
+
+def test_slither_is_never_imported_dynamically() -> None:
+    """A dynamic import must not become a way around the import check."""
     offenders: list[str] = []
     for path in _python_sources():
         text = path.read_text(encoding="utf-8", errors="replace")
-        if "slither" not in text.lower():
+        for match in DYNAMIC_IMPORT_PATTERN.finditer(text):
+            module = match.group("module") or match.group("direct") or ""
+            if module.split(".")[0] in FORBIDDEN_IMPORTS:
+                offenders.append(f"{path.relative_to(REPO_ROOT)} ({module})")
+    assert not offenders, (
+        "these files import a forbidden module dynamically: "
+        + ", ".join(offenders)
+        + ". See ADR-0013."
+    )
+
+
+def test_slither_is_invoked_only_as_a_subprocess() -> None:
+    """If we use Slither in code, we do it by running the executable.
+
+    A mention in *code* rather than in a string is what matters here: a
+    database constraint that stores the word "slither" as a finding source
+    is data, not an invocation.
+    """
+    offenders: list[str] = []
+    for path in _python_sources():
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if "slither" not in _code_only(text).lower():
             continue
         if "subprocess" not in text and "AGPL" not in text and "ADR-0013" not in text:
             offenders.append(str(path.relative_to(REPO_ROOT)))
     assert not offenders, (
-        "these files mention Slither without using subprocess: "
+        "these files use Slither in code without using subprocess: "
         + ", ".join(offenders)
         + ". Slither must be invoked as an external executable."
     )

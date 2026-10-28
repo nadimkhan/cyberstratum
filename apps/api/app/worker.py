@@ -26,7 +26,8 @@ from app.core.logging import configure_logging, get_logger
 from app.db.enums import ScanJobStatus, ScanStatus
 from app.db.models.scans import Scan, ScanJob
 from app.db.session import session_scope
-from app.queue.connection import get_queue, get_redis
+from app.queue.connection import get_discovery_queue, get_queue, get_redis
+from app.services.discovery import DEFAULT_BATCH_SIZE
 from app.services.pipeline import run_scan
 
 log = get_logger(__name__)
@@ -107,6 +108,71 @@ def process_scan_job(scan_id: str, job_id: str | None = None) -> dict[str, objec
             "error_code": outcome.error_code,
             "finding_count": outcome.finding_count,
         }
+
+
+def process_discovery_job(
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    chain_ids: list[int] | None = None,
+) -> dict[str, object]:
+    """Execute one discovery cycle.
+
+    The feed is asynchronous because the Blockscout client is, so the
+    async cycle is driven from this synchronous RQ job.
+
+    Args:
+        batch_size: How many chains to sweep in this cycle.
+        chain_ids: The chains to consider. ``None`` means every chain in
+            the registry.
+
+    Returns:
+        A summary dict describing the outcome.
+    """
+    import asyncio
+
+    from app.db.session import session_scope as _session_scope
+    from app.services.blockscout import BlockscoutClient
+    from app.services.discovery import DiscoveryService
+
+    async def _run() -> dict[str, object]:
+        async with BlockscoutClient() as client:
+            with _session_scope() as session:
+                service = DiscoveryService(session, client)
+                outcome = await service.run_cycle(
+                    chain_ids=chain_ids, batch_size=batch_size
+                )
+                return {
+                    "run_id": str(outcome.run_id),
+                    "status": outcome.status,
+                    "chains_covered": outcome.chains_covered,
+                    "chains_failed": outcome.chains_failed,
+                    "contracts_found": outcome.contracts_found,
+                    "contracts_new": outcome.contracts_new,
+                    "contracts_updated": outcome.contracts_updated,
+                }
+
+    try:
+        return asyncio.run(_run())
+    except Exception as exc:  # noqa: BLE001 - never kill the worker
+        log.exception("discovery_failed", error=str(exc))
+        return {"status": "failed", "error": str(exc)[:300]}
+
+
+def enqueue_discovery(
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    chain_ids: list[int] | None = None,
+) -> str:
+    """Enqueue a discovery cycle and return the RQ job id."""
+    queue = get_discovery_queue()
+    settings = get_settings()
+    rq_job = queue.enqueue(
+        process_discovery_job,
+        batch_size,
+        chain_ids,
+        job_timeout=settings.scan_job_timeout_seconds,
+        result_ttl=3600,
+        failure_ttl=3600,
+    )
+    return rq_job.id
 
 
 def _elapsed_ms(started_at: datetime | None) -> int | None:
@@ -241,11 +307,11 @@ def build_worker() -> BaseWorker:
     Windows. ``SimpleWorker`` runs jobs in-process instead, so the same
     entrypoint works on every platform.
     """
-    queue = get_queue()
+    queues = [get_queue(), get_discovery_queue()]
     connection = get_redis()
     if hasattr(os, "fork"):
-        return Worker([queue], connection=connection, name=WORKER_NAME)
-    return SimpleWorker([queue], connection=connection, name=WORKER_NAME)
+        return Worker(queues, connection=connection, name=WORKER_NAME)
+    return SimpleWorker(queues, connection=connection, name=WORKER_NAME)
 
 
 def main() -> int:

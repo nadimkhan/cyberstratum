@@ -262,6 +262,16 @@ class Finding(Base):
     )
     detector_id: Mapped[str] = mapped_column(String(64), nullable=False)
     detector_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    source: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="rule",
+        index=True,
+        doc=(
+            "Which engine produced this finding: 'rule' for the bytecode "
+            "rules, 'slither' for the source engine, 'ml' for the model."
+        ),
+    )
     category: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")

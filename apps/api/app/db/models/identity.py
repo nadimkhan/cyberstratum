@@ -24,6 +24,7 @@ from app.db.base import Base, created_at_column, enum_column, uuid_pk
 from app.db.enums import UserStatus, WorkspaceRole
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
+    from app.db.models.discovery import DiscoveryRun
     from app.db.models.scans import Scan
 
 
@@ -78,13 +79,21 @@ class ApiKey(Base):
 
 
 class Workspace(Base):
-    """A tenant workspace (design doc table ``workspaces``)."""
+    """A tenant workspace (design doc table ``workspaces``).
+
+    A workspace is either a *tenant* workspace, owned by a customer, or the
+    *discovery* workspace, which holds contracts found by the continuous
+    feed. Discovered contracts do not belong in every tenant's contract
+    list -- a customer should see what they submitted, and be able to
+    promote a discovered contract into their own list deliberately.
+    """
 
     __tablename__ = "workspaces"
 
     id: Mapped[uuid.UUID] = uuid_pk()
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     slug: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False, default="tenant")
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -139,6 +148,14 @@ class ContractTarget(Base):
     """A contract to be analysed (design doc table ``contract_targets``)."""
 
     __tablename__ = "contract_targets"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id",
+            "chain_id",
+            "address",
+            name="uq_contract_target_scope",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     workspace_id: Mapped[uuid.UUID] = mapped_column(
@@ -167,6 +184,28 @@ class ContractTarget(Base):
     authorization_status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="unknown"
     )
+    discovery_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("discovery_runs.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        doc="The discovery sweep that found this contract, when it was discovered.",
+    )
+    discovery_route: Mapped[str | None] = mapped_column(
+        String(32),
+        doc="Which Blockscout route produced this record: 'instance' or 'pro'.",
+    )
+    verification_state: Mapped[str | None] = mapped_column(
+        String(16),
+        doc="Whether the source is verified: 'verified', 'unverified' or 'unknown'.",
+    )
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    source_object_key: Mapped[str | None] = mapped_column(
+        String(512),
+        doc=(
+            "The verified source, stored in the artifact store rather than "
+            "in a database column."
+        ),
+    )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
@@ -176,6 +215,7 @@ class ContractTarget(Base):
     scans: Mapped[list[Scan]] = relationship(
         back_populates="target", cascade="all, delete-orphan"
     )
+    discovery_run: Mapped[DiscoveryRun] = relationship(back_populates="targets")
 
 
 class AuditEvent(Base):

@@ -48,17 +48,35 @@ def _make_scan(
     *,
     fork: str = "cancun",
 ) -> Scan:
-    """Create a target holding ``code`` and a queued scan for it."""
-    target = ContractTarget(
-        workspace_id=workspace.id,
-        chain_id=chain.id,
-        address="0x" + "cd" * 20,
-        label="E2E target",
-        bytecode_type="runtime",
-        authorization_status="unknown",
-        inline_bytecode=code,
+    """Create a target holding ``code`` and a queued scan for it.
+
+    A target is unique per (workspace, chain, address), so a second scan of
+    the same contract reuses the target rather than duplicating it. That
+    mirrors what the API does when a scan is submitted.
+    """
+    address = "0x" + "cd" * 20
+    target = (
+        session.query(ContractTarget)
+        .filter(
+            ContractTarget.workspace_id == workspace.id,
+            ContractTarget.chain_id == chain.id,
+            ContractTarget.address == address,
+        )
+        .one_or_none()
     )
-    session.add(target)
+    if target is None:
+        target = ContractTarget(
+            workspace_id=workspace.id,
+            chain_id=chain.id,
+            address=address,
+            label="E2E target",
+            bytecode_type="runtime",
+            authorization_status="unknown",
+            inline_bytecode=code,
+        )
+        session.add(target)
+    else:
+        target.inline_bytecode = code
     session.flush()
 
     scan = Scan(

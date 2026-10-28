@@ -27,16 +27,40 @@ def queue_name() -> str:
     return f"{settings.queue_prefix}:{settings.scan_queue_name}"
 
 
+def discovery_queue_name() -> str:
+    """Return the fully-qualified discovery queue name."""
+    settings = get_settings()
+    return f"{settings.queue_prefix}:{settings.discovery_queue_name}"
+
+
 @lru_cache(maxsize=1)
 def get_queue() -> Queue:
     """Return the process-wide scan queue."""
     return Queue(name=queue_name(), connection=get_redis())
 
 
+@lru_cache(maxsize=1)
+def get_discovery_queue() -> Queue:
+    """Return the process-wide discovery queue.
+
+    The feed is kept on its own queue so a long discovery sweep cannot
+    delay a user-requested scan, and so the two can be scaled separately.
+    """
+    return Queue(name=discovery_queue_name(), connection=get_redis())
+
+
 def reset_queue() -> None:
     """Drop cached Redis/Queue handles (used by tests)."""
     get_queue.cache_clear()
+    get_discovery_queue.cache_clear()
     get_redis.cache_clear()
 
 
-__all__ = ["get_queue", "get_redis", "queue_name", "reset_queue"]
+__all__ = [
+    "discovery_queue_name",
+    "get_discovery_queue",
+    "get_queue",
+    "get_redis",
+    "queue_name",
+    "reset_queue",
+]

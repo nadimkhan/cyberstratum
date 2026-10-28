@@ -6,6 +6,11 @@ autogenerate and ``create_all`` see the complete schema.
 
 from __future__ import annotations
 
+from app.db.models.discovery import (
+    DiscoveryRun,
+    FeedCursor,
+    ProxyTemplateAllowlist,
+)
 from app.db.models.identity import (
     ApiKey,
     AuditEvent,
@@ -33,9 +38,12 @@ __all__ = [
     "CfgEdge",
     "Chain",
     "ContractTarget",
+    "DiscoveryRun",
     "FeatureRecord",
+    "FeedCursor",
     "Finding",
     "Instruction",
+    "ProxyTemplateAllowlist",
     "Scan",
     "ScanArtifact",
     "ScanJob",

@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     queue_backend: str = Field(default="rq", alias="QUEUE_BACKEND")
     queue_prefix: str = Field(default="cyberstratum", alias="QUEUE_PREFIX")
     scan_queue_name: str = Field(default="scans", alias="SCAN_QUEUE_NAME")
+    discovery_queue_name: str = Field(default="discovery", alias="DISCOVERY_QUEUE_NAME")
     sandbox_queue_name: str = Field(default="sandbox", alias="SANDBOX_QUEUE_NAME")
 
     # --- Auth ------------------------------------------------------------
