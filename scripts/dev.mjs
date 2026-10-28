@@ -47,13 +47,28 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 const thisFile = fileURLToPath(import.meta.url);
+
+const IS_WINDOWS = process.platform === "win32";
 const root = path.resolve(path.dirname(thisFile), "..");
 
-const PG_BIN = process.env.PG_BIN ?? "E:/tools/pg17/pgsql/bin";
-const PG_DATA = process.env.PG_DATA ?? "E:/data/cyberstratum/pgdata";
-const PG_LOG = process.env.PG_LOG ?? "E:/data/cyberstratum/pg17.log";
-const REDIS_BIN =
-  process.env.REDIS_BIN ?? "E:/tools/redis8/Redis-8.10.3-Windows-x64-msys2";
+/**
+ * Default locations of the local infrastructure.
+ *
+ * Windows keeps PostgreSQL and Redis in tool folders on the data drive.
+ * Linux (the WSL development environment) uses the distribution packages:
+ * PostgreSQL under /usr/lib/postgresql/<version>/bin and Redis under
+ * /usr/bin. Every path can be overridden from the environment.
+ */
+const PG_BIN = process.env.PG_BIN
+  ?? (IS_WINDOWS ? "E:/tools/pg17/pgsql/bin" : "/usr/lib/postgresql/14/bin");
+const PG_DATA = process.env.PG_DATA
+  ?? (IS_WINDOWS ? "E:/data/cyberstratum/pgdata"
+    : `${process.env.HOME}/.cyberstratum/pgdata`);
+const PG_LOG = process.env.PG_LOG
+  ?? (IS_WINDOWS ? "E:/data/cyberstratum/pg17.log"
+    : `${process.env.HOME}/.cyberstratum/logs/postgres.log`);
+const REDIS_BIN = process.env.REDIS_BIN
+  ?? (IS_WINDOWS ? "E:/tools/redis8/Redis-8.10.3-Windows-x64-msys2" : "/usr/bin");
 
 const API_PORT = Number(argValue("--api-port") ?? 8000);
 const WEB_PORT = Number(argValue("--web-port") ?? 3100);
@@ -62,6 +77,7 @@ const RUN_MIGRATIONS = !process.argv.includes("--no-migrate");
 const WEB_MODE = process.argv.includes("--prod") ? "start" : "dev";
 const STOP_ONLY = process.argv.includes("--stop");
 const LOGS_ONLY = process.argv.includes("--logs");
+const CHECK_ONLY = process.argv.includes("--check");
 const SUPERVISOR = process.argv.includes("--supervise");
 
 const PG_PORT = 5433;
@@ -90,12 +106,14 @@ function fail(message) {
   console.error(`${COLOURS.red}[dev]${COLOURS.reset} ${message}`);
 }
 
+/** Resolve a PostgreSQL executable, adding the .exe suffix only on Windows. */
 function tool(name) {
-  return path.join(PG_BIN, `${name}.exe`);
+  return path.join(PG_BIN, IS_WINDOWS ? `${name}.exe` : name);
 }
 
+/** Resolve a Redis executable, adding the .exe suffix only on Windows. */
 function redisTool(name) {
-  return path.join(REDIS_BIN, `${name}.exe`);
+  return path.join(REDIS_BIN, IS_WINDOWS ? `${name}.exe` : name);
 }
 
 function nextBin() {
@@ -137,18 +155,32 @@ async function waitForPort(port, label, timeoutMs = 30_000) {
   return false;
 }
 
-async function waitForHttp(url, label, timeoutMs = 60_000) {
+/**
+ * Probe a service over every address it might be bound to.
+ *
+ * Next.js binds the IPv6 wildcard on Linux, so a request to 127.0.0.1 is
+ * refused even though the server is up and answering on ::1. The API is
+ * told to bind 127.0.0.1 explicitly, so both are tried for it too.
+ */
+async function waitForService(ports, label, path = "/", timeoutMs = 60_000) {
+  const candidates = ports.flatMap((port) => [
+    `http://127.0.0.1:${port}${path}`,
+    `http://localhost:${port}${path}`,
+    `http://[::1]:${port}${path}`,
+  ]);
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(2500) });
-      if (response.ok) return true;
-    } catch {
-      // not up yet
+    for (const url of candidates) {
+      try {
+        const response = await fetch(url, { signal: AbortSignal.timeout(2500) });
+        if (response.ok) return true;
+      } catch {
+        // try the next address
+      }
     }
     await sleep(500);
   }
-  fail(`${label} did not answer on ${url}`);
+  fail(`${label} did not answer on ${candidates[0]}`);
   return false;
 }
 
@@ -199,10 +231,21 @@ function loadState() {
 /** Report whether a process is alive, without the risk os.kill carries. */
 function isAlive(pid) {
   if (!pid) return false;
-  const result = spawnSync("tasklist", ["/FI", `PID eq ${pid}`, "/NH"],
-    { encoding: "utf8", shell: false });
-  if (result.status !== 0) return false;
-  return (result.stdout ?? "").includes(String(pid));
+  if (IS_WINDOWS) {
+    const result = spawnSync("tasklist", ["/FI", `PID eq ${pid}`, "/NH"],
+      { encoding: "utf8", shell: false });
+    if (result.status !== 0) return false;
+    return (result.stdout ?? "").includes(String(pid));
+  }
+  // Signal 0 tests for existence without delivering a signal. EPERM means
+  // the process exists but belongs to another user, which still counts as
+  // alive for our purposes.
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === "EPERM";
+  }
 }
 
 /* ------------------------------------------------------------------- logs */
@@ -262,6 +305,9 @@ function supervise(name, command, args, options = {}) {
 
   child.on("exit", (code, signal) => {
     if (shuttingDown) return;
+    // A deliberate stop takes the services down with the supervisor, which
+    // is not an unexpected exit.
+    if (loadState().stopping) return;
     const text = `${COLOURS.red}[dev]${COLOURS.reset} ${name} exited unexpectedly ` +
       `(code ${code}, signal ${signal ?? "none"})\n`;
     appendToLog(text);
@@ -318,6 +364,8 @@ async function startPostgres() {
   }
 
   log("starting PostgreSQL...");
+  // pg_ctl refuses to start if the directory of its log file does not exist.
+  mkdirSync(path.dirname(PG_LOG), { recursive: true });
   const state = loadState();
   state.postgres = { dataDir: PG_DATA, started: true };
   saveState(state);
@@ -358,6 +406,8 @@ async function supervisorMain() {
   const state = loadState();
   state.supervisor = { pid: process.pid, startedAt: new Date().toISOString() };
   state.workerFailed = false;
+  // A fresh start is not a continuation of a deliberate stop.
+  state.stopping = false;
   saveState(state);
 
   appendToLog(`\n=== CyberStratum starting at ${new Date().toISOString()} ===\n`);
@@ -371,7 +421,7 @@ async function supervisorMain() {
 
   if (RUN_MIGRATIONS) {
     log("running database migrations...");
-    const result = run("node", [path.join(root, "scripts", "py.mjs"), "-m", "alembic",
+    const result = run(process.execPath, [path.join(root, "scripts", "py.mjs"), "-m", "alembic",
       "upgrade", "head"], { quiet: true });
     if (result.status !== 0) {
       fail("alembic upgrade head failed");
@@ -388,20 +438,23 @@ async function supervisorMain() {
   }
 
   log("starting the API...");
-  supervise("api", "node", [path.join(root, "scripts", "py.mjs"), "-m", "uvicorn",
+  supervise("api", process.execPath, [path.join(root, "scripts", "py.mjs"), "-m", "uvicorn",
     "app.main:app", "--app-dir", "apps/api", "--host", "127.0.0.1",
     "--port", String(API_PORT)], { colour: COLOURS.blue });
 
   log("starting the worker...");
-  supervise("worker", "node", [path.join(root, "scripts", "py.mjs"), "--cwd", "apps/api",
+  supervise("worker", process.execPath, [path.join(root, "scripts", "py.mjs"), "--cwd", "apps/api",
     "-m", "app.worker"], { colour: COLOURS.green });
 
   log("starting the web UI...");
-  supervise("web", process.execPath, [nextBin(), WEB_MODE, "-p", String(WEB_PORT)],
+  // The hostname is pinned to IPv4 so that the address printed by the
+  // launcher is the address the server actually answers on.
+  supervise("web", process.execPath,
+    [nextBin(), WEB_MODE, "-H", "127.0.0.1", "-p", String(WEB_PORT)],
     { cwd: path.join(root, "apps", "web"), colour: COLOURS.magenta });
 
-  await waitForHttp(`http://127.0.0.1:${API_PORT}/api/health`, "The API");
-  await waitForHttp(`http://127.0.0.1:${WEB_PORT}/`, "The web UI");
+  await waitForService([API_PORT], "The API", "/api/health");
+  await waitForService([WEB_PORT], "The web UI");
 
   // The worker has no port, so it is checked explicitly. A stack without a
   // worker accepts scans that are then never processed, and saying "up"
@@ -421,24 +474,66 @@ async function supervisorMain() {
 
 /* ------------------------------------------------------------------- stop */
 
+/**
+ * The pids listening on a TCP port.
+ *
+ * Windows uses netstat; Linux uses `ss`, which reports the owning pid.
+ */
 function pidsOnPort(port) {
-  const result = spawnSync("netstat", ["-ano"], { encoding: "utf8", shell: false });
+  if (IS_WINDOWS) {
+    const result = spawnSync("netstat", ["-ano"], { encoding: "utf8", shell: false });
+    if (result.status !== 0) return [];
+    const pids = new Set();
+    for (const line of (result.stdout ?? "").split(/\r?\n/)) {
+      if (!line.includes("LISTENING")) continue;
+      if (!new RegExp(`[:.]${port}\\s`).test(line)) continue;
+      const pid = line.trim().split(/\s+/).pop();
+      if (pid && pid !== "0") pids.add(pid);
+    }
+    return [...pids];
+  }
+  const result = spawnSync("ss", ["-ltnpH"], { encoding: "utf8", shell: false });
   if (result.status !== 0) return [];
   const pids = new Set();
   for (const line of (result.stdout ?? "").split(/\r?\n/)) {
-    if (!line.includes("LISTENING")) continue;
-    if (!new RegExp(`[:.]${port}\\s`).test(line)) continue;
-    const pid = line.trim().split(/\s+/).pop();
-    if (pid && pid !== "0") pids.add(pid);
+    if (!new RegExp(`:${port}\\s`).test(line)) continue;
+    for (const match of line.matchAll(/pid=(\d+)/g)) pids.add(match[1]);
   }
   return [...pids];
 }
 
 function killPid(pid, label) {
   if (!pid) return;
-  const result = spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"],
-    { encoding: "utf8", shell: false });
-  if (result.status === 0) log(`${label}: stopped pid ${pid}`);
+  if (IS_WINDOWS) {
+    const result = spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"],
+      { encoding: "utf8", shell: false });
+    if (result.status === 0) log(`${label}: stopped pid ${pid}`);
+    return;
+  }
+  // The supervisor runs detached, so it leads its own process group. Killing
+  // the negative pid takes the whole group down, which is what Windows does
+  // with `taskkill /T`.
+  const signalGroup = (signal) => {
+    try {
+      process.kill(-pid, signal);
+      return true;
+    } catch {
+      try {
+        process.kill(pid, signal);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+  };
+  if (!signalGroup("SIGTERM")) return;
+  // Give the process a moment to exit cleanly before forcing it.
+  const deadline = Date.now() + 3000;
+  while (Date.now() < deadline && isAlive(pid)) {
+    spawnSync("sleep", ["0.1"], { shell: false });
+  }
+  if (isAlive(pid)) signalGroup("SIGKILL");
+  log(`${label}: stopped pid ${pid}`);
 }
 
 function killPort(port, label) {
@@ -447,20 +542,31 @@ function killPort(port, label) {
 
 /** Every process id, its parent, and its command line. */
 function processList() {
-  const script =
-    "Get-CimInstance Win32_Process | " +
-    "ForEach-Object { \"$($_.ProcessId)`t$($_.ParentProcessId)`t$($_.CommandLine)\" }";
-  const result = spawnSync("powershell", ["-NoProfile", "-Command", script],
-    { encoding: "utf8", shell: false, maxBuffer: 32 * 1024 * 1024 });
+  let result;
+  if (IS_WINDOWS) {
+    const script =
+      "Get-CimInstance Win32_Process | " +
+      "ForEach-Object { \"$($_.ProcessId)`t$($_.ParentProcessId)`t$($_.CommandLine)\" }";
+    result = spawnSync("powershell", ["-NoProfile", "-Command", script],
+      { encoding: "utf8", shell: false, maxBuffer: 32 * 1024 * 1024 });
+  } else {
+    // ps prints the pid, the parent pid and the full command line. Only the
+    // first two fields are whitespace-delimited; the command line may itself
+    // contain spaces, so the rest is kept whole.
+    result = spawnSync("ps", ["-eo", "pid=,ppid=,args="],
+      { encoding: "utf8", shell: false, maxBuffer: 32 * 1024 * 1024 });
+  }
   if (result.status !== 0) return [];
   const processes = [];
   for (const line of (result.stdout ?? "").split(/\r?\n/)) {
-    const parts = line.split("\t");
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const parts = trimmed.split(/\s+/);
     if (parts.length < 2) continue;
-    const pid = Number(parts[0].trim());
-    const parent = Number(parts[1].trim());
+    const pid = Number(parts[0]);
+    const parent = Number(parts[1]);
     if (!pid) continue;
-    processes.push({ pid, parent, command: parts[2] ?? "" });
+    processes.push({ pid, parent, command: parts.slice(2).join(" ") });
   }
   return processes;
 }
@@ -489,20 +595,34 @@ function sweepProjectProcesses() {
   const processes = processList();
   const skip = ancestorPids(processes);
   const patterns = [
-    { name: "worker", pattern: /app\.worker/ },
-    { name: "API", pattern: /app\.main:app/ },
-    { name: "dev script", pattern: /scripts[\\/]dev\.mjs/ },
+    { name: "worker", pattern: /app\.worker/, exclude: null },
+    { name: "API", pattern: /app\.main:app/, exclude: null },
+    // Next.js spawns a detached telemetry helper that does not hold the
+    // port, so the port check alone never finds it.
+    { name: "web UI", pattern: /next[\\/]dist[\\/]/, exclude: null },
+    // The launcher and the supervisor both match. A `--stop` helper looks
+    // the same in the command line, and killing one would abort the cleanup
+    // it is running, so those are left alone.
+    { name: "dev script", pattern: /scripts[\\/]dev\.mjs/, exclude: /--stop/ },
   ];
-  for (const { name, pattern } of patterns) {
+  for (const { name, pattern, exclude } of patterns) {
     for (const entry of processes) {
       if (skip.has(entry.pid)) continue;
       if (!pattern.test(entry.command)) continue;
+      if (exclude && exclude.test(entry.command)) continue;
       killPid(entry.pid, name);
     }
   }
 }
 
-function stopRedis() {
+function stopRedis(state) {
+  // Only stop a Redis this launcher started. In WSL the distribution's own
+  // Redis is already running on 6379 as a systemd service, and shutting that
+  // one down would take a service the launcher does not own down with it.
+  if (!state?.redis?.started) {
+    log("Redis: left running (it was already up before this launcher started)");
+    return;
+  }
   const cli = redisTool("redis-cli");
   if (!existsSync(cli)) return;
   const result = spawnSync(cli, ["-h", "127.0.0.1", "-p", String(REDIS_PORT),
@@ -510,17 +630,46 @@ function stopRedis() {
   if (result.status === 0) log("Redis: stopped");
 }
 
-function stopPostgres() {
+function stopPostgres(state) {
+  // PG_DATA is CyberStratum's own isolated cluster, so it is always safe to
+  // stop it. The distribution's cluster on 5432 is a different data
+  // directory and is never touched.
   if (!existsSync(tool("pg_ctl"))) return;
   const result = spawnSync(tool("pg_ctl"), ["-D", PG_DATA, "-m", "fast", "-w", "stop"],
     { encoding: "utf8", shell: false });
-  if (result.status === 0) log("PostgreSQL: stopped");
+  if (result.status === 0) {
+    log("PostgreSQL: stopped");
+    return;
+  }
+  // pg_ctl fails when the cluster is not running, which is not a problem.
+  // It only matters if the cluster is still up afterwards.
+  if (state?.postgres?.started) {
+    const stillUp = spawnSync(tool("pg_ctl"), ["-D", PG_DATA, "status"],
+      { encoding: "utf8", shell: false });
+    if (stillUp.status === 0) {
+      fail("PostgreSQL: could not be stopped with pg_ctl");
+    } else {
+      log("PostgreSQL: already stopped");
+    }
+  }
 }
 
 async function stopEverything() {
   console.log(`${COLOURS.dim}[dev]${COLOURS.reset} stopping the development stack...`);
 
   const state = loadState();
+
+  // Tell the supervisor that this shutdown is deliberate, so the services
+  // it owns are not reported as having crashed.
+  state.stopping = true;
+  saveState(state);
+
+  // The infrastructure is shut down first, so that PostgreSQL gets a clean
+  // shutdown instead of being taken down with the supervisor's process
+  // group. A cluster that is killed hard needs crash recovery on the next
+  // start.
+  stopRedis(state);
+  stopPostgres(state);
 
   // The supervisor owns the API, the worker and the web UI, so killing its
   // tree takes them with it.
@@ -534,8 +683,6 @@ async function stopEverything() {
   killPort(WEB_PORT, "web UI");
   killPort(API_PORT, "API");
   sweepProjectProcesses();
-  stopRedis();
-  stopPostgres();
 
   const pidFile = path.join(PG_DATA, "postmaster.pid");
   if (existsSync(pidFile) && !(await isListening(PG_PORT))) {
@@ -543,6 +690,44 @@ async function stopEverything() {
   }
   rmSync(stateFile, { force: true });
   console.log(`${COLOURS.green}[dev]${COLOURS.reset} everything is stopped.`);
+}
+
+/* ----------------------------------------------------------------- check */
+
+/**
+ * Report what the launcher would use on this platform.
+ *
+ * Nothing is started. The point is to find a wrong path before the launcher
+ * tries to use it, which is much easier to read than a failed start.
+ */
+async function checkEverything() {
+  console.log(`${COLOURS.blue}CyberStratum${COLOURS.reset} - checking the launcher`);
+  console.log(`  platform           ${process.platform}`);
+  console.log(`  PostgreSQL bin     ${PG_BIN}${existsSync(tool("pg_ctl")) ? "" : "   (pg_ctl not found)"}`);
+  console.log(`  PostgreSQL data    ${PG_DATA}${existsSync(PG_DATA) ? "" : "   (not initialised)"}`);
+  console.log(`  PostgreSQL log     ${PG_LOG}`);
+  console.log(`  Redis bin          ${REDIS_BIN}${existsSync(redisTool("redis-server")) ? "" : "   (redis-server not found)"}`);
+  console.log(`  Node               ${process.execPath}`);
+  console.log(`  Python interpreter ${path.join(root, ".venv", IS_WINDOWS ? "Scripts" : "bin", IS_WINDOWS ? "python.exe" : "python")}`);
+
+  const processes = processList();
+  console.log(`  processes readable  ${processes.length}`);
+  console.log(`  port ${API_PORT} holders ${pidsOnPort(API_PORT).length}`);
+  console.log(`  port ${WEB_PORT} holders ${pidsOnPort(WEB_PORT).length}`);
+
+  let problems = 0;
+  for (const [label, ok] of [
+    ["pg_ctl", existsSync(tool("pg_ctl"))],
+    ["redis-server", existsSync(redisTool("redis-server"))],
+    ["Next.js CLI", existsSync(nextBin())],
+  ]) {
+    if (!ok) {
+      fail(`${label} is missing`);
+      problems += 1;
+    }
+  }
+  if (problems === 0) console.log(`${COLOURS.green}[dev]${COLOURS.reset} every path resolves.`);
+  else fail(`${problems} path(s) do not resolve.`);
 }
 
 /* ----------------------------------------------------------------- front */
@@ -571,6 +756,10 @@ function startSupervisor() {
   rmSync(logFile, { force: true });
   const child = spawn(process.execPath, [thisFile, "--supervise"], {
     cwd: root,
+    // Detached on both platforms: on Windows it gives the supervisor its
+    // own console so Ctrl+C in the launcher does not reach it, and on
+    // Linux it makes the supervisor a process-group leader, so
+    // "npm run stop" can take the whole group down.
     detached: true,
     stdio: "ignore",
   });
@@ -619,6 +808,10 @@ async function main() {
     await tailLog();
     return;
   }
+  if (CHECK_ONLY) {
+    await checkEverything();
+    return;
+  }
   if (SUPERVISOR) {
     await supervisorMain();
     return;
@@ -633,9 +826,8 @@ async function main() {
     // the log file may disappear while it is being read
   });
 
-  const ready = await waitForHttp(`http://127.0.0.1:${API_PORT}/api/health`,
-    "The API", 120_000);
-  const webReady = await waitForHttp(`http://127.0.0.1:${WEB_PORT}/`, "The web UI", 120_000);
+  const ready = await waitForService([API_PORT], "The API", "/api/health", 120_000);
+  const webReady = await waitForService([WEB_PORT], "The web UI", "/", 120_000);
   const workerReady = await waitForWorker(30_000);
 
   if (!workerReady) {

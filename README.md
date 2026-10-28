@@ -298,10 +298,14 @@ and database creation are in [`docs/runbook.md`](docs/runbook.md) §3.4–§3.5.
 
 The services themselves live at:
 
-| Service | Location | Port |
+| Service | Windows | WSL (primary) |
 |---|---|---|
-| PostgreSQL 17.11 | `E:/tools/pg17/pgsql/bin`, data in `E:/data/cyberstratum/pgdata` | 5433 |
-| Redis 8.10.3 | `E:/tools/redis8/Redis-8.10.3-Windows-x64-msys2` | 6379 |
+| PostgreSQL | 17.11 in `E:/tools/pg17/pgsql/bin`, data in `E:/data/cyberstratum/pgdata` | 14 in `/usr/lib/postgresql/14/bin`, data in `~/.cyberstratum/pgdata` |
+| Redis | 8.10.3 in `E:/tools/redis8/Redis-8.10.3-Windows-x64-msys2` | the distribution's Redis in `/usr/bin` |
+
+Both use port 5433 for PostgreSQL and 6379 for Redis. The launcher finds the
+right binaries for the platform, and `PG_BIN`, `PG_DATA`, `PG_LOG` and
+`REDIS_BIN` override them.
 
 ---
 
@@ -309,8 +313,15 @@ The services themselves live at:
 
 ### One command
 
+The same command works on Windows and on WSL.
+
 ```bash
-cd /e/projects/cyberstratum
+cd ~/projects/cyberstratum     # WSL — the primary development environment
+npm run dev
+```
+
+```bash
+cd /e/projects/cyberstratum    # Windows
 npm run dev
 ```
 
@@ -347,6 +358,17 @@ application processes, the worker, Redis and PostgreSQL, and removes the
 stale `postmaster.pid` that a hard kill leaves behind. `Ctrl+C` also asks it
 to stop, but npm sits between the terminal and the script, so `npm run stop`
 is the one to reach for.
+
+On WSL the distribution's Redis is a systemd service that the launcher did
+not start, so it is left running; the CyberStratum cluster on 5433 is the
+launcher's own and is shut down cleanly.
+
+To see what the launcher would use on this machine, without starting
+anything:
+
+```bash
+npm run check
+```
 
 The running services are owned by a detached supervisor process, and
 everything the stack logs goes to `.dev-logs/dev.log`:

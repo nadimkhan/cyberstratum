@@ -12,6 +12,7 @@
     "dev": "node scripts/dev.mjs",
     "stop": "node scripts/dev.mjs --stop",
     "logs": "node scripts/dev.mjs --logs",
+    "check": "node scripts/dev.mjs --check",
     "lint": "node scripts/py.mjs -m ruff check apps packages tests scripts",
     "format:check": "node scripts/py.mjs -m ruff format --check apps packages tests scripts",
     "typecheck": "node scripts/py.mjs -m mypy apps packages && npm run typecheck --workspace @cyberstratum/web",

@@ -233,16 +233,41 @@ mkdir -p /e/data/cyberstratum
 
 ### 4.0 One command
 
+The same three commands work on Windows and on WSL.
+
+**Windows**
+
 ```bash
 cd /e/projects/cyberstratum
 npm run dev
 ```
 
-This starts everything: PostgreSQL 17.11 on port 5433, Redis 8.10.3 on port
-6379, the API on `http://127.0.0.1:8000`, the RQ worker, and the Next.js
-dev server on `http://127.0.0.1:3100`. It runs `alembic upgrade head`
-first, so the schema is current. Anything already running is left alone, so
-the command is safe to re-run.
+**WSL (the primary development environment)**
+
+```bash
+cd ~/projects/cyberstratum
+npm run dev
+```
+
+This starts everything: PostgreSQL on port 5433, Redis on port 6379, the API
+on `http://127.0.0.1:8000`, the RQ worker, and the Next.js dev server on
+`http://127.0.0.1:3100`. It runs `alembic upgrade head` first, so the schema
+is current. Anything already running is left alone, so the command is safe to
+re-run.
+
+| | Windows | WSL |
+|---|---|---|
+| PostgreSQL | 17.11 in `E:/tools/pg17`, data in `E:/data/cyberstratum/pgdata` | 14 in `/usr/lib/postgresql/14/bin`, data in `~/.cyberstratum/pgdata` |
+| Redis | 8.10.3 in `E:/tools/redis8/...` | the distribution's Redis, `/usr/bin` |
+| Python | `.venv/Scripts/python.exe` | `.venv/bin/python` (3.12) |
+| Node | the system Node | `~/.local/node/bin/node` (v22) |
+
+To check what the launcher would use on this machine, without starting
+anything:
+
+```bash
+npm run check
+```
 
 To stop everything:
 
@@ -266,6 +291,11 @@ npm run logs
 Flags: `--no-infra`, `--no-migrate`, `--prod`, `--api-port N`, `--web-port N`.
 The paths for PostgreSQL and Redis can be moved with the `PG_BIN`, `PG_DATA`,
 `PG_LOG` and `REDIS_BIN` environment variables.
+
+On WSL the distribution's Redis and PostgreSQL are systemd services. The
+launcher uses the Redis that is already listening and does **not** stop it on
+`npm run stop`, because it did not start it. The CyberStratum cluster on 5433
+is the launcher's own and is stopped cleanly with `pg_ctl -m fast`.
 
 The sections below describe each service on its own, which is useful when
 something needs to be restarted or debugged in isolation.
