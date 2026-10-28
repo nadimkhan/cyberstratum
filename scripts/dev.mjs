@@ -726,10 +726,10 @@ async function checkEverything() {
       problems += 1;
     }
   }
+  if (!checkEditableInstall()) problems += 1;
+
   if (problems === 0) console.log(`${COLOURS.green}[dev]${COLOURS.reset} every path resolves.`);
   else fail(`${problems} path(s) do not resolve.`);
-
-  checkEditableInstall();
 }
 
 /**
@@ -744,21 +744,22 @@ async function checkEverything() {
 function checkEditableInstall() {
   const python = path.join(root, ".venv", IS_WINDOWS ? "Scripts" : "bin",
     IS_WINDOWS ? "python.exe" : "python");
-  if (!existsSync(python)) return;
+  if (!existsSync(python)) return true;
 
   const probe = spawnSync(python, ["-c",
     "import app, os; print(os.path.dirname(os.path.abspath(app.__file__)))"],
     { encoding: "utf8", windowsHide: true });
-  if (probe.status !== 0) return;
+  if (probe.status !== 0) return true;
 
   const resolved = (probe.stdout || "").trim();
   const expected = path.join(root, "apps", "api", "app");
-  if (!resolved) return;
-  if (path.resolve(resolved) === path.resolve(expected)) return;
+  if (!resolved) return true;
+  if (path.resolve(resolved) === path.resolve(expected)) return true;
 
   fail("the app package resolves outside the working tree, so an installed");
   console.log(`         copy would shadow it: ${resolved}`);
   console.log(`         Fix with: uv pip install -e .`);
+  return false;
 }
 
 /* ----------------------------------------------------------------- front */
