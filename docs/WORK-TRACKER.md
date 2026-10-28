@@ -61,7 +61,7 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
 - [x] Immutable-slot masking identified — UniversalRouter `617` constructor-set bytes differ; must be masked, not discarded.
 - [x] Mythril proven working in isolation — source mode SWC-107 at line 9; raw-runtime mode SWC-105 High with exploit sequence.
 - [x] Mythril cost measured — ~109s small fixture; real USDC runtime produced no verdict within a bounded budget.
-- [x] Mythril's two remaining traps measured: exit `1` means *findings*, not failure; creation bytecode analysed as runtime returns a silent false clean. Binary is `myth`, not `mythril`. `6ca0cd1`, documented in ADR-0014 and the runbook.
+- [x] Mythril's two remaining traps measured: exit `1` means *findings*, not failure; creation bytecode analysed as runtime returns a silent false clean. Binary is `myth`, not `mythril`. Documented in ADR-0014 and the runbook section 6.3.
 - [x] ReportLab deterministic PDF — two renders of identical evidence → byte-identical SHA-256.
 - [x] Correspondence proof re-verified end to end as a repo script — `scripts/live_check_correspondence.py`. USDC: executable code byte-identical (2143 bytes), metadata trailer differs only in its 32-byte `bzzr0` hash, 807 instructions, 4/4 interesting opcodes mapped to exact source lines.
 - [x] Correspondence proof reproduced natively in WSL — same 807 instructions, same 4/4 opcode-to-source-line mappings. WSL solc `0.4.24` and `0.8.26` installed into the `solc-select` layout so the product's compiler discovery finds them there too (previously WSL had them only in `~/bin`, where discovery could not see them).
