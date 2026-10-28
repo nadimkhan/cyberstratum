@@ -1,6 +1,6 @@
 # ADR-0012: Merge Watchdog into CyberStratum
 
-* **Status:** Proposed — awaiting sign-off
+* **Status:** Accepted — decisions confirmed 2026-10-28
 * **Date:** 2026-10-28
 * **Supersedes:** nothing
 
@@ -61,6 +61,32 @@ Blockscout discovery (59 chains)
 `findings.source` distinguishes `slither`, `rule` and `ml`, so a contract's risk
 is the union of both views while each finding keeps its own provenance, severity
 and confidence.
+
+## Confirmed decisions (2026-10-28)
+
+| Question | Decision |
+|---|---|
+| Canonical repo | **CyberStratum absorbs Watchdog.** Watchdog's repo stays on disk unchanged as the source of truth for the code being ported until the merge is verified. |
+| Auth model | **Both.** Google OAuth for humans (port Watchdog's flow and session cookies), API keys for machine clients (keep CyberStratum's hashed-key model). |
+| Commercial intent | **Commercial multi-tenant SaaS.** See ADR-0013 — this makes the AGPL boundary a hard architectural constraint, not a preference. |
+
+### Consequence of the commercial intent
+
+Because the product will be hosted and multi-tenant, the licence posture is
+now load-bearing, and it changes one design choice in the merged product:
+
+**The Slither-backed source analysis must remain an optional, out-of-process
+lane.** The bytecode engine — our own code, no third-party copyleft — becomes
+the primary analysis path in the hosted product, because it carries no
+licence obligation. Source-level analysis is a companion capability that can be
+enabled per deployment.
+
+This is not a demotion of the Slither work: the two engines stay integrated
+behind one pipeline and one findings model, and the cross-engine check (source
+view vs. deployed runtime) remains a first-class feature. What changes is that
+a deployment can run the product without the AGPL lane at all, and the
+commercial launch path does not depend on a licence question being settled
+first.
 
 ## Consequences
 

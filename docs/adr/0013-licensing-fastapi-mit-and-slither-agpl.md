@@ -1,6 +1,6 @@
 # ADR-0013: Licensing posture - FastAPI (MIT) and Slither (AGPL-3.0)
 
-* **Status:** Accepted (framework choice), Open (commercial use of Slither)
+* **Status:** Accepted — framework choice settled; AGPL boundary is a hard constraint
 * **Date:** 2026-10-28
 
 ## The question
@@ -76,6 +76,39 @@ is licence-clean regardless of this decision.
    infect our own source. This is a hard architectural constraint, not a
    preference: it means `apps/api/app/services/slither.py` shells out and parses
    JSON, and never imports Slither's Python API.
-3. **The commercial-use question is answered by the user, not assumed.** The
-   answer decides whether the SaaS path needs a licence review, and it is the one
-   open item in this ADR.
+3. **The commercial-use answer is: commercial multi-tenant SaaS.** This ADR was
+   written before that was confirmed, and the answer changes the posture, so the
+   rest of this section is binding rather than advisory.
+
+## Binding constraints for the commercial SaaS
+
+These are enforced in the repository, not just documented:
+
+1. **Never import Slither.** No `import slither`, no `from slither...`, no
+   vendored Slither source, in any file we ship. Slither is an external
+   executable that we invoke and read JSON from. A test asserts this
+   (`tests/unit/test_agpl_boundary.py`) so a future contributor cannot quietly
+   break it.
+2. **Never modify Slither.** AGPL Section 13 attaches to *modified* versions.
+   The tool is installed unmodified, from its own distribution, and we do not
+   patch it. Patches belong upstream.
+3. **No code copying across the boundary.** The interface is a JSON file on
+   disk. We do not translate or restructure its source into our code.
+4. **The bytecode engine is the licence-clean primary path.** Everything we
+   wrote — the EVM engine, the CFG, the resolver, the feature extraction, the
+   ML baseline — is our own work and carries no copyleft obligation. The hosted
+   product can ship and run without the Slither lane enabled.
+5. **Legal review before commercial launch.** The constraints above are the
+   defensible engineering position, not legal advice. An AGPL-licensed
+   tool run as an out-of-process service in a multi-tenant SaaS has been
+   litigated in this space, and a qualified lawyer should confirm the position
+   before the product charges anyone money. **This is a launch blocker, not a
+   post-launch cleanup item.**
+
+## What this means commercially
+
+The good news is that the valuable half of the product is licence-clean. The
+deep bytecode analysis — the part that works on unverified contracts, is
+cross-validated against an independent implementation, and produces reproducible
+artifacts — is entirely ours. Slither adds source-level detectors and `file:line`
+locations; it is an enhancement, not a foundation.
