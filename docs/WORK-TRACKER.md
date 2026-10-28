@@ -62,6 +62,8 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
 - [x] Mythril proven working in isolation — source mode SWC-107 at line 9; raw-runtime mode SWC-105 High with exploit sequence.
 - [x] Mythril cost measured — ~109s small fixture; real USDC runtime produced no verdict within a bounded budget.
 - [x] ReportLab deterministic PDF — two renders of identical evidence → byte-identical SHA-256.
+- [x] Correspondence proof re-verified end to end as a repo script — `scripts/live_check_correspondence.py`. USDC: executable code byte-identical (2143 bytes), metadata trailer differs only in its 32-byte `bzzr0` hash, 807 instructions, 4/4 interesting opcodes mapped to exact source lines.
+- [x] Two Sourcify traps found and documented — the stored `stdJsonInput` has **no** `outputSelection`, so solc emits no bytecode and the check falsely reports "no match"; and the gate must be metadata-aware executable-code equality, not whole-byte equality.
 
 ---
 
@@ -106,7 +108,9 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
 - [ ] Google OAuth for humans + hashed API keys for machine clients.
 - [ ] Daily dependency update checks (check only; upgrade through gated CI).
 - [ ] Authorised bug-bounty scope ingestion + safe-harbour rules.
-- [ ] EVM source↔bytecode correspondence service (expose the proven pipeline).
+- [ ] EVM source↔bytecode correspondence service — the pipeline is proven and scripted
+      (`scripts/live_check_correspondence.py`); it still needs to become a service that
+      stores the correspondence proof alongside a scan and feeds the PDF report.
 
 ---
 
@@ -224,6 +228,9 @@ Every path is overridable from the environment: `PG_BIN`, `PG_DATA`, `PG_LOG`,
   PostgreSQL on 5432 left.
 - Windows quality gate after the port: Ruff clean, mypy clean across 60
   source files, `414` pytest passed.
+- Windows quality gate after the correspondence script: Ruff clean, mypy
+  clean across 60 source files, `424` pytest passed, `57` Vitest passed,
+  `tsc --noEmit` passed.
 - WSL re-verified on the committed code (`bc38687`): `npm run dev` → API
   healthy, web UI `HTTP 200`, worker registered; `npm run stop` →
   PostgreSQL stopped cleanly (`pg_ctl: no server running`), the systemd

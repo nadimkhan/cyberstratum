@@ -90,10 +90,11 @@ We have proven this end-to-end on live mainnet contracts. The chain:
   `FiatTokenProxy.sol`.
 - Recompiled with local `solc-0.4.24`: **code identical** to the on-chain
   runtime once the metadata trailer is stripped — 2143 bytes, byte-for-byte.
-- The **only** difference is the metadata trailer's IPFS hash. This is exactly
-  why CyberStratum separates metadata from executable code: the metadata hash
-  embeds the compiler build and the source hash, so it can differ between two
-  otherwise identical builds.
+- The **only** difference is the metadata trailer's content hash. This is
+  exactly why CyberStratum separates metadata from executable code: the
+  metadata hash embeds the compiler build and the source hash, so it can differ
+  between two otherwise identical builds. For this compiler vintage the hash
+  key is `bzzr0` (32 bytes), not `ipfs`.
 - 807 instructions disassembled from the on-chain runtime, and the source map
   resolves them to source positions.
 
@@ -103,6 +104,18 @@ discard a valid correspondence. A naive "compare the code prefix" check would
 be too weak. The correct comparison is: strip the metadata, compare the
 executable code, and record the metadata compiler version separately as
 provenance.
+
+**A second Sourcify trap: the stored input has no `outputSelection`.**
+Sourcify's `stdJsonInput` carries the verification's compiler settings but no
+`outputSelection`, so solc emits **no bytecode at all**. That is
+indistinguishable from a failed correspondence check — every contract comes
+back empty, and a strict comparison reports "no match" for a contract that
+genuinely corresponds. The correspondence service must inject the
+`outputSelection` it needs (without altering any other setting, so the
+recompilation still uses the verification's own compiler options) and must
+distinguish "solc emitted nothing" from "solc emitted different code". The
+live check is `scripts/live_check_correspondence.py`; the comparison logic is
+covered by `tests/unit/test_correspondence.py`.
 
 **Where correspondence legitimately fails.** Some deployments cannot be
 reproduced exactly and must be reported as bytecode-only. We measured this on
