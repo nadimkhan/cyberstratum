@@ -65,6 +65,19 @@ RPC_URLS = (
     "https://1rpc.io/eth",
 )
 
+#: How long the compiler is given before it is treated as hung.
+COMPILE_TIMEOUT_SECONDS = 600
+
+#: Correspondence was proven.
+EXIT_CORRESPONDENCE = 0
+
+#: The check ran and the source does not describe the deployed contract.
+EXIT_NO_CORRESPONDENCE = 1
+
+#: The check could not be performed at all. This is an error, never a
+#: negative verdict.
+EXIT_COMPILER_ERROR = 2
+
 #: The opcodes worth showing, because they are what a finding would report.
 INTERESTING = frozenset(
     {
@@ -246,27 +259,60 @@ def _find_solc(version: str) -> Path | None:
     return None
 
 
-def _recompile(std_json: str, solc: Path) -> dict[str, Any]:
+class RecompileError(RuntimeError):
+    """The compiler could not be run, so the check could not be performed.
+
+    This is deliberately distinct from a *mismatch*. A mismatch means the
+    check ran and the source does not describe the deployed contract. A
+    compiler that hangs or crashes means nothing was learned either way, and
+    reporting it as a mismatch would be a false negative.
+    """
+
+
+def _recompile(
+    std_json: str, solc: Path, timeout: float = COMPILE_TIMEOUT_SECONDS
+) -> dict[str, Any]:
     """Recompile a standard-JSON input.
 
     Args:
         std_json: The standard-JSON input.
         solc: The compiler to use.
+        timeout: How long the compiler is given, in seconds.
 
     Returns:
         The compiler's JSON output.
+
+    Raises:
+        RecompileError: The compiler timed out, crashed, or emitted
+            something that is not JSON.
     """
-    completed = subprocess.run(  # noqa: S603 - fixed argv, no shell
-        [str(solc), "--standard-json"],
-        input=std_json,
-        capture_output=True,
-        text=True,
-        timeout=600,
-        check=False,
-    )
-    output = json.loads(completed.stdout)
+    try:
+        completed = subprocess.run(  # noqa: S603 - fixed argv, no shell
+            [str(solc), "--standard-json"],
+            input=std_json,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RecompileError(
+            f"solc did not finish within {timeout:g}s"
+        ) from exc
+    except OSError as exc:
+        raise RecompileError(f"solc could not be run: {exc}") from exc
+
+    if completed.returncode != 0:
+        detail = (completed.stderr or "").strip().splitlines()
+        tail = detail[-1] if detail else "no error output"
+        raise RecompileError(f"solc exited with {completed.returncode}: {tail}")
+
+    try:
+        output = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise RecompileError(f"solc did not emit JSON: {exc}") from exc
     if not isinstance(output, dict):
-        raise RuntimeError("solc returned a non-object")
+        raise RecompileError("solc returned a non-object")
     return output
 
 
@@ -274,7 +320,9 @@ def main() -> int:
     """Run the correspondence proof.
 
     Returns:
-        ``0`` when correspondence was established, ``1`` otherwise.
+        ``0`` when correspondence was established, ``1`` when the check ran
+        and the source does not describe the deployed contract, and ``2``
+        when the check could not be performed at all.
     """
     print("Source-to-bytecode correspondence live check")
     print(f"chain {CHAIN_ID}  contract {CONTRACT}")
@@ -291,7 +339,7 @@ def main() -> int:
     raw_input = document.get("stdJsonInput")
     if not raw_input:
         print("\nSkipped: Sourcify carries no standard-JSON input for this contract.")
-        return 0
+        return EXIT_CORRESPONDENCE
     std_json = json.dumps(raw_input) if isinstance(raw_input, dict) else str(raw_input)
 
     # Sourcify stores the compiler settings but no outputSelection, so solc
@@ -306,17 +354,37 @@ def main() -> int:
     else:
         print("outputSelection       : present in the stored input")
 
+    # A source given as a URL rather than inline content makes solc fetch
+    # it over the network. That makes the recompilation depend on what the
+    # URL serves at this moment rather than on the verification's own
+    # recorded source, and it can hang on a slow or blocked network. The
+    # bytecode comparison is still the gate, but this has to be recorded.
+    fetched = [
+        name
+        for name, body in (parsed.get("sources") or {}).items()
+        if isinstance(body, dict) and body.get("urls") and not body.get("content")
+    ]
+    if fetched:
+        print(f"network-fetched sources: {len(fetched)} (not inline)")
+        for name in fetched[:5]:
+            print(f"  {name}")
+
     short_version = compiler_version.split("+")[0].strip()
     solc = _find_solc(short_version)
     if solc is None:
         print(f"\nSkipped: solc {short_version} is not installed locally.")
-        return 0
+        return EXIT_CORRESPONDENCE
     print(f"compiler used         : {solc}")
 
-    output = _recompile(std_json, solc)
+    try:
+        output = _recompile(std_json, solc)
+    except RecompileError as exc:
+        print(f"\ncompile could not be run: {exc}")
+        print("Nothing was learned either way -- this is not a mismatch.")
+        return EXIT_COMPILER_ERROR
     if "contracts" not in output:
         print("\ncompile failed:", json.dumps(output.get("errors"))[:800])
-        return 1
+        return EXIT_NO_CORRESPONDENCE
 
     matches: list[tuple[str, str, str, str]] = []
     for file_name, contracts in (output.get("contracts") or {}).items():
@@ -340,7 +408,7 @@ def main() -> int:
                 corresponds, why = compare_runtime(onchain, bytes.fromhex(obj))
                 if not corresponds:
                     print(f"  {file_name}:{contract_name} -> {why}")
-        return 1
+        return EXIT_NO_CORRESPONDENCE
 
     print(f"\ncorrespondence established for {len(matches)} contract(s):")
     for file_name, contract_name, _source_map, why in matches:
@@ -366,7 +434,7 @@ def main() -> int:
             source_text = content
     if not source_text:
         print("\nSkipped: the compilation payload carries no source content.")
-        return 0
+        return EXIT_CORRESPONDENCE
 
     def locate(offset: int) -> tuple[int, str] | None:
         """Find the source line for a bytecode offset.

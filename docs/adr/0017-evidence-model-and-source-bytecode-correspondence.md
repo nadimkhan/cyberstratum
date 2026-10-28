@@ -88,6 +88,35 @@ We have proven this end-to-end on live mainnet contracts. The chain:
 5. **PC/offset → file and line.** The source-map byte offset is converted to a
    line number against the exact source text that was compiled.
 
+### The compiler failing is not the correspondence failing
+
+The recompile step can fail in ways that say nothing about the contract: the
+compiler hangs, crashes, is missing, or prints something that is not JSON. If
+those outcomes were reported as "the source does not describe this contract",
+the product would emit a false negative — and a security product that claims
+"no correspondence" when it simply failed to compile is worse than one that
+says nothing.
+
+The proof therefore has three outcomes, not two:
+
+| Exit | Meaning |
+|---|---|
+| `0` | Correspondence established, or the check was skipped with nothing to learn |
+| `1` | The check ran and the source does not describe the deployed contract |
+| `2` | The check could not be performed — the compiler hung, crashed, or emitted non-JSON |
+
+Exit `2` is an error, never a verdict. This is the same rule the rest of the
+product already applies to its analysis engines: an engine that did not
+produce a verdict is reported as *no verdict / skipped / error*, never as
+*clean*.
+
+A related hazard sits next to it. If a source in the stored standard-JSON
+input carries `urls` rather than inline `content`, the compiler fetches it
+over the network. The recompilation then depends on what that URL serves at
+the moment of the check rather than on the verification's own recorded
+source, and the fetch can hang on a slow or blocked network. The proof
+reports how many sources are affected rather than absorbing it silently.
+
 ### Measured results
 
 **USDC (`0xa0b8...eB48`, Ethereum), live:**

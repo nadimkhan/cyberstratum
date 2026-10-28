@@ -257,3 +257,57 @@ Every path is overridable from the environment: `PG_BIN`, `PG_DATA`, `PG_LOG`,
   healthy, web UI `HTTP 200`, worker registered; `npm run stop` →
   PostgreSQL stopped cleanly (`pg_ctl: no server running`), the systemd
   Redis and PostgreSQL left active, no leftover project processes.
+
+---
+
+## 12. A compiler failure is not a correspondence failure
+
+The obsolete scratch proof (`prove_real_contract.py`) died on a `solc`
+timeout and printed a bare traceback. That exposed a real gap in the
+committed script: a compiler that hangs, crashes, or prints something that
+is not JSON raised out of the proof as an unhandled exception, and the
+caller could not tell "the source does not describe this contract" from
+"the check never ran". The second is a false negative, and a security
+product must not produce one.
+
+`scripts/live_check_correspondence.py` now separates the three outcomes:
+
+| Exit | Meaning |
+|---|---|
+| `0` | Correspondence established, or the check was skipped with nothing to learn |
+| `1` | The check ran and the source does **not** describe the deployed contract |
+| `2` | The check could not be performed — the compiler hung, crashed, or emitted non-JSON |
+
+`RecompileError` carries exit `2`. A non-zero compiler exit, a
+`TimeoutExpired`, a `JSONDecodeError` and a missing binary all raise it,
+and none of them is ever reported as a mismatch.
+
+Two further hazards are now reported rather than absorbed:
+
+- **Network-fetched sources.** If a source in the stored standard-JSON input
+  carries `urls` instead of inline `content`, `solc` fetches it over the
+  network. The recompilation then depends on what the URL serves at that
+  moment rather than on the verification's own recorded source, and it can
+  hang on a slow or blocked network. The proof now prints how many sources
+  are affected. USDC is fully inline, so it reports none.
+- **The wrong compiler.** The proof requires the exact verified compiler. A
+  mismatch is still a mismatch, but a *hang* is never treated as evidence
+  against correspondence.
+
+This follows the rule the rest of the product already follows: an engine
+that did not produce a verdict is reported as *no verdict / skipped / error*,
+never as *clean*. The same rule now applies to the proof itself.
+
+### Tests
+
+`tests/unit/test_correspondence.py` gained five cases: a hung compiler, a
+crashing compiler, a compiler that emits non-JSON, a compiler that cannot
+be run at all, and a check that the three exit codes stay distinct.
+
+### Verified
+
+- Windows: the live proof still establishes correspondence — 807
+  instructions, 4/4 interesting opcodes mapped to exact source lines,
+  exit `0`.
+- Windows quality gate: Ruff clean, mypy clean across 60 source files,
+  `429` pytest passed (the five new cases included).

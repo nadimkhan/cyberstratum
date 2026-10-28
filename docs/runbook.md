@@ -614,6 +614,24 @@ It **skips** rather than fails when a required compiler is not installed,
 and it never prints a source line it could not prove. The comparison rules
 themselves are covered by `tests/unit/test_correspondence.py`.
 
+The exit code tells you what the run actually established:
+
+| Exit | Meaning |
+|---|---|
+| `0` | Correspondence established, or the check was skipped with nothing to learn |
+| `1` | The check ran and the source does **not** describe the deployed contract |
+| `2` | The check could not be performed — the compiler hung, crashed, or emitted non-JSON |
+
+Exit `2` is an error, not a verdict. It means nothing was learned either
+way, so it must never be read as "no correspondence". If you see it, the
+usual cause is the wrong compiler for the contract: install the exact
+version with `solc-select install <version>` and run again.
+
+The run also reports any source that the stored compilation input carries as
+a `url` rather than inline content. Those are fetched over the network at
+compile time, so the recompilation depends on what the URL serves at that
+moment rather than on the verification's own recorded source.
+
 ## 7. Regenerating the opcode table
 
 The opcode table `packages/evm_analysis/data/opcodes.json` is a committed,

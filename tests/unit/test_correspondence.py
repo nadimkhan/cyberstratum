@@ -8,8 +8,11 @@ match, so both directions are tested here.
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "live_check_correspondence.py"
@@ -129,3 +132,85 @@ def test_find_solc_accepts_the_flat_version_layout(tmp_path, monkeypatch):
     binary.write_bytes(b"")
     monkeypatch.setenv("SOLC_ARTIFACTS_DIR", str(artifacts))
     assert module._find_solc("0.9.9") == binary
+
+
+def _fake_solc(tmp_path, kind: str):
+    """Write something that stands in for solc.
+
+    Windows cannot execute a bare script file, so the stand-in is a ``.cmd``
+    wrapper there and a shell script elsewhere.
+
+    Args:
+        tmp_path: Where to write it.
+        kind: One of ``"hang"``, ``"crash"`` or ``"garbage"``.
+
+    Returns:
+        The path to the fake compiler.
+    """
+    if os.name == "nt":
+        script = tmp_path / "fake_solc.cmd"
+        # A builtin loop, not a child process: a killed parent leaves a
+        # child holding the output pipe open, and the test would then wait
+        # for the child instead of failing fast.
+        bodies = {
+            "hang": "@for /l %%i in (1,1,200000000) do @rem",
+            "crash": "@echo boom 1>&2\r\n@exit /b 1",
+            "garbage": "@echo not json at all",
+        }
+        script.write_text(bodies[kind] + "\r\n", encoding="utf-8")
+        return script
+
+    script = tmp_path / "fake_solc"
+    bodies = {
+        "hang": "while true; do :; done",
+        "crash": "echo boom >&2\nexit 1",
+        "garbage": "echo 'not json at all'",
+    }
+    script.write_text(f"#!/bin/sh\n{bodies[kind]}\n", encoding="utf-8")
+    script.chmod(0o755)
+    return script
+
+
+def test_a_hung_compiler_is_an_error_not_a_mismatch(tmp_path):
+    """A compiler that never finishes teaches us nothing.
+
+    Reporting it as a mismatch would be a false negative, so it must be
+    raised as a distinct failure.
+    """
+    compiler = _fake_solc(tmp_path, "hang")
+    with pytest.raises(module.RecompileError) as caught:
+        module._recompile("{}", compiler, timeout=1.0)
+    assert "did not finish" in str(caught.value)
+
+
+def test_a_crashing_compiler_is_an_error_not_a_mismatch(tmp_path):
+    """A compiler that exits non-zero must not be read as a mismatch."""
+    compiler = _fake_solc(tmp_path, "crash")
+    with pytest.raises(module.RecompileError) as caught:
+        module._recompile("{}", compiler)
+    assert "exited with 1" in str(caught.value)
+    assert "boom" in str(caught.value)
+
+
+def test_a_compiler_that_emits_non_json_is_an_error(tmp_path):
+    """solc printing something that is not JSON must not be parsed anyway."""
+    compiler = _fake_solc(tmp_path, "garbage")
+    with pytest.raises(module.RecompileError) as caught:
+        module._recompile("{}", compiler)
+    assert "did not emit JSON" in str(caught.value)
+
+
+def test_a_compiler_that_cannot_be_run_is_an_error(tmp_path):
+    """A missing binary is an error, not a mismatch."""
+    with pytest.raises(module.RecompileError) as caught:
+        module._recompile("{}", tmp_path / "does_not_exist")
+    assert "could not be run" in str(caught.value)
+
+
+def test_the_exit_codes_separate_a_mismatch_from_an_error():
+    """The three outcomes must not be confused with one another."""
+    assert module.EXIT_CORRESPONDENCE == 0
+    assert module.EXIT_NO_CORRESPONDENCE == 1
+    assert module.EXIT_COMPILER_ERROR == 2
+    assert len({module.EXIT_CORRESPONDENCE, module.EXIT_NO_CORRESPONDENCE,
+                module.EXIT_COMPILER_ERROR}) == 3
