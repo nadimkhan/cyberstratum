@@ -123,6 +123,10 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
 - An empty engine result is **never** "clean" without a validated verdict.
 - Exact source lines require **proven** correspondence; bytecode findings get bytecode evidence only.
 - The unrelated PostgreSQL on `5432` is **out of scope** — never modify or remove it.
+- The project must be installed **editable** (`uv pip install -e .`). A
+  non-editable install puts a copy of the app package in site-packages that
+  shadows the working tree, so the suite certifies stale code. Guarded by
+  `tests/unit/test_environment_is_not_stale.py` and `npm run check`.
 - Do not start the dev stack unless explicitly asked; the user starts it manually.
 - `Watchdog` at `E:/projects/watchdog` stays unchanged as the porting source of truth.
 
@@ -168,6 +172,8 @@ Commands (from WSL, project root): `npm run dev` · `npm run stop` · `npm run l
 | 16 | Deployment config | Netlify + systemd + CORS | `835ce16` |
 | 17 | Correspondence proof | script + unit tests, live on Windows and WSL | `3ca708d` |
 | 18 | Compiler discovery | `SOLC_ARTIFACTS_DIR` honoured; WSL solc installed | `5edaa40` |
+| 19 | ADR-0017 corrected | the gate is metadata-aware, not whole-byte | `61f7bb9` |
+| 20 | Stale-install guard | a shadowing install now fails the suite and `npm run check` | `ecf1fca`, `9c9e0cf` |
 
 ---
 
@@ -236,6 +242,11 @@ Every path is overridable from the environment: `PG_BIN`, `PG_DATA`, `PG_LOG`,
 - Windows quality gate after the correspondence script: Ruff clean, mypy
   clean across 60 source files, `424` pytest passed, `57` Vitest passed,
   `tsc --noEmit` passed.
+- Windows quality gate at the end of this round: Ruff clean, mypy clean
+  across 60 source files, `429` pytest passed.
+- WSL quality gate at the end of this round: Ruff clean, mypy clean across
+  60 source files, `429` pytest passed, correspondence live check 4/4
+  opcode-to-source-line mappings.
 - WSL re-verified on the committed code (`bc38687`): `npm run dev` → API
   healthy, web UI `HTTP 200`, worker registered; `npm run stop` →
   PostgreSQL stopped cleanly (`pg_ctl: no server running`), the systemd

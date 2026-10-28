@@ -105,6 +105,17 @@ uv pip install -e packages/ml_baseline
 uv pip install "evmole==0.9.4"
 ```
 
+> **The `-e` matters.** A plain `uv pip install ".[dev]"` installs a *copy* of
+> the application package into the virtual environment, and that copy shadows
+> the working tree. The API, the worker, and the tests then run code that is
+> no longer the code in the repository — and the suite passes, because the
+> stale copy is internally consistent. This has happened here for real: a
+> plain install on WSL left the suite testing an API that predated several
+> commits, and nothing failed.
+>
+> `npm run check` reports a shadowing install, and
+> `tests/unit/test_environment_is_not_stale.py` fails on it.
+
 The ML baseline's own dependencies (scikit-learn, pandas, NumPy, joblib) are
 the `ml` extra of the root project:
 

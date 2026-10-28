@@ -277,6 +277,12 @@ uv pip install "evmole==0.9.4"             # validation oracle only
 # 2. Node dependencies (opcode-table generator, web app)
 npm install
 
+Keep the `-e` on every install. A non-editable install leaves a copy of the
+application package in the virtual environment that shadows the working
+tree, so the API, the worker, and the tests all run code that is no longer
+the code in the repository — and the suite still passes, because the stale
+copy is internally consistent. `npm run check` reports it.
+
 # 3. Environment file
 cp .env.example .env
 ```
