@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+/*
+ * CyberStratum design tokens (design document section 11.1).
+ *
+ * Light and dark palettes are both defined here and selected with
+ * `prefers-color-scheme`, so the UI honours the operating-system setting
+ * without a theme toggle.
+ */
+:root {
+  color-scheme: light dark;
+
+  --cs-bg: #f3f6f5;
+  --cs-surface: #ffffff;
+  --cs-raised: #e9efed;
+  --cs-fg: #0b0f10;
+  --cs-muted: #475753;
+  --cs-accent: #1b6b3f;
+  --cs-accent-fg: #ffffff;
+  --cs-info: #10558a;
+  --cs-warning: #8a5a00;
+  --cs-danger: #a11212;
+  --cs-danger-soft: #fbe3e3;
+  --cs-border: #c9d5d1;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cs-bg: #0b0f10;
+    --cs-surface: #12191a;
+    --cs-raised: #182122;
+    --cs-fg: #e8f0ee;
+    --cs-muted: #9fb2ad;
+    --cs-accent: #b7f34a;
+    --cs-accent-fg: #0b0f10;
+    --cs-info: #65b7ff;
+    --cs-warning: #f4c66a;
+    --cs-danger: #ff6b6b;
+    --cs-danger-soft: #2a1618;
+    --cs-border: #2a3938;
+  }
+}
+
+html {
+  background-color: var(--cs-bg);
+}
+
+body {
+  background-color: var(--cs-bg);
+  color: var(--cs-fg);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Monospace is used for addresses, byte offsets, hashes and opcodes. */
+.font-mono,
+code,
+kbd,
+pre {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    "SF Mono",
+    Menlo,
+    Consolas,
+    "Liberation Mono",
+    monospace;
+}
+
+:focus-visible {
+  outline: 2px solid var(--cs-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
