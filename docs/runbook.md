@@ -632,6 +632,54 @@ a `url` rather than inline content. Those are fetched over the network at
 compile time, so the recompilation depends on what the URL serves at that
 moment rather than on the verification's own recorded source.
 
+### 6.3 The symbolic engine (optional, manual only)
+
+Mythril is not a dependency of the project environment and it is never run
+by a scan. It is invoked by hand, or later by the manual action that is still
+to be built.
+
+It lives in its own virtual environment in WSL, because its pinned
+`z3-solver` has no wheels for the project's Python:
+
+```bash
+# In WSL
+~/venvs/mythril/bin/myth version        # -> Mythril version v0.24.8
+```
+
+The console script is **`myth`**, not `mythril`. `~/venvs/mythril/bin/mythril`
+does not exist.
+
+Analysing deployed runtime bytecode:
+
+```bash
+# $SOLC must be the exact compiler the contract was built with.
+export SOLC=~/bin/solc-0.8.26
+timeout 300 ~/venvs/mythril/bin/myth analyze \
+  -f runtime.hex --bin-runtime \
+  --solver-timeout 20000 --execution-timeout 60000 \
+  --no-onchain-data -o json > result.json
+```
+
+Read the result like this, because the exit code does not carry the verdict:
+
+| Exit | `success` | `issues` | What it means |
+|---|---|---|---|
+| `1` | `true` | 2 | **Issues were found.** This is a successful run. |
+| `0` | `true` | 0 | No issues found on the bytecode it was given |
+| `0` | `false` | 0 | The run failed. `error` says why. |
+
+Two traps to check for by hand:
+
+- **Exit `1` means findings, not failure.** Treating a non-zero exit as an
+  engine error would throw away every real result.
+- **The input must be runtime bytecode.** `--bin-runtime` tells Mythril the
+  input is deployed code. Hand it creation code and it analyses the
+  constructor, finds nothing, and returns `{"error": null, "issues": [],
+  "success": true}` with exit `0`: a clean-looking answer to the wrong
+  question. Creation code and runtime code for the same contract differ in
+  length (measured: 910 versus 854 hex characters on the fixture), so a
+  length check catches the mistake.
+
 ## 7. Regenerating the opcode table
 
 The opcode table `packages/evm_analysis/data/opcodes.json` is a committed,

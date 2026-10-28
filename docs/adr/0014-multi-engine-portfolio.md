@@ -138,6 +138,48 @@ to every engine and not just Mythril:
 A "clean" result and a "did not run" result are different facts and the
 platform must never confuse them.
 
+#### Two more traps, measured on Mythril v0.24.8
+
+Both of these were found by re-running the raw-runtime fixture with a
+correctly prepared input, and both produce a **confident wrong answer**
+rather than a visible error.
+
+**Trap A: Mythril's exit code is inverted.** Mythril exits `1` when it finds
+issues and `0` when it finds none:
+
+| Run | Exit | `success` | Issues |
+|---|---|---|---|
+| Runtime bytecode of the reentrancy fixture | `1` | `true` | 2 (SWC-105 High, SWC-114 Medium) |
+| Creation bytecode of the same contract | `0` | `true` | 0 |
+
+A runner that treats a non-zero exit as "the engine failed" would discard
+every genuine Mythril result and report the contract as never analysed. A
+runner that treats exit `0` as "clean" would report the creation-bytecode
+case as a clean contract. Neither exit status carries the verdict; the
+**JSON envelope does**. The engine contract must therefore read `success`,
+`error` and `issues` from the payload, and use the exit code only to detect
+that the process died.
+
+**Trap B: creation bytecode analysed as runtime yields a silent false
+clean.** `--bin-runtime` tells Mythril the input is deployed runtime code. Hand
+it creation code instead and it analyses the constructor, finds no reachable
+exploit path, and returns `{"error": null, "issues": [], "success": true}`
+with exit `0`. Measured on the same contract: creation code is 910 hex
+characters, runtime code is 854, and the two produce opposite verdicts.
+
+So a raw-runtime Mythril run must be given the *runtime* bytecode, and the
+runner must be able to tell which it was handed. The platform already has
+that machinery: the bytecode engine separates creation and runtime segments
+and `evm_analysis.metadata` reports the metadata trailer, which appears only
+in runtime code. A runtime whose length matches the creation segment, or a
+runtime with no metadata trailer where one is expected, is a setup error, not
+a clean contract.
+
+**Mythril's console script is `myth`, not `mythril`.** The executable is
+`~/venvs/mythril/bin/myth`. Pointing the runner at `bin/mythril` gives a
+missing-file error, which the runner must classify as an engine error and
+never as a clean result.
+
 #### The same trap existed in our own Slither integration — and is now fixed
 
 Slither's JSON output uses the same envelope shape:

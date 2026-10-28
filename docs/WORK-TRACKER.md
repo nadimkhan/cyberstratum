@@ -61,6 +61,7 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
 - [x] Immutable-slot masking identified — UniversalRouter `617` constructor-set bytes differ; must be masked, not discarded.
 - [x] Mythril proven working in isolation — source mode SWC-107 at line 9; raw-runtime mode SWC-105 High with exploit sequence.
 - [x] Mythril cost measured — ~109s small fixture; real USDC runtime produced no verdict within a bounded budget.
+- [x] Mythril's two remaining traps measured: exit `1` means *findings*, not failure; creation bytecode analysed as runtime returns a silent false clean. Binary is `myth`, not `mythril`. `6ca0cd1`, documented in ADR-0014 and the runbook.
 - [x] ReportLab deterministic PDF — two renders of identical evidence → byte-identical SHA-256.
 - [x] Correspondence proof re-verified end to end as a repo script — `scripts/live_check_correspondence.py`. USDC: executable code byte-identical (2143 bytes), metadata trailer differs only in its 32-byte `bzzr0` hash, 807 instructions, 4/4 interesting opcodes mapped to exact source lines.
 - [x] Correspondence proof reproduced natively in WSL — same 807 instructions, same 4/4 opcode-to-source-line mappings. WSL solc `0.4.24` and `0.8.26` installed into the `solc-select` layout so the product's compiler discovery finds them there too (previously WSL had them only in `~/bin`, where discovery could not see them).
@@ -88,6 +89,9 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
 - [ ] Frontend button on the scan detail page.
 - [ ] Persist Mythril findings with `source=mythril` provenance.
 - [ ] Enforce the no-verdict rule for Mythril (`success`/`error` checked before findings).
+- [ ] Do not map Mythril's exit code to success or failure: exit `1` means issues were found, exit `0` means none were. Read the JSON envelope for the verdict and the exit code only to detect a dead process.
+- [ ] Feed Mythril the **runtime** bytecode, never the creation bytecode, and fail loudly if it was handed creation code. Creation code analysed as runtime returns a silent `issues: []` false clean.
+- [ ] Invoke `~/venvs/mythril/bin/myth`. The `mythril` console script does not exist.
 
 ### P1 — deployment topology
 - [x] Netlify config for the Next.js frontend — Next.js runtime, publish `apps/web/.next`. `835ce16`
@@ -260,7 +264,53 @@ Every path is overridable from the environment: `PG_BIN`, `PG_DATA`, `PG_LOG`,
 
 ---
 
-## 12. A compiler failure is not a correspondence failure
+## 9. Mythril's exit code and input are both traps
+
+A stale background probe against `~/mythws` turned up two empty output
+files. They were empty because the probe had run three minutes *before* the
+bounded Mythril job wrote them, not because anything failed. But the files
+themselves carried a result worth pinning down: a `success: true` with zero
+issues on a contract with a textbook reentrancy pattern.
+
+Re-running the fixture with a correctly prepared input settled it.
+
+| Run | Exit | `success` | Issues |
+|---|---|---|---|
+| Runtime bytecode of the reentrancy fixture | `1` | `true` | 2 (SWC-105 High, SWC-114 Medium) |
+| Creation bytecode of the same contract | `0` | `true` | 0 |
+
+**Trap A: the exit code is inverted.** Mythril exits `1` when it finds
+issues and `0` when it finds none. A runner that maps a non-zero exit to
+"engine failed" discards every genuine result and reports the contract as
+never analysed. The verdict lives in the JSON envelope; the exit code only
+says whether the process died.
+
+**Trap B: creation bytecode analysed as runtime yields a silent false
+clean.** The stored `v.hex` was creation code (910 hex characters) rather
+than runtime code (854). Fed to `--bin-runtime` it produced
+`{"error": null, "issues": [], "success": true}` with exit `0`: right
+shape, wrong answer, no signal. The manual action must be handed the
+runtime and must fail loudly if it was handed creation code.
+
+**The console script is `myth`, not `mythril`.**
+`~/venvs/mythril/bin/mythril` does not exist; `~/venvs/mythril/bin/myth`
+is the executable.
+
+The earlier "no verdict within a bounded budget" reading of the USDC proxy
+run is unchanged and remains the reason Mythril is manual-only. What
+changed is that the raw-runtime path is now known to work correctly on a
+fixture, in 19 seconds, with two findings.
+
+### Verified
+
+- Mythril v0.24.8, WSL, solc `0.8.26`: SWC-105 High and SWC-114 Medium on
+  the reentrancy fixture, `success: true`, exit `1`, 19 s.
+- The same contract's creation bytecode: `success: true`, zero issues,
+  exit `0`.
+
+---
+
+## 10. A compiler failure is not a correspondence failure
 
 The obsolete scratch proof (`prove_real_contract.py`) died on a `solc`
 timeout and printed a bare traceback. That exposed a real gap in the
