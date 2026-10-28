@@ -108,3 +108,24 @@ def test_expand_source_map_leaves_unknown_unresolved():
 
 def test_find_solc_returns_none_when_absent():
     assert module._find_solc("0.0.0-not-a-real-version") is None
+
+
+def test_find_solc_honours_solc_artifacts_dir(tmp_path, monkeypatch):
+    """The compiler location must be overridable, or a machine whose
+    compilers live elsewhere can never prove a correspondence."""
+    artifacts = tmp_path / "artifacts"
+    binary = artifacts / "solc-0.9.9" / "solc-0.9.9"
+    binary.parent.mkdir(parents=True)
+    binary.write_bytes(b"")
+    monkeypatch.setenv("SOLC_ARTIFACTS_DIR", str(artifacts))
+    assert module._find_solc("0.9.9") == binary
+
+
+def test_find_solc_accepts_the_flat_version_layout(tmp_path, monkeypatch):
+    """Some setups keep the binary directly under the version directory."""
+    artifacts = tmp_path / "artifacts"
+    binary = artifacts / "0.9.9" / "solc-0.9.9"
+    binary.parent.mkdir(parents=True)
+    binary.write_bytes(b"")
+    monkeypatch.setenv("SOLC_ARTIFACTS_DIR", str(artifacts))
+    assert module._find_solc("0.9.9") == binary
