@@ -2,20 +2,26 @@
   "name": "cyberstratum",
   "version": "0.1.0",
   "private": true,
-  "description": "CyberStratum — bytecode-first EVM security analysis platform",
+  "description": "CyberStratum \u2014 bytecode-first EVM security analysis platform",
   "license": "MIT",
   "workspaces": [
     "apps/web"
   ],
   "scripts": {
     "generate:opcodes": "node scripts/generate_opcodes.mjs",
-    "lint": "ruff check apps packages tests scripts",
-    "typecheck": "mypy apps packages && npm run typecheck --workspace @cyberstratum/web",
-    "test": "npm run test:web && pytest",
+    "lint": "node scripts/py.mjs -m ruff check apps packages tests scripts",
+    "format:check": "node scripts/py.mjs -m ruff format --check apps packages tests scripts",
+    "typecheck": "node scripts/py.mjs -m mypy apps packages && npm run typecheck --workspace @cyberstratum/web",
+    "test": "npm run test:web && node scripts/py.mjs -m pytest -q",
     "test:web": "npm run test --workspace @cyberstratum/web",
+    "test:py": "node scripts/py.mjs -m pytest -q",
     "build:web": "npm run build --workspace @cyberstratum/web",
     "dev:web": "npm run dev --workspace @cyberstratum/web",
-    "typecheck:web": "npm run typecheck --workspace @cyberstratum/web"
+    "start:web": "npm run start --workspace @cyberstratum/web",
+    "typecheck:web": "npm run typecheck --workspace @cyberstratum/web",
+    "migrate": "node scripts/py.mjs -m alembic upgrade head",
+    "api": "node scripts/py.mjs -m uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000",
+    "worker": "node scripts/py.mjs -m rq worker scans --url redis://127.0.0.1:6379"
   },
   "devDependencies": {
     "@ethereumjs/common": "^10.1.3",

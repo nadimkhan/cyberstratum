@@ -39,6 +39,8 @@ note" naming the ADR that governs it.
 | [0006](docs/adr/0006-scikit-learn-tfidf-baseline-gnn-deferred.md) | scikit-learn TF-IDF baseline; the GNN is deferred, not scheduled |
 | [0007](docs/adr/0007-campaign-tracking-out-of-mvp-scope.md) | Campaign tracking removed from MVP scope |
 | [0008](docs/adr/0008-no-airdrop-bounty-or-campaign-promises.md) | No airdrop, bounty, or campaign promises or metrics |
+| [0009](docs/adr/0009-sourcify-bytecode-acquisition.md) | Sourcify as the bytecode source, with a configured RPC as the primary path and user-supplied bytes requiring no network |
+| [0010](docs/adr/0010-server-only-frontend-api-key.md) | The frontend API key is server-only; no `NEXT_PUBLIC_` copy of the credential |
 
 **Other changes recorded on 2026-10-28:**
 
@@ -52,6 +54,15 @@ note" naming the ADR that governs it.
 - **The graph neural network is deferred.** §6.4, §13, §17 (Phase 4), §23.1
   and §24.1 are annotated. The MVP ML deliverable is a scikit-learn TF-IDF
   baseline. See ADR-0006.
+- **Bytecode acquisition is decided.** A scan gets its bytes from
+  user-supplied input (no network at all), or from a configured RPC, or
+  from Sourcify, which serves verified contracts over plain HTTPS with no
+  API key. Public RPC hosts are unreachable from the current environment and
+  explorer keys cost money, so the keyless verified-source path is what
+  makes the product work on the free tier. See ADR-0009.
+- **The frontend API key is server-only.** The Next.js app reads `API_KEY`
+  on the server and attaches `X-API-Key` there; there is deliberately no
+  `NEXT_PUBLIC_` copy of the credential. See ADR-0010.
 - **The EVM disassembler is decided.** The production parser is the custom
   `packages/evm_analysis` package with a vendored, versioned, fork-accurate
   opcode table generated from pinned `ethereum/execution-specs` v2.20.0.
@@ -1203,7 +1214,7 @@ cyberstratum/
   apps/
     web/                    # Next.js App Router UI (TypeScript, Tailwind)
       app/                  # 6 pages (Overview, Scans, New scan, Scan detail,
-                            # Findings, Reproducibility)
+                            # Findings, Reproducibility) + app/api/scans/route.ts
       src/
         components/         # 9 UI primitives
         lib/                # typed API client + canonical domain types
@@ -1230,6 +1241,7 @@ cyberstratum/
     sandbox_runner/         # isolated, approval-gated reproduction (disabled)
   scripts/
     generate_opcodes.mjs    # regenerate the vendored opcode table (Node)
+    py.mjs                  # run a Python module from the project .venv
     crosscheck_evmole.py    # independent-oracle cross-validation
     validate_real_bytecode.py
     build_fixture_dataset.py
@@ -1240,8 +1252,8 @@ cyberstratum/
     runbook.md              # local development runbook
   tests/
     unit/                   # engine + ML baseline
-    api/                    # scans, findings, worker, health
-    e2e/                    # (empty)
+    api/                    # scans, findings, worker, health, bytecode service
+    e2e/                    # whole-pipeline coverage (bytes in, findings out)
   .env.example
   README.md
 ```
@@ -1846,7 +1858,9 @@ marked **Decided** below; the rest are still open.
 3. PostgreSQL provider: **native PostgreSQL 17.11 locally, on port 5433; a hosted provider for staging.** — **Decided** (ADR-0003).
 4. Redis provider: **native Redis 8.10.3 locally, on port 6379; hosted Redis only if needed.** — **Decided** (ADR-0003).
 5. EVM disassembler library and supported fork/opcode table. — **Decided:** the custom `packages/evm_analysis` package with a vendored, fork-accurate opcode table generated from pinned `ethereum/execution-specs` v2.20.0; forks `frontier` → `prague`. `pyevmasm` rejected; `evmole` retained as a cross-validation oracle only. (ADR-0004, ADR-0005.)
-6. Initial EVM chains and RPC/explorer provider. — **Open.**
+6. Initial EVM chains and RPC/explorer provider. — **Open.** The acquisition
+   *mechanism* is decided (ADR-0009: user-supplied bytes, then a configured
+   RPC, then Sourcify); the chain set and the primary RPC provider are not.
 7. Auth approach: Auth.js/OIDC or one managed auth provider. — **Open.**
 8. Private object-storage provider. — **Open.**
 9. Email and monitoring provider, if enabled. — **Open.**

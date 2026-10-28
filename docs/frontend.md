@@ -38,7 +38,7 @@ The UI needs two environment variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `NEXT_PUBLIC_API_BASE_URL` | `http://127.0.0.1:8000` | Base URL of the FastAPI backend, **without** the `/api/v1` prefix (the client appends the versioned prefix itself). Public: it is inlined into the browser bundle. |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://127.0.0.1:8000` | Base URL of the FastAPI backend, **without** the `/api/v1` prefix (the client appends the versioned prefix itself). Public: it is inlined into the browser bundle. The versioned prefix is applied server-side, so this must point at the API root. |
 | `API_KEY` | *(empty)* | The backend API key, sent as the `X-API-Key` header. **Server-only** — it is not prefixed with `NEXT_PUBLIC_`, so Next.js strips it from the browser bundle. |
 
 Copy the example file to get started:
@@ -120,7 +120,7 @@ npm test             # web unit tests, then the Python pytest suite
 | `/scans` | All scans with status, contract address, chain and creation time. |
 | `/scans/new` | Scan submission form: contract address, chain id, EVM fork, optional labels, optional bytecode hex, optional experimental ML. |
 | `/scans/[id]` | Scan detail: status, pipeline stage timeline, findings table, artifacts and reproducibility metadata (tool versions, opcode-table version, bytecode hash). |
-| `/findings` | Every finding with severity and confidence filters, sortable columns, detector rule id, function signature and byte-offset / file references. |
+| `/findings` | Every finding with a severity filter (server-side, `?severity=high`), a confidence filter, sortable columns, detector rule id, affected function signature and byte-offset / file references. |
 | `/reproducibility` | Scan index of pinned analysis versions used for re-running a result. |
 
 ## Backend contract used by the client
@@ -129,13 +129,22 @@ The client calls the versioned `/api/v1` prefix defined in the design document:
 
 | Method | Endpoint | Used for |
 | --- | --- | --- |
-| `GET` | `/health` | Liveness of the backend. |
-| `GET` | `/scans` | Scan list (dashboard, scans page). |
-| `GET` | `/scans/:id` | Scan detail. |
-| `GET` | `/scans/:id/findings` | Findings for one scan. |
-| `GET` | `/findings` | Global findings queue (with `severity`, `min_confidence`, `chain_id` query parameters). |
-| `GET` | `/findings/:id` | Single finding. |
-| `POST` | `/scans` | Queue a scan (the client falls back to `POST /targets` then `POST /targets/:id/scans` if the backend does not implement the direct route). |
+| `GET` | `/api/health` | Readiness of the backend (falls back to `/health`). |
+| `GET` | `/api/v1/scans` | Scan list (dashboard, scans page, reproducibility page). |
+| `GET` | `/api/v1/scans/:id` | Scan detail (jobs, artifacts, embedded findings). |
+| `GET` | `/api/v1/findings` | Findings queue, filterable by `severity`, `status`, `category` and `scan_id`. |
+| `GET` | `/api/v1/findings/summary` | Aggregate counts by severity and triage status. |
+| `POST` | `/api/v1/scans` | Queue a scan. |
+
+The client sends exactly the fields the backend accepts on `POST /api/v1/scans`
+(`contract_address`, `chain_id`, `fork`, `label`, `bytecode_hex`, `enable_experimental_ml`);
+the backend forbids unknown fields, so nothing extra is sent.
+
+The backend does not expose a stage array, a risk score or a separate
+`/scans/:id/findings` route. The UI therefore derives the pipeline timeline from the scan
+status, the artifacts and the queue jobs, and reads findings for one scan from
+`/api/v1/findings?scan_id=...`. A risk score is estimated locally from the severity
+histogram when the API does not supply one, and the UI labels such values as *estimated*.
 
 Responses are normalised in `src/lib/api.ts`: the client accepts `snake_case` or `camelCase`
 keys and both bare arrays and `{data: []}`-style envelopes, and maps them onto the canonical
@@ -167,6 +176,7 @@ apps/web
 ├── src/components/          # SeverityBadge, StatusBadge, ScanTable, FindingTable,
 │                            # RiskScoreGauge, StageTimeline, EmptyState, ApiUnreachable,
 │                            # AppShell, NewScanForm
+├── app/api/scans/route.ts   # Server-side proxy for scan creation
 └── src/lib/                 # api.ts (typed client), types.ts, severity.ts, status.ts,
                              # format.ts
 ```

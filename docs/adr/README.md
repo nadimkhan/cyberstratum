@@ -22,6 +22,8 @@ governs.** Every corrected section of the design document carries a dated
 | [0006](0006-scikit-learn-tfidf-baseline-gnn-deferred.md) | scikit-learn TF-IDF baseline; GNN deferred | Accepted | 2026-10-28 |
 | [0007](0007-campaign-tracking-out-of-mvp-scope.md) | Campaign tracking out of MVP scope | Accepted | 2026-10-28 |
 | [0008](0008-no-airdrop-bounty-or-campaign-promises.md) | No airdrop, bounty, or campaign promises | Accepted | 2026-10-28 |
+| [0009](0009-sourcify-bytecode-acquisition.md) | Sourcify as the bytecode source; RPC and user-supplied bytes | Accepted | 2026-10-28 |
+| [0010](0010-server-only-frontend-api-key.md) | The frontend API key is server-only | Accepted | 2026-10-28 |
 
 ## Format
 

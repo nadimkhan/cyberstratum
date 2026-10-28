@@ -168,7 +168,7 @@ cyberstratum/
 │   │   │   ├── schemas/           # Pydantic request/response models
 │   │   │   ├── services/          # pipeline, rules, bytecode, storage
 │   │   │   └── queue/             # Redis + RQ connection helper
-│   │   └── alembic/               # migrations (one initial-schema revision)
+│   │   └── alembic/               # migrations (2 revisions)
 │   └── web/                       # Next.js App Router frontend
 │       ├── app/                   # 6 pages (App Router)
 │       └── src/
@@ -285,28 +285,31 @@ REDIS_DIR=E:/tools/redis8/Redis-8.10.3-Windows-x64-msys2
 ## Running things
 
 ```bash
-# Tests (138 Python tests + 4 Vitest suites)
-.venv/Scripts/python.exe -m pytest -q
-npm test                       # web tests + python tests
+# Tests (159 Python tests + 57 Vitest tests)
+npm test              # web tests, then python tests
+npm run test:py       # python tests only
+npm run test:web      # web tests only
 
 # Lint and type check
 npm run lint          # ruff
-npm run typecheck     # mypy + tsc
+npm run typecheck     # mypy, then tsc
 
 # API
-.venv/Scripts/python.exe -m uvicorn app.main:app --app-dir apps/api --reload
+npm run api           # uvicorn on http://127.0.0.1:8000
 
 # RQ worker
-.venv/Scripts/python.exe -m rq worker scans --url redis://127.0.0.1:6379
+npm run worker        # rq worker on redis://127.0.0.1:6379
 
 # Web app
-npm run dev:web       # or: cd apps/web && npm run dev
+npm run dev:web       # next dev
+npm run build:web     # next build
+npm run start:web     # next start
 ```
 
 Database migrations:
 
 ```bash
-.venv/Scripts/python.exe -m alembic upgrade head
+npm run migrate
 ```
 
 Full setup, including role and database creation, is in
@@ -367,26 +370,28 @@ Both need network access and are manual tools, not CI tests.
 | **FastAPI backend** (`apps/api/app`) | `main.py` app factory, three routers (health, scans, findings), Pydantic schemas, service layer, API-key auth, structured logging, error envelope. |
 | **RQ worker** (`apps/api/app/worker.py`) | `enqueue_scan()` + `process_scan_job()`. Drives fetch → disassemble → CFG → features → detectors and writes results to PostgreSQL. |
 | **6 baseline detectors** (`apps/api/app/services/rules.py`) | call-before-state-write, delegatecall, selfdestruct, tx.origin, unresolved jumps, stack underflow. Severity and confidence are separate fields. |
-| **ORM + migrations** | 15 tables, Alembic environment with one initial-schema revision. |
+| **ORM + migrations** | 15 tables, Alembic environment with 2 revisions (initial schema + `inline_bytecode`). |
 | **ML baseline package** (`packages/ml_baseline/evm_ml`) | TF-IDF tokenizer, dataset with family-level splits, `SklearnTfidfAdapter`, evaluation, manifest, model card. Offline; **not** wired into the scan pipeline. |
-| **Web app** (`apps/web`) | Next.js 15 App Router, 6 pages, typed API client, 9 UI primitives, 4 Vitest suites. |
-| **Tests** | 138 Python tests across 12 modules, all passing. Plus 4 Vitest suites. |
+| **Web app** (`apps/web`) | Next.js 15 App Router, 6 pages + 1 server route, typed API client, 9 UI primitives, 57 Vitest tests in 7 suites. |
+| **Tests** | 159 Python tests across 12 modules, all passing. Plus 57 Vitest tests in 7 suites. |
 | **Local infrastructure** | PostgreSQL 17.11 on 5433 and Redis 8.10.3 on 6379 are installed and working. |
 
 ### Known gaps
 
-These are real and are not hidden:
+These are real and are not hidden. Three gaps that were listed here earlier
+are now closed: the web app authenticates (server-side `X-API-Key`), the
+backend serves `GET /api/v1/scans/{id}/findings`, and the frontend health
+check calls `/api/health`, which the backend serves.
 
 | Gap | Detail |
 |---|---|
-| **The web app cannot authenticate** | `apps/web/src/lib/api.ts` sends no `X-API-Key` header, so every authenticated API call returns `401`. No environment variable currently fixes this — the client needs an API-key mechanism. |
-| **Scan-detail page cannot load findings** | The frontend calls `GET /api/v1/scans/{id}/findings`; the backend has no such route. The page renders its error state. |
-| **Frontend health check 404s** | The frontend reads `/api/v1/health`; the backend serves liveness at `/health` and readiness at `/api/health`. |
+| **No finding review workflow** | `findings.status` is set to `new` at creation and never changes. There is no `PATCH` route, so a finding cannot be triaged, confirmed, or dismissed. |
+| **Roles exist in the schema but are not enforced** | `WorkspaceRole` and `WorkspaceMember` are defined, but no route checks a role — every authenticated caller can do everything a stored key allows. The reviewer-approval gate in §3.2 and §11.10 is not implemented. |
+| **The audit log is never written** | The `audit_events` table exists, but nothing inserts into it, so there is no record of who looked at or changed a target. |
 | **No report builder** | The `reports` table, the report generator, and the reviewer-approval gate do not exist. Findings are read from the API instead. |
-| **No finding-status transitions** | `findings.status` exists but nothing updates it, and there is no `PATCH` route. |
 | **ML is not in the pipeline** | `packages/ml_baseline` is standalone. `ENABLE_EXPERIMENTAL_ML` defaults to `false` and no scan attaches an ML score. |
-| **No sandbox runner** | `workers/sandbox_runner/` is empty and `SANDBOX_ENABLED=false`. |
-| **No end-to-end tests** | `tests/e2e/` is empty. There is no Playwright suite. |
+| **No sandbox runner** | `workers/sandbox_runner/` does not exist and `SANDBOX_ENABLED=false`. |
+| **No browser-level end-to-end tests** | The API pipeline has end-to-end coverage in `tests/e2e/`, but there is no Playwright suite driving the UI. The UI is verified by Vitest unit tests plus a manual pass over the live stack. |
 
 ### Deliberately out of scope
 
@@ -453,6 +458,8 @@ pointing at the governing ADR. The full reasoning is in
 | [0006](docs/adr/0006-scikit-learn-tfidf-baseline-gnn-deferred.md) | scikit-learn TF-IDF baseline; GNN deferred |
 | [0007](docs/adr/0007-campaign-tracking-out-of-mvp-scope.md) | Campaign tracking out of MVP scope |
 | [0008](docs/adr/0008-no-airdrop-bounty-or-campaign-promises.md) | No airdrop, bounty, or campaign promises |
+| [0009](docs/adr/0009-sourcify-bytecode-acquisition.md) | Sourcify as the bytecode source; RPC and user-supplied bytes |
+| [0010](docs/adr/0010-server-only-frontend-api-key.md) | The frontend API key is server-only |
 
 ---
 
