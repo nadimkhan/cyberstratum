@@ -144,7 +144,7 @@ each engine found:
 
 ```
 === scan ===
-  status             : completed
+  status             : partial
   findings           : 20
   source audited     : True
   source skipped     : None
@@ -157,6 +157,10 @@ each engine found:
     slither.shadowing_local [low]
     ...
 ```
+
+`partial` there is the bytecode engine's usual verdict, not a source
+problem: it means some jump destinations could not be resolved
+conservatively, which is the honest answer for a dynamic dispatch table.
 
 ---
 
