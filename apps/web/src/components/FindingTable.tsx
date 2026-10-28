@@ -200,7 +200,8 @@ export function FindingTable({ findings, showFilters = true, caption = "Findings
                   {formatConfidence(finding.confidence)}
                 </td>
                 <td className="px-3 py-2 align-top font-mono text-xs">
-                  {finding.detectorId ?? "—"}
+                  <EngineBadge source={finding.source} />
+                  <span className="mt-0.5 block">{finding.detectorId ?? "—"}</span>
                   {finding.detectorVersion ? (
                     <span className="block text-[var(--cs-muted)]">v{finding.detectorVersion}</span>
                   ) : null}
@@ -248,3 +249,35 @@ export function FindingTable({ findings, showFilters = true, caption = "Findings
 }
 
 export { SEVERITY_ORDER };
+
+const ENGINE_LABELS: Record<string, string> = {
+  rule: "bytecode",
+  slither: "source",
+  ml: "model",
+};
+
+const ENGINE_TITLES: Record<string, string> = {
+  rule: "Found by the bytecode engine",
+  slither: "Found by the source engine (Slither)",
+  ml: "Found by the machine-learning model",
+};
+
+/**
+ * Shows which engine produced a finding.
+ *
+ * The bytecode engine and the source engine are complementary: the first
+ * sees the deployed runtime, the second sees the verified source. A
+ * reader needs to know which one spoke.
+ */
+export function EngineBadge({ source }: { source: string }) {
+  const label = ENGINE_LABELS[source] ?? source;
+  const title = ENGINE_TITLES[source] ?? `Found by the ${source} engine`;
+  return (
+    <span
+      title={title}
+      className="inline-block rounded bg-[var(--cs-raised)] px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[var(--cs-muted)]"
+    >
+      {label}
+    </span>
+  );
+}

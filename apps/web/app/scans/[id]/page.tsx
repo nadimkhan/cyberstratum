@@ -185,6 +185,16 @@ export default async function ScanDetailPage({
               value={scan.reproducibility.opcodeTableVersion ?? "—"}
             />
             <Detail label="Ruleset version" value={scan.reproducibility.rulesetVersion ?? "—"} />
+            <Detail
+              label="Source engine"
+              value={
+                scan.sourceAudited
+                  ? "audited the verified source"
+                  : scan.sourceAuditSkipped
+                    ? `skipped (${scan.sourceAuditSkipped})`
+                    : "not run"
+              }
+            />
             <Detail label="Model version" value={scan.reproducibility.modelVersion ?? "—"} />
             <Detail
               label="Feature schema version"

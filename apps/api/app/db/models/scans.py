@@ -67,6 +67,20 @@ class Scan(Base):
     parser_version: Mapped[str | None] = mapped_column(String(64))
     ruleset_version: Mapped[str | None] = mapped_column(String(64))
     model_version: Mapped[str | None] = mapped_column(String(64))
+    source_audited: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        doc="Whether the source engine actually ran for this scan.",
+    )
+    source_audit_skipped: Mapped[str | None] = mapped_column(
+        String(64),
+        doc=(
+            "Why the source engine did not run, when it did not: "
+            "'no_source', 'slither_not_installed', 'solc_not_found', "
+            "'compilation_failed', and so on."
+        ),
+    )
     error_code: Mapped[str | None] = mapped_column(String(64))
     error_message_redacted: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at_column()

@@ -26,6 +26,23 @@ from app.db.models.scans import (
 )
 from app.services.pipeline import run_scan
 
+
+@pytest.fixture(autouse=True)
+def _no_network_source_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the suite off the network.
+
+    The pipeline looks for a contract's verified source so the source
+    engine can have a second opinion. In the test suite that would be a
+    live HTTP request, so it is stubbed out here. The source engine's own
+    behaviour is covered by ``tests/unit/test_source_audit.py`` and
+    ``tests/unit/test_slither.py``.
+    """
+    from app.services import pipeline as pipeline_service
+
+    monkeypatch.setattr(
+        pipeline_service, "fetch_verified_source", lambda *a, **k: None
+    )
+
 #: A runtime that reads TX.ORIGIN, stores it, then performs a DELEGATECALL.
 #: It exercises the DELEGATECALL and TX.ORIGIN rules and contains no branch,
 #: so the CFG is fully resolvable.

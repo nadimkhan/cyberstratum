@@ -77,7 +77,7 @@ async def run() -> int:
                 .order_by(Chain.chain_id, ContractTarget.address)
             ).all()
             print(f"  total: {len(rows)}")
-            for chain_id, name, address, label, state, route in rows[:15]:
+            for chain_id, _name, address, label, state, route in rows[:15]:
                 print(f"  chain {chain_id:>6} {address} [{state}] via {route} :: {label}")
             if len(rows) > 15:
                 print(f"  ... and {len(rows) - 15} more")

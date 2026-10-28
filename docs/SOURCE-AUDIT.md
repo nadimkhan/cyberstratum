@@ -67,6 +67,99 @@ charging anyone money.
 
 ---
 
+## How the two engines run together
+
+The source engine is not a separate product. It is a stage inside the same
+scan, and both engines write into the same findings table.
+
+```
+scan
+ ├── 1. fetch the deployed runtime          (RPC, then Sourcify)
+ ├── 2. bytecode engine
+ │      disassembly, CFG, features, rules   -> findings with source = "rule"
+ └── 3. source engine
+        fetch the verified source            (Blockscout instance, then Sourcify)
+        run Slither out of process           -> findings with source = "slither"
+```
+
+A finding carries the engine that produced it in `findings.source`:
+
+| `source` | Produced by | Can see |
+|---|---|---|
+| `rule` | CyberStratum's own bytecode rules | the deployed runtime |
+| `slither` | the external Slither executable | the verified source |
+| `ml` | the machine-learning baseline | the bytecode features |
+
+The scan records the source engine's outcome explicitly:
+
+| Field | Meaning |
+|---|---|
+| `Scan.source_audited` | the source engine ran and produced findings |
+| `Scan.source_audit_skipped` | why it did not run |
+
+### Skip reasons
+
+| Reason | Meaning |
+|---|---|
+| `no_source` | the contract has no verified source anywhere |
+| `slither_not_installed` | the executable could not be found |
+| `solc_not_installed` | no solc binary for the contract's compiler |
+| `compilation_failed` | the source did not compile |
+| `slither_failed` | Slither ran and failed |
+| `slither_timeout` | Slither ran out of time |
+| `malformed_output` | Slither's output could not be read |
+| `source_fetch_failed` | the source could not be fetched |
+
+**None of these fail the scan.** The bytecode findings are kept exactly as
+they were. A contract without verified source is the normal case on most
+chains, and the platform must still analyse it.
+
+### The source is an artifact
+
+When the source is fetched it is stored as a scan artifact
+(`kind = "source"`), whether or not the audit could run. The source is what
+makes the scan reproducible, so it is worth keeping even when Slither is
+not installed.
+
+### Configuring the tool
+
+Two settings, both optional:
+
+| Setting | Meaning |
+|---|---|
+| `SLITHER_BIN` | the path to the Slither executable. Empty means it is looked up on `PATH`. |
+| `SOLC_ARTIFACTS_DIR` | where the solc binaries live. Defaults to `~/.solc-select/artifacts`. |
+
+The scan pipeline reads them from the application's settings, so putting
+them in `.env` is enough.
+
+### Verifying it end to end
+
+```
+node scripts/py.mjs --cwd . -m scripts.live_check_merged_engine
+```
+
+This runs the whole pipeline over a real, verified contract and prints what
+each engine found:
+
+```
+=== scan ===
+  status             : completed
+  findings           : 20
+  source audited     : True
+  source skipped     : None
+=== findings by engine ===
+  rule: 2
+    baseline.delegatecall [high]
+    baseline.unresolved_jumps [info]
+  slither: 18
+    slither.low_level_calls [low]
+    slither.shadowing_local [low]
+    ...
+```
+
+---
+
 ## Installing the tool
 
 Slither and the solc binaries are external prerequisites, like PostgreSQL.

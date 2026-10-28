@@ -114,6 +114,10 @@ export interface ScanSummary {
   parserVersion: string | null;
   rulesetVersion: string | null;
   modelVersion: string | null;
+  /** Whether the source engine audited this contract's verified source. */
+  sourceAudited: boolean;
+  /** Why the source engine did not run, when it did not. */
+  sourceAuditSkipped: string | null;
   error: string | null;
 }
 
@@ -140,6 +144,8 @@ export interface Finding {
   description: string | null;
   detectorId: string | null;
   detectorVersion: string | null;
+  /** Which engine produced the finding: "rule", "slither" or "ml". */
+  source: string;
   functionSignature: string | null;
   byteOffsets: number[];
   fileRef: string | null;

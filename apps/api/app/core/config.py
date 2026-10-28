@@ -81,6 +81,14 @@ class Settings(BaseSettings):
     scan_job_timeout_seconds: int = Field(default=300, alias="SCAN_JOB_TIMEOUT_SECONDS")
     scan_max_retries: int = Field(default=3, alias="SCAN_MAX_RETRIES")
 
+    # --- Source engine -------------------------------------------------
+    # Slither is AGPL-3.0. It is never installed into this project's
+    # environment, never imported and never vendored: it is run as an
+    # unmodified external executable (ADR-0013). An empty value means the
+    # executable is looked up on PATH instead.
+    slither_bin: str = Field(default="", alias="SLITHER_BIN")
+    solc_artifacts_dir: str = Field(default="", alias="SOLC_ARTIFACTS_DIR")
+
     # --- Sandbox (disabled by default) ------------------------------------
     sandbox_enabled: bool = Field(default=False, alias="SANDBOX_ENABLED")
     sandbox_max_memory_mb: int = Field(default=512, alias="SANDBOX_MAX_MEMORY_MB")

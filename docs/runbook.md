@@ -510,6 +510,42 @@ There are **no** end-to-end tests yet — `tests/e2e/` is empty.
 
 ---
 
+### 6.1 The source engine (optional)
+
+The source engine runs Slither as an external executable. It is not a
+dependency of the project's virtual environment and it is never imported.
+
+Install it somewhere else:
+
+```bash
+python -m venv E:/tools/slither
+E:/tools/slither/Scripts/pip install slither-analyzer
+```
+
+Then point the application at it, in `.env`:
+
+```
+SLITHER_BIN=E:/tools/slither/Scripts/slither.exe
+SOLC_ARTIFACTS_DIR=~/.solc-select/artifacts
+```
+
+Without `SLITHER_BIN` the executable is looked up on `PATH`. Without either,
+the scan pipeline **skips** the source audit and records why
+(`slither_not_installed`); the bytecode findings are unaffected.
+
+The solc binaries come from `solc-select`:
+
+```bash
+pip install solc-select
+solc-select install 0.8.26
+```
+
+Check the whole thing, both engines, on a real contract:
+
+```bash
+node scripts/py.mjs --cwd . -m scripts.live_check_merged_engine
+```
+
 ## 7. Regenerating the opcode table
 
 The opcode table `packages/evm_analysis/data/opcodes.json` is a committed,

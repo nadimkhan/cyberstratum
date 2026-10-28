@@ -521,7 +521,7 @@ finding.
 | [`docs/INTEGRATION-PLAN.md`](docs/INTEGRATION-PLAN.md) | Merging Watchdog in: what ports from where, the measured Blockscout constraints, the phase list |
 | [`docs/SCHEMA-RECONCILIATION.md`](docs/SCHEMA-RECONCILIATION.md) | How the two data models become one, and the seven decisions that forces |
 | [`docs/BLOCKSCOUT-ROUTES.md`](docs/BLOCKSCOUT-ROUTES.md) | The measured per-chain Blockscout capability table: 60 chains, what works, what does not, and why |
-| [`docs/SOURCE-AUDIT.md`](docs/SOURCE-AUDIT.md) | Running Slither as an external tool without touching its AGPL licence, and the detector map |
+| [`docs/SOURCE-AUDIT.md`](docs/SOURCE-AUDIT.md) | The source engine: running Slither as an external tool without touching its AGPL licence, the detector map, and how it runs alongside the bytecode engine in one scan |
 | [`docs/DISCOVERY-FEED.md`](docs/DISCOVERY-FEED.md) | The continuous discovery feed: how new contracts are found across the chains, and why a failing chain cannot take the feed down |
 
 ### The stack contradiction, and how it was resolved

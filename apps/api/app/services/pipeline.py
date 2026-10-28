@@ -23,6 +23,7 @@ from datetime import UTC, datetime
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.enums import FindingStatus, ScanJobStatus, ScanStatus
 from app.db.models.scans import (
@@ -38,6 +39,9 @@ from app.db.models.scans import (
 from app.services import storage
 from app.services.bytecode import BytecodeArtifact, BytecodeUnavailableError, fetch_runtime_bytecode
 from app.services.rules import PARSER_VERSION, RULESET_VERSION, RuleFinding, run_rules
+from app.services.slither import SlitherRunner
+from app.services.source_audit import audit_source
+from app.services.source_fetch import SourceArtifact, fetch_verified_source
 from evm_analysis import (
     ContractFeatures,
     ControlFlowGraph,
@@ -146,15 +150,36 @@ def _persist_graph(
 
 
 def _persist_findings(
-    session: Session, scan: Scan, findings: list[RuleFinding]
+    session: Session,
+    scan: Scan,
+    findings: list[RuleFinding],
+    source: str = "rule",
 ) -> None:
-    """Replace the findings of a scan with the newly produced ones."""
-    session.execute(delete(Finding).where(Finding.scan_id == scan.id))
+    """Replace the findings of a scan with the newly produced ones.
+
+    The ``source`` column says which engine produced a finding: ``rule``
+    for the bytecode engine, ``slither`` for the source engine, ``ml``
+    for the model. One table, several engines, and no way to tell them
+    apart by guessing.
+
+    The findings are *replaced* rather than appended, so re-running a scan
+    does not leave a stale finding behind.
+    """
+    if source == "rule":
+        session.execute(delete(Finding).where(Finding.scan_id == scan.id))
+    else:
+        session.execute(
+            delete(Finding).where(
+                Finding.scan_id == scan.id,
+                Finding.source == source,
+            )
+        )
     for finding in findings:
         session.add(
             Finding(
                 workspace_id=scan.workspace_id,
                 scan_id=scan.id,
+                source=source,
                 detector_id=finding.detector_id,
                 detector_version=RULESET_VERSION,
                 category=finding.category,
@@ -267,6 +292,115 @@ def _store_artifacts(
     )
 
 
+def _audit_verified_source(
+    session: Session,
+    scan: Scan,
+    chain_id: int,
+    address: str,
+) -> tuple[list[RuleFinding], str | None]:
+    """Run the source engine over a contract's verified source.
+
+    The source engine is supplementary. A contract whose source cannot be
+    fetched, whose Slither is not installed, or which does not compile is
+    *skipped*, not failed: the bytecode analysis already ran and its
+    results stand on their own.
+
+    Args:
+        session: The database session.
+        scan: The scan being run.
+        chain_id: The EIP-155 chain the contract lives on.
+        address: The contract address.
+
+    Returns:
+        The source findings, and the reason the audit was skipped when it
+        did not run.
+    """
+    if not address:
+        return ([], "no_address")
+
+    try:
+        artifact: SourceArtifact | None = fetch_verified_source(chain_id, address)
+    except Exception as exc:  # noqa: BLE001 - the source engine never fails a scan
+        log.warning("scan_source_fetch_failed", scan_id=str(scan.id), error=str(exc))
+        return ([], "source_fetch_failed")
+
+    if artifact is None:
+        return ([], "no_source")
+
+    # The source is stored whether or not the audit could run. A contract
+    # whose source was fetched is worth keeping even when Slither is not
+    # installed, because the source is what makes the scan reproducible.
+    _store_source_artifact(session, scan, artifact)
+
+    extra_files = {
+        path: content
+        for path, content in artifact.files.items()
+        if path != artifact.main_file_name
+    }
+    audit = audit_source(
+        artifact.code,
+        contract_name=artifact.main_file_name.removesuffix(".sol") or "Contract",
+        compiler_version=artifact.compiler_version,
+        # Slither is never imported or vendored here. The runner invokes
+        # the unmodified external executable across a process boundary and
+        # reads its JSON output (ADR-0013).
+        runner=SlitherRunner(
+            executable=get_settings().slither_bin or None,
+            solc_artifacts=get_settings().solc_artifacts_dir or None,
+        ),
+        extra_files=extra_files,
+    )
+
+    if not audit.ran:
+        return ([], audit.skipped)
+
+    log.info(
+        "scan_source_audited",
+        scan_id=str(scan.id),
+        findings=len(audit.findings),
+        route=artifact.source_kind,
+    )
+    return (list(audit.findings), None)
+
+
+def _store_source_artifact(
+    session: Session, scan: Scan, artifact: SourceArtifact
+) -> None:
+    """Store the verified source as a scan artifact.
+
+    The source is stored as a file tree rather than as a database column,
+    so a multi-file project keeps its layout and nothing depends on a
+    ``TEXT`` column holding source code.
+    """
+    prefix = f"scans/{scan.id}"
+    files = [
+        {
+            "path": path,
+            "content": content,
+        }
+        for path, content in sorted(artifact.files.items())
+    ]
+    key = storage.put_json(
+        f"{prefix}/source.json",
+        {
+            "route": artifact.source_kind,
+            "sourceUri": artifact.source_uri,
+            "language": artifact.language,
+            "compilerVersion": artifact.compiler_version,
+            "verified": artifact.verified,
+            "files": files,
+        },
+    )
+    session.add(
+        ScanArtifact(
+            scan_id=scan.id,
+            kind="source",
+            content_type="application/json",
+            object_key=key,
+        )
+    )
+
+
 def run_scan(session: Session, scan: Scan) -> ScanOutcome:
     """Execute the full pipeline for ``scan`` and persist the results.
 
@@ -347,15 +481,32 @@ def run_scan(session: Session, scan: Scan) -> ScanOutcome:
     _persist_graph(session, scan.id, disassembly, cfg, features)
     _persist_findings(session, scan, findings)
 
+    # The source engine is a second opinion on the same contract. It runs
+    # after the bytecode analysis, and a failure there never undoes the
+    # bytecode results.
+    source_findings, source_skipped = _audit_verified_source(
+        session, scan, chain_id, address
+    )
+    _persist_findings(session, scan, source_findings, source="slither")
+    scan.source_audited = source_skipped is None
+    scan.source_audit_skipped = source_skipped
+
     partial = bool(disassembly.warnings) or bool(cfg.unresolved_edges)
     scan.status = ScanStatus.PARTIAL if partial else ScanStatus.COMPLETED
     scan.completed_at = _now()
     session.flush()
 
+    if source_skipped is not None:
+        log.info(
+            "scan_source_skipped",
+            scan_id=str(scan.id),
+            reason=source_skipped,
+        )
+
     return ScanOutcome(
         scan_id=scan.id,
         status=scan.status,
-        finding_count=len(findings),
+        finding_count=len(findings) + len(source_findings),
     )
 
 

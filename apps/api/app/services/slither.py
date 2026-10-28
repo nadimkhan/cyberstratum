@@ -405,6 +405,7 @@ class SlitherRunner:
         source_code: str,
         contract_name: str = "",
         compiler_version: str = "",
+        extra_files: Mapping[str, str] | None = None,
     ) -> SlitherResult:
         """Analyse one contract's source.
 
@@ -417,6 +418,8 @@ class SlitherRunner:
             source_code: The Solidity source.
             contract_name: The contract's name, used only in logs.
             compiler_version: The compiler version, used to pick solc.
+            extra_files: The rest of the project, keyed by path. A contract
+                that imports another file will not compile without them.
 
         Returns:
             The findings, or the reason the run was skipped.
@@ -433,8 +436,26 @@ class SlitherRunner:
             return SlitherResult(findings=(), skipped="solc_not_found")
 
         with tempfile.TemporaryDirectory(prefix="cyberstratum-slither-") as tmp:
-            source_path = Path(tmp) / f"{_safe_name(contract_name)}.sol"
+            root = Path(tmp)
+            source_path = root / f"{_safe_name(contract_name)}.sol"
             source_path.write_text(source_code, encoding="utf-8")
+
+            # The imported files have to sit next to the main one, at the
+            # paths the imports name, or the project will not compile.
+            for path, content in (extra_files or {}).items():
+                if not path or path == source_path.name:
+                    continue
+                try:
+                    destination = (root / path).resolve()
+                    destination.relative_to(root.resolve())
+                except (ValueError, OSError):
+                    # A path that escapes the temporary directory is
+                    # refused rather than written.
+                    log.warning("skipping a source file outside the project: %s", path)
+                    continue
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_text(content, encoding="utf-8")
+
             command = self.build_command(str(source_path), solc_binary)
 
             env = dict(os.environ)

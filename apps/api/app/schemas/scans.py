@@ -145,6 +145,8 @@ class ScanSummary(BaseModel):
     parser_version: str | None = None
     ruleset_version: str | None = None
     model_version: str | None = None
+    source_audited: bool = False
+    source_audit_skipped: str | None = None
     error_code: str | None = None
     error_message_redacted: str | None = None
     created_at: datetime

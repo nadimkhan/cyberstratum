@@ -19,6 +19,7 @@ class _FindingRow(Protocol):
     scan_id: uuid.UUID
     detector_id: str
     detector_version: str
+    source: str
     category: str
     title: str
     description: str
@@ -41,6 +42,7 @@ class FindingRead(BaseModel):
     scan_id: uuid.UUID
     detector_id: str
     detector_version: str
+    source: str = "rule"
     category: str
     title: str
     description: str
@@ -65,6 +67,7 @@ class FindingRead(BaseModel):
             "scan_id": row.scan_id,
             "detector_id": row.detector_id,
             "detector_version": row.detector_version,
+            "source": row.source,
             "category": row.category,
             "title": row.title,
             "description": row.description,

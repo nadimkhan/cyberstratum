@@ -276,6 +276,7 @@ def audit_source(
     contract_name: str = "",
     compiler_version: str = "",
     runner: SlitherRunner | None = None,
+    extra_files: Mapping[str, str] | None = None,
 ) -> SourceAudit:
     """Audit one contract's source.
 
@@ -285,6 +286,8 @@ def audit_source(
         contract_name: The contract's name, used for logging and file naming.
         compiler_version: The compiler version, used to pick a solc binary.
         runner: The runner to use. One is created when not supplied.
+        extra_files: The rest of the project, keyed by path. A contract
+            that imports another file will not compile without them.
 
     Returns:
         The findings, or the reason the audit was skipped.
@@ -293,7 +296,9 @@ def audit_source(
         return SourceAudit(findings=(), skipped="no_source")
 
     active = runner or SlitherRunner()
-    result: SlitherResult = active.run(source_code, contract_name, compiler_version)
+    result: SlitherResult = active.run(
+        source_code, contract_name, compiler_version, extra_files=extra_files
+    )
     if not result.ran:
         log.info(
             "source audit skipped for %s: %s", contract_name or "<unnamed>", result.skipped

@@ -626,6 +626,11 @@ function normaliseScanSummary(value: unknown): ScanSummary {
     parserVersion: pickString(record, ["parser_version", "parserVersion"]),
     rulesetVersion: pickString(record, ["ruleset_version", "rulesetVersion"]),
     modelVersion: pickString(record, ["model_version", "modelVersion"]),
+    sourceAudited: pickBoolean(record, ["source_audited", "sourceAudited"]),
+    sourceAuditSkipped: pickString(record, [
+      "source_audit_skipped",
+      "sourceAuditSkipped",
+    ]),
     error:
       pickString(record, [
         "error_message_redacted",
@@ -1017,6 +1022,7 @@ function normaliseFinding(value: unknown): Finding {
       "rule_id",
       "ruleId",
     ]),
+    source: pickString(record, ["source"]) ?? "rule",
     detectorVersion: pickString(record, [
       "detector_version",
       "detectorVersion",
