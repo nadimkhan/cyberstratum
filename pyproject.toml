@@ -50,14 +50,26 @@ target-version = "py312"
 select = ["E", "F", "I", "N", "UP", "B", "S", "C4", "SIM"]
 ignore = ["S101", "B008"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["app", "evm_analysis"]
+
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "N"]
+# Alembic autogenerate emits long DDL statements; they are not hand-maintained.
+"apps/api/alembic/versions/*" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
 warn_unreachable = true
 plugins = ["pydantic.mypy"]
+
+# scikit-learn, scipy and joblib ship no type information. They are
+# pinned versions whose behaviour is covered by the test suite, so the
+# missing stubs are ignored rather than silenced with blanket Any.
+[[tool.mypy.overrides]]
+module = ["sklearn.*", "scipy.*", "joblib.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

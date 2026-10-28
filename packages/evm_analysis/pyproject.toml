@@ -13,6 +13,7 @@ build-backend = "hatchling.build"
 packages = ["evm_analysis"]
 
 [tool.hatch.build.targets.wheel.force-include]
+"evm_analysis/py.typed" = "evm_analysis/py.typed"
 "data" = "evm_analysis/data"
 
 [tool.ruff]

@@ -1,0 +1,53 @@
+[project]
+name = "evm-ml"
+version = "0.1.0"
+description = "CyberStratum ML baseline — TF-IDF over opcode n-grams with deterministic CFG features"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "evm-analysis>=0.1.0",
+  "scikit-learn>=1.5",
+  "numpy>=2.0",
+  "scipy>=1.13",
+  "joblib>=1.4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+  "ruff>=0.7",
+  "mypy>=1.13",
+]
+
+[project.scripts]
+evm-ml-train = "evm_ml.train:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["evm_ml"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "S", "C4", "SIM"]
+ignore = ["S101", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "N"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+
+# scikit-learn, scipy and joblib ship no type information. They are
+# pinned versions whose behaviour is covered by the test suite, so the
+# missing stubs are ignored rather than silenced with blanket Any.
+[[tool.mypy.overrides]]
+module = ["sklearn.*", "scipy.*", "joblib.*"]
+ignore_missing_imports = true
