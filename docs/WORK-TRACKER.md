@@ -63,6 +63,7 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
 - [x] Mythril cost measured — ~109s small fixture; real USDC runtime produced no verdict within a bounded budget.
 - [x] ReportLab deterministic PDF — two renders of identical evidence → byte-identical SHA-256.
 - [x] Correspondence proof re-verified end to end as a repo script — `scripts/live_check_correspondence.py`. USDC: executable code byte-identical (2143 bytes), metadata trailer differs only in its 32-byte `bzzr0` hash, 807 instructions, 4/4 interesting opcodes mapped to exact source lines.
+- [x] Correspondence proof reproduced natively in WSL — same 807 instructions, same 4/4 opcode-to-source-line mappings. WSL solc `0.4.24` and `0.8.26` installed into the `solc-select` layout so the product's compiler discovery finds them there too (previously WSL had them only in `~/bin`, where discovery could not see them).
 - [x] Two Sourcify traps found and documented — the stored `stdJsonInput` has **no** `outputSelection`, so solc emits no bytecode and the check falsely reports "no match"; and the gate must be metadata-aware executable-code equality, not whole-byte equality.
 
 ---
@@ -109,8 +110,9 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
 - [ ] Daily dependency update checks (check only; upgrade through gated CI).
 - [ ] Authorised bug-bounty scope ingestion + safe-harbour rules.
 - [ ] EVM source↔bytecode correspondence service — the pipeline is proven and scripted
-      (`scripts/live_check_correspondence.py`); it still needs to become a service that
-      stores the correspondence proof alongside a scan and feeds the PDF report.
+      (`scripts/live_check_correspondence.py`, verified live on both Windows and WSL);
+      it still needs to become a service that stores the correspondence proof
+      alongside a scan and feeds the PDF report.
 
 ---
 

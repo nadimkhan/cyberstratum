@@ -38,6 +38,7 @@ Usage::
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -221,7 +222,12 @@ def compare_runtime(onchain: bytes, recompiled: bytes) -> tuple[bool, str]:
 
 
 def _find_solc(version: str) -> Path | None:
-    """Locate a solc binary in the local solc-select cache.
+    """Locate a solc binary.
+
+    The same search the product's Slither runner performs, so both agree on
+    which compiler a given contract was built with: the ``solc-select``
+    layout under ``SOLC_ARTIFACTS_DIR``, and the flatter ``<version>/``
+    layout some setups use.
 
     Args:
         version: The compiler version, such as ``0.4.24``.
@@ -229,11 +235,14 @@ def _find_solc(version: str) -> Path | None:
     Returns:
         The path to the compiler, or ``None`` when it is not installed.
     """
-    base = Path.home() / ".solc-select" / "artifacts" / f"solc-{version}"
-    for name in (f"solc-{version}", f"solc-{version}.exe"):
-        candidate = base / name
-        if candidate.is_file():
-            return candidate
+    artifacts = Path(
+        os.environ.get("SOLC_ARTIFACTS_DIR", "~/.solc-select/artifacts")
+    ).expanduser()
+    for directory in (f"solc-{version}", version):
+        for name in (f"solc-{version}", f"solc-{version}.exe"):
+            candidate = artifacts / directory / name
+            if candidate.is_file():
+                return candidate
     return None
 
 
