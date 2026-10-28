@@ -1,6 +1,6 @@
 # CyberStratum
 
-**Bytecode-first EVM security analysis.**
+**EVM security analysis and audit, in one platform.**
 
 CyberStratum ingests EVM bytecode, disassembles it correctly against a pinned
 fork-aware opcode table, derives control-flow and feature signals, runs
@@ -10,6 +10,46 @@ carrying its limitations, each one labelled experimental if a model produced
 it.
 
 It is a security researcher's tool. It is not a guarantee of anything.
+
+---
+
+## Two engines, one platform
+
+| | **Analysis** — deployed bytecode | **Audit** — verified source |
+|---|---|---|
+| Engine | CyberStratum's own fork-aware EVM engine | Slither, run as an external process |
+| Needs source? | No — works on unverified contracts | Yes |
+| Finds | What is *actually deployed*: compiler quirks, proxy runtime structure, `delegatecall` chains, unreachable code, fork-specific opcodes | Reentrancy across calls, precise `file:line` locations, inheritance and composition problems |
+| Output | Severity **and** confidence, plus reproducible artifacts | Severity, detector id, source location |
+
+They fail in opposite directions, which is why both are here. The two views are
+also comparable: a contract whose source analyses clean but whose deployed
+runtime tells a different story is itself worth a human's attention.
+
+> **Licence note.** Slither is AGPL-3.0. It runs here as an *unmodified,
+> out-of-process* executable whose JSON output we read — we never import it, and
+> our own source stays clean. See
+> [ADR-0013](docs/adr/0013-licensing-fastapi-mit-and-slither-agpl.md). The
+> bytecode engine is our own code and carries no such restriction; a deployment
+> can run the product with the Slither lane disabled.
+
+## Continuous multi-chain discovery
+
+Contracts are discovered across 59 EVM mainnets through Blockscout, analysed,
+and stored with their findings. The discovery feed advances a **per-chain
+cursor before analysis runs**, so a crash or timeout never causes re-fetching,
+and one chain failing degrades only that chain.
+
+Two access routes, chosen per chain and recorded so the choice is never
+re-litigated:
+
+- **Per-chain Blockscout instance** — no API key, fast, richer payload. Used
+  where the instance responds.
+- **Blockscout PRO API** — unified, metered in credits. Used for the chains
+  whose instance is blocked or absent.
+
+`filter=verified` is never used: measured on 2026-10-28, it costs **44-79
+seconds per call** against **0.4 seconds** for the same query without it.
 
 ---
 
@@ -478,6 +518,8 @@ finding.
 | [`docs/architecture.md`](docs/architecture.md) | As-built architecture, data flow, ER diagram, artifact/reproducibility model, fork-aware opcode pipeline |
 | [`docs/product-requirements.md`](docs/product-requirements.md) | Personas, functional and non-functional requirements, severity taxonomy, out-of-scope list, traceability to the design document |
 | [`docs/runbook.md`](docs/runbook.md) | Exact local setup and run commands, migrations, tests, opcode regeneration, troubleshooting table |
+| [`docs/INTEGRATION-PLAN.md`](docs/INTEGRATION-PLAN.md) | Merging Watchdog in: what ports from where, the measured Blockscout constraints, the phase list |
+| [`docs/SCHEMA-RECONCILIATION.md`](docs/SCHEMA-RECONCILIATION.md) | How the two data models become one, and the seven decisions that forces |
 
 ### The stack contradiction, and how it was resolved
 
