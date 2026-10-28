@@ -231,6 +231,10 @@ function supervise(name, command, args, options = {}) {
     env: { ...process.env, ...options.env },
     stdio: ["ignore", "pipe", "pipe"],
     shell: false,
+    // The services get no console of their own. A Ctrl+C in the terminal
+    // must reach only the launcher, which then asks for a clean shutdown,
+    // instead of reaching the services and killing them outright.
+    windowsHide: true,
   });
   children.push(child);
 
@@ -592,7 +596,18 @@ function shutdown() {
   setTimeout(() => process.exit(0), 400);
 }
 
-process.on("SIGINT", shutdown);
+process.on("SIGINT", () => {
+  if (!SUPERVISOR) {
+    shutdown();
+    return;
+  }
+  // The supervisor owns the services. Ignoring Ctrl+C here keeps the
+  // stack alive; "npm run stop" is the supported way to stop it.
+  const hint = `${COLOURS.yellow}[dev]${COLOURS.reset} ignoring Ctrl+C in the ` +
+    `supervisor - run "npm run stop" to stop the stack.\n`;
+  appendToLog(hint);
+  process.stdout.write(hint);
+});
 process.on("SIGTERM", shutdown);
 
 async function main() {
