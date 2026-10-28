@@ -83,6 +83,32 @@ class Scan(Base):
         back_populates="scan", cascade="all, delete-orphan"
     )
 
+    @property
+    def contract_address(self) -> str | None:
+        """The address of the analysed target.
+
+        Derived rather than stored: the address belongs to the target, and
+        duplicating it on every scan row would let the two drift apart.
+        """
+        target: ContractTarget | None = self.target
+        return target.address if target is not None else None
+
+    @property
+    def chain_id(self) -> int | None:
+        """The chain the target lives on."""
+        target: ContractTarget | None = self.target
+        if target is None:
+            return None
+        return target.chain.chain_id
+
+    @property
+    def labels(self) -> list[str]:
+        """The labels of the analysed target."""
+        target: ContractTarget | None = self.target
+        if target is None or not target.label:
+            return []
+        return [target.label]
+
 
 class ScanJob(Base):
     """A queue job backing a scan (design doc table ``scan_jobs``)."""

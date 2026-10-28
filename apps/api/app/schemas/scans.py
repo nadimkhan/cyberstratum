@@ -131,6 +131,11 @@ class ScanSummary(BaseModel):
     id: uuid.UUID
     workspace_id: uuid.UUID
     target_id: uuid.UUID
+    contract_address: str | None = None
+    chain_id: int | None = None
+    labels: list[str] = Field(default_factory=list)
+    finding_counts: dict[str, int] = Field(default_factory=dict)
+    total_findings: int = 0
     status: ScanStatus
     fork: str
     bytecode_source: str

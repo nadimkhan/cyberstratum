@@ -13,7 +13,7 @@ from app.core.logging import get_logger
 from app.core.security import CurrentPrincipal, SessionDep
 from app.db.enums import ScanJobStatus, ScanJobType, ScanStatus
 from app.db.models.identity import Chain, ContractTarget, Workspace
-from app.db.models.scans import Scan, ScanJob
+from app.db.models.scans import Finding, Scan, ScanJob
 from app.queue.connection import get_queue
 from app.schemas.findings import FindingRead
 from app.schemas.scans import (
@@ -188,6 +188,35 @@ def submit_scan(
     )
 
 
+def _finding_counts(session: Session, scan_ids: list[uuid.UUID]) -> dict[uuid.UUID, dict[str, int]]:
+    """Return the finding count per severity for each of ``scan_ids``.
+
+    One grouped query serves the whole page, so listing scans does not
+    issue a query per row.
+    """
+    if not scan_ids:
+        return {}
+    rows = session.execute(
+        select(Finding.scan_id, Finding.severity, func.count())
+        .where(Finding.scan_id.in_(scan_ids))
+        .group_by(Finding.scan_id, Finding.severity)
+    ).all()
+    counts: dict[uuid.UUID, dict[str, int]] = {}
+    for scan_id, severity, amount in rows:
+        key = severity.value if hasattr(severity, "value") else str(severity)
+        counts.setdefault(scan_id, {})[key] = int(amount)
+    return counts
+
+
+def _summary(session: Session, scan: Scan) -> ScanSummary:
+    """Build a scan summary, including its finding counts."""
+    summary = ScanSummary.model_validate(scan)
+    counts = _finding_counts(session, [scan.id]).get(scan.id, {})
+    summary.finding_counts = counts
+    summary.total_findings = sum(counts.values())
+    return summary
+
+
 @router.get("", response_model=ScanListResponse, summary="List scans")
 def list_scans(
     session: SessionDep,
@@ -212,8 +241,17 @@ def list_scans(
     total = session.scalar(count_stmt) or 0
     rows = session.scalars(stmt.offset(offset).limit(limit)).all()
 
+    counts = _finding_counts(session, [row.id for row in rows])
+    items: list[ScanSummary] = []
+    for row in rows:
+        summary = ScanSummary.model_validate(row)
+        row_counts = counts.get(row.id, {})
+        summary.finding_counts = row_counts
+        summary.total_findings = sum(row_counts.values())
+        items.append(summary)
+
     return ScanListResponse(
-        items=[ScanSummary.model_validate(row) for row in rows],
+        items=items,
         total=total,
         limit=limit,
         offset=offset,
@@ -249,6 +287,9 @@ def get_scan(
 
     detail = ScanDetail.model_validate(scan)
     detail.findings = [FindingRead.model_validate(finding) for finding in scan.findings]
+    counts = _finding_counts(session, [scan.id]).get(scan.id, {})
+    detail.finding_counts = counts
+    detail.total_findings = sum(counts.values())
     return detail
 
 
