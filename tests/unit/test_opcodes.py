@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from evm_analysis.opcodes import (
     FORK_ORDER,
     INVALID_OPCODE,

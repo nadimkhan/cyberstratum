@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from evm_analysis.disassembler import InstructionStatus, disassemble
 from evm_analysis.opcodes import load_fork
 

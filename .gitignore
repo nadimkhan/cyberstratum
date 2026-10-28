@@ -14,6 +14,14 @@ node_modules/
 out/
 *.tsbuildinfo
 next-env.d.ts
+.turbo/
+.vercel/
+coverage/
+*.tsbuildinfo
+
+# --- Frontend env ---
+apps/web/.env.local
+apps/web/.env*.local
 
 # --- Local state ---
 var/

@@ -1,0 +1,159 @@
+# CyberStratum frontend (`apps/web`)
+
+The web UI is a **Next.js App Router** application written in TypeScript and styled with
+**Tailwind CSS**. It is a thin client: all analysis runs in the Python/FastAPI backend and the
+UI talks to it through the typed client in `src/lib/api.ts`.
+
+- Framework: Next.js 15 (App Router), React 19, TypeScript (strict)
+- Styling: Tailwind CSS v4 (`@tailwindcss/postcss`), design tokens in `app/globals.css`
+- Unit tests: Vitest
+- No auth provider, no analytics, no paid services — everything runs locally and offline after
+  `npm install`.
+
+## Requirements
+
+- Node.js 20 or newer (Node 24 is what the repo is developed against)
+- npm 10 or newer
+
+## Install
+
+The repository is an npm workspace, and `apps/web` is a workspace member, so a single install at
+the repository root installs the frontend too:
+
+```bash
+cd E:/projects/cyberstratum
+npm install
+```
+
+Or install only the frontend workspace:
+
+```bash
+cd E:/projects/cyberstratum/apps/web
+npm install
+```
+
+## Configuration
+
+The only environment variable the UI needs is the backend base URL:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://127.0.0.1:8000` | Base URL of the FastAPI backend, **without** the `/api/v1` prefix (the client appends the versioned prefix itself). |
+
+Copy the example file to get started:
+
+```bash
+cd apps/web
+cp .env.example .env.local
+```
+
+`.env.local` is git-ignored. The value is inlined into the browser bundle at build time, so
+restart the dev server (or rebuild) after changing it. No credentials or API keys are required;
+if you ever need to reference a secret in configuration, use the literal placeholder
+`[REDACTED]`.
+
+## Run the dev server
+
+```bash
+cd E:/projects/cyberstratum/apps/web
+npm run dev
+```
+
+The UI is then served on <http://localhost:3000>. From the repository root you can also run
+`npm run dev:web`.
+
+The backend is optional for the UI to boot. If the API is not running, the pages render an
+explicit **"Backend unreachable"** panel with the API base URL instead of crashing, so the
+frontend can be developed without the API running.
+
+To run the backend locally:
+
+```bash
+cd E:/projects/cyberstratum/apps/api
+uvicorn app.main:app --reload --port 8000
+```
+
+## Production build
+
+```bash
+cd E:/projects/cyberstratum/apps/web
+npm run build      # or: npm run build:web from the repository root
+npm start          # serves the production build on http://localhost:3000
+```
+
+`npm run build` runs `next build`, which type-checks the whole project as part of the build.
+
+## Type checking and tests
+
+```bash
+cd E:/projects/cyberstratum/apps/web
+npm run typecheck   # tsc --noEmit
+npm test            # vitest run
+```
+
+Both are also wired into the repository root:
+
+```bash
+npm run typecheck:web
+npm run test:web
+npm test             # web unit tests, then the Python pytest suite
+```
+
+## Routes
+
+| Route | Purpose |
+| --- | --- |
+| `/` | Overview dashboard: totals, findings by severity, recent scans, average risk score, "needs attention" list. |
+| `/scans` | All scans with status, contract address, chain and creation time. |
+| `/scans/new` | Scan submission form: contract address, chain id, EVM fork, optional labels, optional bytecode hex, optional experimental ML. |
+| `/scans/[id]` | Scan detail: status, pipeline stage timeline, findings table, artifacts and reproducibility metadata (tool versions, opcode-table version, bytecode hash). |
+| `/findings` | Every finding with severity and confidence filters, sortable columns, detector rule id, function signature and byte-offset / file references. |
+| `/reproducibility` | Scan index of pinned analysis versions used for re-running a result. |
+
+## Backend contract used by the client
+
+The client calls the versioned `/api/v1` prefix defined in the design document:
+
+| Method | Endpoint | Used for |
+| --- | --- | --- |
+| `GET` | `/health` | Liveness of the backend. |
+| `GET` | `/scans` | Scan list (dashboard, scans page). |
+| `GET` | `/scans/:id` | Scan detail. |
+| `GET` | `/scans/:id/findings` | Findings for one scan. |
+| `GET` | `/findings` | Global findings queue (with `severity`, `min_confidence`, `chain_id` query parameters). |
+| `GET` | `/findings/:id` | Single finding. |
+| `POST` | `/scans` | Queue a scan (the client falls back to `POST /targets` then `POST /targets/:id/scans` if the backend does not implement the direct route). |
+
+Responses are normalised in `src/lib/api.ts`: the client accepts `snake_case` or `camelCase`
+keys and both bare arrays and `{data: []}`-style envelopes, and maps them onto the canonical
+types in `src/lib/types.ts`. Severity and status strings are mapped onto the canonical taxonomy
+in `src/lib/severity.ts` and `src/lib/status.ts`.
+
+## Accessibility and theming
+
+- Semantic HTML (`nav`, `main`, `table` with `caption`/`scope`, `dl`, `ol`) and a skip link.
+- Severity and status are always conveyed by text as well as colour, and every badge carries an
+  `aria-label`.
+- Severity colour is defined in exactly one place — `SEVERITY_META` in `src/lib/severity.ts` —
+  and is consumed through the `SeverityBadge` component.
+- Visible focus rings on all interactive elements; sortable table headers are real buttons.
+- Light and dark palettes are both provided and selected with `prefers-color-scheme`; there is no
+  theme toggle and no colour-scheme dependence.
+
+## Layout of the source
+
+```
+apps/web
+├── app/                     # App Router routes
+│   ├── layout.tsx           # Global shell, metadata, skip link
+│   ├── globals.css          # Tailwind import + design tokens
+│   ├── page.tsx             # Dashboard
+│   ├── findings/page.tsx
+│   ├── reproducibility/page.tsx
+│   └── scans/{page.tsx,new/page.tsx,[id]/page.tsx}
+├── src/components/          # SeverityBadge, StatusBadge, ScanTable, FindingTable,
+│                            # RiskScoreGauge, StageTimeline, EmptyState, ApiUnreachable,
+│                            # AppShell, NewScanForm
+└── src/lib/                 # api.ts (typed client), types.ts, severity.ts, status.ts,
+                             # format.ts
+```

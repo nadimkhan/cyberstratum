@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from evm_analysis.cfg import EdgeType, Resolution, build_cfg
 from evm_analysis.disassembler import disassemble
 from evm_analysis.opcodes import load_fork

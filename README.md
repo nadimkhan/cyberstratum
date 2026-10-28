@@ -1,0 +1,468 @@
+# CyberStratum
+
+**Bytecode-first EVM security analysis.**
+
+CyberStratum ingests EVM bytecode, disassembles it correctly against a pinned
+fork-aware opcode table, derives control-flow and feature signals, runs
+deterministic detectors, and produces **candidate findings with evidence a
+human can inspect** — each one mapped to byte offsets and basic blocks, each one
+carrying its limitations, each one labelled experimental if a model produced
+it.
+
+It is a security researcher's tool. It is not a guarantee of anything.
+
+---
+
+## What it does
+
+- **Fork-aware disassembly.** `PUSH1`–`PUSH32` immediates are consumed as
+  data, never decoded as opcodes. Truncated pushes, unknown opcodes, and the
+  designated invalid opcode `0xFE` are *reported*, not silently absorbed.
+- **Solidity metadata handling.** The CBOR trailer is detected with a
+  conservative reader, is never decoded as instructions, and the original bytes
+  are never modified.
+- **A real control-flow graph.** Basic blocks, directed edges with explicit
+  confidence (`resolved` / `inferred` / `unresolved`), cycle detection, and
+  reachability analysis. The graph is **never assumed to be a DAG** — loops are
+  normal in Solidity.
+- **Static jump resolution by abstract interpretation.** A forward dataflow
+  fixpoint plus an abstract stack simulation resolves the destinations that
+  `solc` shuffles around before branching. Where the answer is genuinely
+  unknown, it stays unknown: **the resolver never guesses.**
+- **Deterministic feature extraction.** Opcode frequencies, n-grams, block and
+  edge metrics, call and storage locations, call-then-storage-write ordering,
+  stack-depth signals. The same bytecode and fork always produce the same
+  feature vector.
+- **Six baseline detectors.** Call-before-state-write, `DELEGATECALL` usage,
+  `SELFDESTRUCT`, `tx.origin` dependence, unresolved jumps, and stack
+  underflow. The reentrancy rule is explicitly a **heuristic** — its title
+  reads "Potential reentrancy pattern — manual validation required", and every
+  finding carries its own `limitations` field.
+- **Reproducibility by construction.** Every scan can be reproduced from four
+  stored facts: the input hash, the opcode-table version, the EVM fork, and
+  the tool versions.
+- **Cross-validated against an independent engine.** The tokenizer is checked
+  instruction-by-instruction against `evmole` on real deployed mainnet
+  bytecode.
+
+## What it explicitly does **not** do
+
+Being explicit here is a product decision, not an oversight.
+
+- **It does not promise money.** No airdrop eligibility, no token allocation,
+  no bounty income, no reward estimates — and no metrics that could be read as
+  projections. See [ADR-0008](docs/adr/0008-no-airdrop-bounty-or-campaign-promises.md).
+- **It does not track campaigns.** No campaign ledger, no wallet labels, no
+  task automation, no anti-Sybil tooling. See
+  [ADR-0007](docs/adr/0007-campaign-tracking-out-of-mvp-scope.md).
+- **It does not exploit anything.** It never automatically executes against
+  third-party live contracts, never moves assets, never signs mainnet
+  transactions, and never uses private keys. Dynamic execution, when it exists,
+  is confined to an isolated local environment behind a human approval gate.
+- **It does not connect a wallet to scan.** Analysis is read-only and needs no
+  wallet, no signature, and no RPC credential to run on pasted bytecode.
+- **It does not replace an auditor.** Every output is a *candidate*. A finding
+  is not "confirmed" because a classifier score crossed a threshold. The tool
+  produces evidence; a human decides.
+- **It does not claim ML replaces analysis.** The ML baseline is a
+  scikit-learn TF-IDF model over opcode n-grams — a prioritisation signal. The
+  graph neural network is **deferred**, not scheduled.
+- **It does not use Docker.** Local infrastructure is native PostgreSQL 17.11
+  and Redis 8.10.3.
+
+---
+
+## Architecture
+
+```mermaid
+graph TB
+    subgraph client["Browser"]
+        WEB["Next.js 15 App Router<br/>apps/web · React 19 · Tailwind 4<br/>6 pages"]
+    end
+
+    subgraph api["API process · Python 3.12+"]
+        FASTAPI["FastAPI + Pydantic v2<br/>apps/api/app/main.py"]
+        AUTH["API-key auth → Principal<br/>core/security.py"]
+        ORM["SQLAlchemy 2 ORM · 15 tables<br/>Alembic migrations"]
+    end
+
+    subgraph queue["Async"]
+        REDIS[("Redis 8.10.3<br/>RQ queues")]
+        WORKER["RQ worker<br/>apps/api/app/worker.py"]
+        PIPE["services/pipeline.py<br/>fetch → disasm → CFG → features"]
+        RULES["services/rules.py<br/>6 baseline detectors"]
+    end
+
+    subgraph engine["EVM analysis engine · pure Python"]
+        direction LR
+        OPC["opcodes.py<br/>vendored fork table"] --> DIS["disassembler.py<br/>tokenizer"]
+        META["metadata.py<br/>CBOR trailer"] --> DIS
+        DIS --> CFG["cfg.py<br/>blocks + graph"]
+        CFG --> RES["resolver.py + stack.py<br/>abstract interpretation"]
+        CFG --> FEAT["features.py<br/>deterministic features"]
+    end
+
+    subgraph mlpkg["ML baseline · offline package"]
+        TOKEN["evm_ml/tokenize.py<br/>opcode n-grams"]
+        MODEL["evm_ml/model.py<br/>SklearnTfidfAdapter"]
+    end
+
+    subgraph store["Persistence"]
+        PG[("PostgreSQL 17.11<br/>port 5433")]
+        FILES[("Local artifact store<br/>var/artifacts")]
+    end
+
+    WEB -->|HTTP /api/v1| FASTAPI
+    FASTAPI --> AUTH
+    FASTAPI --> ORM
+    ORM --> PG
+    FASTAPI --> REDIS
+    REDIS --> WORKER
+    WORKER --> PIPE
+    PIPE --> RULES
+    PIPE --> ENGINE
+    PIPE --> PG
+    PIPE --> FILES
+    FEAT -.-> TOKEN
+    TOKEN -.-> MODEL
+
+    style engine fill:#1a2a1a,stroke:#B7F34A,color:#E8F0EE
+    style store fill:#182122,stroke:#2A3938,color:#E8F0EE
+```
+
+The scanner pipeline, end to end:
+
+```text
+bytecode (pasted or fetched by address)
+  → validate (hex, size, chain, address)
+  → hash the original bytecode
+  → disassemble against the target fork's opcode table
+  → detect the Solidity metadata trailer
+  → basic blocks + control-flow graph
+  → abstract-stack jump resolution (resolved / inferred / unresolved)
+  → deterministic feature extraction
+  → 6 baseline detectors            [implemented]
+  → normalise → candidate findings with evidence, severity, confidence, limits
+  → optional ML scoring              [package built; not wired into the pipeline]
+  → human triage → reviewer-approved report   [report builder not built]
+```
+
+The **current implementation status of every stage** is documented in
+[`docs/architecture.md`](docs/architecture.md). That document is explicit about
+what is built and what is not.
+
+---
+
+## Repository layout
+
+```text
+cyberstratum/
+├── apps/
+│   ├── api/                       # Python FastAPI backend
+│   │   ├── app/
+│   │   │   ├── main.py            # create_app() — CORS, middleware, routers
+│   │   │   ├── worker.py          # RQ worker + enqueue_scan()
+│   │   │   ├── core/              # config, logging, security, errors
+│   │   │   ├── db/                # SQLAlchemy base, enums, session, models
+│   │   │   ├── api/               # health, scans, findings routers
+│   │   │   ├── schemas/           # Pydantic request/response models
+│   │   │   ├── services/          # pipeline, rules, bytecode, storage
+│   │   │   └── queue/             # Redis + RQ connection helper
+│   │   └── alembic/               # migrations (one initial-schema revision)
+│   └── web/                       # Next.js App Router frontend
+│       ├── app/                   # 6 pages (App Router)
+│       └── src/
+│           ├── components/        # 9 UI primitives
+│           └── lib/               # typed API client + domain types
+├── packages/
+│   ├── evm_analysis/              # the EVM analysis engine (pure Python)
+│   │   ├── evm_analysis/
+│   │   │   ├── opcodes.py         # fork-aware opcode table loader
+│   │   │   ├── disassembler.py    # instruction tokenizer
+│   │   │   ├── metadata.py        # Solidity CBOR trailer detection
+│   │   │   ├── cfg.py             # basic blocks + control-flow graph
+│   │   │   ├── stack.py           # abstract stack simulation
+│   │   │   ├── resolver.py        # jump-target resolution
+│   │   │   └── features.py        # deterministic feature extraction
+│   │   └── data/opcodes.json      # vendored, generated, committed table
+│   └── ml_baseline/               # scikit-learn TF-IDF baseline (offline)
+│       └── evm_ml/                # tokenize, dataset, features, model, evaluate
+├── scripts/
+│   ├── generate_opcodes.mjs       # regenerate the opcode table (Node)
+│   ├── crosscheck_evmole.py       # independent-oracle cross-check
+│   ├── validate_real_bytecode.py  # real-bytecode validation
+│   └── build_fixture_dataset.py   # build the smoke JSONL fixture
+├── tests/
+│   ├── unit/                      # 8 modules — engine + ML baseline
+│   └── api/                       # 4 modules — scans, findings, worker, health
+├── docs/
+│   ├── adr/                       # architecture decision records
+│   ├── architecture.md            # as-built architecture
+│   ├── product-requirements.md    # distilled requirements + traceability
+│   └── runbook.md                 # local development runbook
+├── workers/                       # reserved for a sandbox runner (empty)
+├── .env.example
+├── package.json
+└── pyproject.toml
+```
+
+---
+
+## Prerequisites
+
+| Requirement | Version | Needed for |
+|---|---|---|
+| Python | 3.12+ | API, worker, analysis engine |
+| Node.js | 20+ | Regenerating the opcode table only |
+| `uv` | recent | Python package management |
+| PostgreSQL | **17.11** | Metadata, jobs, findings, audit log |
+| Redis | **8.10.3** | RQ job queue |
+
+No Docker. No paid services. No cloud account is required to run the project.
+
+---
+
+## Setup
+
+```bash
+cd /e/projects/cyberstratum
+
+# 1. Python environment
+uv venv --python 3.12
+uv pip install -e ".[dev]"
+uv pip install -e packages/evm_analysis
+uv pip install -e packages/ml_baseline     # ML baseline package
+uv pip install "evmole==0.9.4"             # validation oracle only
+
+# 2. Node dependencies (opcode-table generator, web app)
+npm install
+
+# 3. Environment file
+cp .env.example .env
+```
+
+Then set a real database password and auth secret **in `.env` only** — never in
+a tracked file:
+
+```dotenv
+DATABASE_URL=postgresql+psycopg://cyberstratum_app:[REDACTED]@127.0.0.1:5433/cyberstratum
+AUTH_SECRET=[REDACTED]
+```
+
+`.env.example` ships `CHANGE_ME` placeholders on purpose. Leave them there.
+
+### Start PostgreSQL 17.11
+
+Binaries at `E:/tools/pg17/pgsql/bin`, data directory
+`E:/data/cyberstratum/pgdata`, port **5433**:
+
+```bash
+PG_BIN=E:/tools/pg17/pgsql/bin
+PG_DATA=E:/data/cyberstratum/pgdata
+
+"$PG_BIN/pg_ctl.exe" -D "$PG_DATA" -l E:/data/cyberstratum/pg17.log -o "-p 5433" start
+"$PG_BIN/pg_isready.exe" -h 127.0.0.1 -p 5433
+```
+
+First-time initialisation, role creation, and database creation are in
+[`docs/runbook.md`](docs/runbook.md) §3.4–§3.5.
+
+### Start Redis 8.10.3
+
+Binaries at `E:/tools/redis8/Redis-8.10.3-Windows-x64-msys2`, port **6379**:
+
+```bash
+REDIS_DIR=E:/tools/redis8/Redis-8.10.3-Windows-x64-msys2
+
+"$REDIS_DIR/redis-server.exe" "$REDIS_DIR/redis.conf" \
+  --port 6379 --dir E:/data/cyberstratum --logfile E:/data/cyberstratum/redis.log
+
+"$REDIS_DIR/redis-cli.exe" -p 6379 ping     # -> PONG
+```
+
+---
+
+## Running things
+
+```bash
+# Tests (138 Python tests + 4 Vitest suites)
+.venv/Scripts/python.exe -m pytest -q
+npm test                       # web tests + python tests
+
+# Lint and type check
+npm run lint          # ruff
+npm run typecheck     # mypy + tsc
+
+# API
+.venv/Scripts/python.exe -m uvicorn app.main:app --app-dir apps/api --reload
+
+# RQ worker
+.venv/Scripts/python.exe -m rq worker scans --url redis://127.0.0.1:6379
+
+# Web app
+npm run dev:web       # or: cd apps/web && npm run dev
+```
+
+Database migrations:
+
+```bash
+.venv/Scripts/python.exe -m alembic upgrade head
+```
+
+Full setup, including role and database creation, is in
+[`docs/runbook.md`](docs/runbook.md).
+
+### Use the engine directly
+
+The analysis engine is usable today, without the API:
+
+```python
+from evm_analysis import build_cfg, disassemble, extract_features, load_fork
+
+code = bytes.fromhex("6080604052...")
+table = load_fork("cancun")
+dis = disassemble(code, table)
+cfg = build_cfg(dis)
+feats = extract_features(dis, cfg, ngram_size=3)
+
+print(feats.as_vector())
+print(cfg.unresolved_edges)
+print(dis.warnings)
+```
+
+### Regenerate the opcode table
+
+```bash
+npm run generate:opcodes
+.venv/Scripts/python.exe -m pytest -q
+```
+
+The generator pins `ethereum/execution-specs` at tag **v2.20.0**, merges stack
+effects from `evm-opcodes` and `@ethereumjs/evm`, and **refuses to emit a
+table** if the sources disagree, if a fork loses an opcode relative to its
+predecessor, or if any known opcode lacks a stack effect. The result is a
+committed, diffable artifact at `packages/evm_analysis/data/opcodes.json`.
+
+### Cross-validate against the independent oracle
+
+```bash
+.venv/Scripts/python.exe scripts/crosscheck_evmole.py
+.venv/Scripts/python.exe scripts/validate_real_bytecode.py
+```
+
+Both need network access and are manual tools, not CI tests.
+
+---
+
+## Status
+
+**Honest statement of what exists as of 2026-10-28.**
+
+### Working
+
+| Component | Notes |
+|---|---|
+| **EVM analysis engine** (`packages/evm_analysis`) | Opcode table loader, tokenizer, CBOR metadata detection, basic blocks + CFG, abstract-stack jump resolver, deterministic feature extraction. Complete and unit-tested. |
+| **Vendored fork-aware opcode table** | 14 forks, `frontier` → `prague` (129 → 148 opcodes). Generated from pinned sources, committed, fail-loud validation. |
+| **FastAPI backend** (`apps/api/app`) | `main.py` app factory, three routers (health, scans, findings), Pydantic schemas, service layer, API-key auth, structured logging, error envelope. |
+| **RQ worker** (`apps/api/app/worker.py`) | `enqueue_scan()` + `process_scan_job()`. Drives fetch → disassemble → CFG → features → detectors and writes results to PostgreSQL. |
+| **6 baseline detectors** (`apps/api/app/services/rules.py`) | call-before-state-write, delegatecall, selfdestruct, tx.origin, unresolved jumps, stack underflow. Severity and confidence are separate fields. |
+| **ORM + migrations** | 15 tables, Alembic environment with one initial-schema revision. |
+| **ML baseline package** (`packages/ml_baseline/evm_ml`) | TF-IDF tokenizer, dataset with family-level splits, `SklearnTfidfAdapter`, evaluation, manifest, model card. Offline; **not** wired into the scan pipeline. |
+| **Web app** (`apps/web`) | Next.js 15 App Router, 6 pages, typed API client, 9 UI primitives, 4 Vitest suites. |
+| **Tests** | 138 Python tests across 12 modules, all passing. Plus 4 Vitest suites. |
+| **Local infrastructure** | PostgreSQL 17.11 on 5433 and Redis 8.10.3 on 6379 are installed and working. |
+
+### Known gaps
+
+These are real and are not hidden:
+
+| Gap | Detail |
+|---|---|
+| **The web app cannot authenticate** | `apps/web/src/lib/api.ts` sends no `X-API-Key` header, so every authenticated API call returns `401`. No environment variable currently fixes this — the client needs an API-key mechanism. |
+| **Scan-detail page cannot load findings** | The frontend calls `GET /api/v1/scans/{id}/findings`; the backend has no such route. The page renders its error state. |
+| **Frontend health check 404s** | The frontend reads `/api/v1/health`; the backend serves liveness at `/health` and readiness at `/api/health`. |
+| **No report builder** | The `reports` table, the report generator, and the reviewer-approval gate do not exist. Findings are read from the API instead. |
+| **No finding-status transitions** | `findings.status` exists but nothing updates it, and there is no `PATCH` route. |
+| **ML is not in the pipeline** | `packages/ml_baseline` is standalone. `ENABLE_EXPERIMENTAL_ML` defaults to `false` and no scan attaches an ML score. |
+| **No sandbox runner** | `workers/sandbox_runner/` is empty and `SANDBOX_ENABLED=false`. |
+| **No end-to-end tests** | `tests/e2e/` is empty. There is no Playwright suite. |
+
+### Deliberately out of scope
+
+- **Campaign tracking** — [ADR-0007](docs/adr/0007-campaign-tracking-out-of-mvp-scope.md)
+- **Any airdrop, bounty, or campaign-reward promise or metric** — [ADR-0008](docs/adr/0008-no-airdrop-bounty-or-campaign-promises.md)
+
+### About the ML baseline and the GNN
+
+The ML baseline is **scikit-learn TF-IDF over opcode n-grams** plus the
+deterministic numeric features. It is **built as a standalone package** at
+`packages/ml_baseline/evm_ml` — tokenizer, dataset with family-level splits
+that prevent leakage, the adapter, evaluation, and the model manifest — but it
+is **not yet wired into the scan pipeline**. A scan today produces detector
+findings only; no ML score is attached to any finding.
+
+The **graph neural network is deferred**, not planned-and-scheduled. §6.4 of
+the design document describes it as "a design sketch, not a complete model
+specification" and lists nine things engineering must define before one
+exists. There is no labelled dataset, and no compute budget that does not
+depend on an unverified free tier. The four conditions that would reopen the
+decision are in
+[ADR-0006](docs/adr/0006-scikit-learn-tfidf-baseline-gnn-deferred.md).
+
+Until the §13.3 release gate is satisfied, every model-based result is
+labelled **experimental**, and no model-based result may be called a confirmed
+finding.
+
+---
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [`CyberStratum_Product_Technical_Design_Documentation.md`](CyberStratum_Product_Technical_Design_Documentation.md) | The product and technical specification, with dated correction notes pointing at the governing ADRs |
+| [`docs/adr/`](docs/adr/README.md) | Architecture decision records — the authoritative log of technical decisions |
+| [`docs/architecture.md`](docs/architecture.md) | As-built architecture, data flow, ER diagram, artifact/reproducibility model, fork-aware opcode pipeline |
+| [`docs/product-requirements.md`](docs/product-requirements.md) | Personas, functional and non-functional requirements, severity taxonomy, out-of-scope list, traceability to the design document |
+| [`docs/runbook.md`](docs/runbook.md) | Exact local setup and run commands, migrations, tests, opcode regeneration, troubleshooting table |
+
+### The stack contradiction, and how it was resolved
+
+The design document specified both a Python/FastAPI/SQLAlchemy/Alembic backend
+(§23.1, §23.4) **and** a Node/TypeScript/Prisma/BullMQ backend (§8.1, §8.2,
+§23.3, §25.2, §27, Appendix B). §23.4 explicitly said "Do not use Prisma in the
+Python backend" and "Do not use BullMQ from Python".
+
+The resolution: **Python backend (FastAPI + SQLAlchemy + Alembic + RQ) with a
+Next.js frontend.** The Node/Prisma/BullMQ material was stale and has been
+corrected in place, with a dated correction note on each edited section
+pointing at the governing ADR. The full reasoning is in
+[ADR-0001](docs/adr/0001-python-backend-over-node-prisma.md).
+
+---
+
+## Design decisions
+
+| ADR | Decision |
+|---|---|
+| [0001](docs/adr/0001-python-backend-over-node-prisma.md) | Python backend over Node/TypeScript + Prisma; RQ over BullMQ |
+| [0002](docs/adr/0002-nextjs-frontend.md) | Next.js frontend, a pure HTTP client of the Python API |
+| [0003](docs/adr/0003-no-docker-native-postgres-and-redis.md) | No Docker; native local PostgreSQL 17.11 and Redis 8.10.3 |
+| [0004](docs/adr/0004-custom-vendored-opcode-table.md) | Custom vendored fork-accurate opcode table from execution-specs v2.20.0 |
+| [0005](docs/adr/0005-evmole-as-cross-validation-oracle.md) | `evmole` retained as an independent oracle only |
+| [0006](docs/adr/0006-scikit-learn-tfidf-baseline-gnn-deferred.md) | scikit-learn TF-IDF baseline; GNN deferred |
+| [0007](docs/adr/0007-campaign-tracking-out-of-mvp-scope.md) | Campaign tracking out of MVP scope |
+| [0008](docs/adr/0008-no-airdrop-bounty-or-campaign-promises.md) | No airdrop, bounty, or campaign promises |
+
+---
+
+## License
+
+MIT (see `package.json`).
+
+## Security
+
+Found a vulnerability in a contract you are authorised to analyse? Report it to
+the contract's own security contact. Do not use this tool to exploit live
+systems — dynamic execution is confined to an isolated local environment and
+requires explicit human approval.

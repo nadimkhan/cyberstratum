@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from evm_analysis.disassembler import disassemble
 from evm_analysis.metadata import (
     CborError,

@@ -1,0 +1,220 @@
+"""Bytecode acquisition.
+
+Bytecode is normally fetched from a chain RPC endpoint. No public RPC is
+reachable from every environment, so this module isolates the fetch behind a
+single function that raises :class:`BytecodeUnavailableError` on failure.
+Callers (the worker) translate that into a recorded scan status rather than a
+crash.
+
+Two sources are supported, in order:
+
+1. **User-supplied bytecode** (design doc section 6.1 lists "bytecode uploaded
+   by the user" as a first-class input). When the caller supplies the bytes,
+   no network call is made at all and the source is recorded as ``upload``.
+2. **A chain RPC**, then a **Sourcify** fallback.
+
+The Sourcify fallback matters in practice: it serves the *verified* deployed
+runtime bytecode over plain HTTPS, with no API key, so it works in
+environments where the public RPC hosts are blocked.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from dataclasses import dataclass
+
+import httpx
+
+from app.core.config import get_settings
+from app.core.logging import get_logger
+
+log = get_logger(__name__)
+
+#: Public RPC endpoints tried when ``EVM_RPC_URL`` is not configured.
+DEFAULT_PUBLIC_RPC_URLS: dict[int, str] = {
+    1: "https://eth.llamarpc.com",
+    11155111: "https://rpc.sepolia.org",
+}
+
+#: Sourcify serves verified contracts for these chains.
+SOURCIFY_CHAIN_IDS: frozenset[int] = frozenset(
+    {1, 10, 56, 100, 137, 250, 42161, 43114, 11155111}
+)
+
+#: Base URL of the Sourcify server API.
+SOURCIFY_BASE_URL = "https://sourcify.dev/server/v2"
+
+
+class BytecodeUnavailableError(RuntimeError):
+    """Raised when runtime bytecode could not be retrieved.
+
+    Attributes:
+        code: A stable machine-readable error code stored on the scan.
+    """
+
+    def __init__(self, message: str, code: str = "bytecode_unavailable") -> None:
+        super().__init__(message)
+        self.code = code
+
+
+@dataclass(frozen=True, slots=True)
+class BytecodeArtifact:
+    """Runtime bytecode plus its provenance metadata."""
+
+    code: bytes
+    source: str
+    source_uri: str | None = None
+    address: str | None = None
+
+    @property
+    def sha256(self) -> str:
+        """Hex SHA-256 digest of the bytecode."""
+        return hashlib.sha256(self.code).hexdigest()
+
+    @property
+    def size(self) -> int:
+        """Size of the bytecode in bytes."""
+        return len(self.code)
+
+
+def _rpc_urls(chain_id: int) -> list[str]:
+    settings = get_settings()
+    urls: list[str] = []
+    if settings.evm_rpc_url:
+        urls.append(settings.evm_rpc_url)
+    default = DEFAULT_PUBLIC_RPC_URLS.get(chain_id)
+    if default is not None:
+        urls.append(default)
+    return urls
+
+
+def _eth_get_code(rpc_url: str, address: str, timeout: float) -> bytes | None:
+    """Fetch runtime bytecode over JSON-RPC.
+
+    Returns the bytecode bytes, an empty ``bytes`` when the address has no
+    deployed code, or ``None`` when the endpoint could not be used. The
+    distinction matters: "no code at this address" is a fact about the
+    contract, while ``None`` is a transport failure.
+    """
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "eth_getCode",
+        "params": [address, "latest"],
+    }
+    try:
+        response = httpx.post(rpc_url, json=payload, timeout=timeout)
+        response.raise_for_status()
+        body = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        log.warning("rpc_fetch_failed", rpc_url=rpc_url, error=str(exc))
+        return None
+
+    if not isinstance(body, dict):
+        return None
+    result = body.get("result")
+    if not isinstance(result, str):
+        return None
+    if result == "":
+        return None
+    if result == "0x":
+        # The address holds no deployed code.
+        return b""
+    try:
+        return bytes.fromhex(result[2:] if result.startswith("0x") else result)
+    except ValueError:
+        log.warning("rpc_result_not_hex", rpc_url=rpc_url)
+        return None
+
+
+def _sourcify_code(chain_id: int, address: str, timeout: float) -> bytes | None:
+    """Fetch the verified deployed runtime bytecode from Sourcify.
+
+    Sourcify answers with the on-chain bytecode under
+    ``runtimeBytecode.onchainBytecode``. A contract that is not verified
+    there yields no bytecode.
+    """
+    url = f"{SOURCIFY_BASE_URL}/contract/{chain_id}/{address}?fields=all"
+    try:
+        response = httpx.get(url, timeout=timeout, headers={"Accept": "application/json"})
+        response.raise_for_status()
+        body = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        log.warning("sourcify_fetch_failed", url=url, error=str(exc))
+        return None
+
+    if not isinstance(body, dict):
+        return None
+    runtime = body.get("runtimeBytecode")
+    if not isinstance(runtime, dict):
+        return None
+    code = runtime.get("onchainBytecode")
+    if not isinstance(code, str) or not code:
+        return None
+    if code.startswith(("0x", "0X")):
+        code = code[2:]
+    try:
+        return bytes.fromhex(code)
+    except ValueError:
+        log.warning("sourcify_result_not_hex", url=url)
+        return None
+
+
+def fetch_runtime_bytecode(
+    address: str,
+    chain_id: int = 1,
+    *,
+    timeout: float = 10.0,
+) -> BytecodeArtifact:
+    """Fetch deployed runtime bytecode for ``address``.
+
+    Raises:
+        BytecodeUnavailableError: when no reachable RPC returns code, or the
+            contract has no deployed code.
+    """
+    urls = _rpc_urls(chain_id)
+    if not urls and chain_id not in SOURCIFY_CHAIN_IDS:
+        raise BytecodeUnavailableError(
+            "No RPC endpoint is configured and no default endpoint exists for this chain.",
+            code="rpc_not_configured",
+        )
+
+    for rpc_url in urls:
+        code = _eth_get_code(rpc_url, address, timeout)
+        if code is None:
+            continue
+        if not code:
+            raise BytecodeUnavailableError(
+                "The contract has no deployed code at the requested address.",
+                code="bytecode_empty",
+            )
+        return BytecodeArtifact(code=code, source="rpc", source_uri=rpc_url, address=address)
+
+    if chain_id in SOURCIFY_CHAIN_IDS:
+        code = _sourcify_code(chain_id, address, timeout)
+        if code:
+            return BytecodeArtifact(
+                code=code,
+                source="sourcify",
+                source_uri=f"{SOURCIFY_BASE_URL}/contract/{chain_id}/{address}",
+                address=address,
+            )
+        raise BytecodeUnavailableError(
+            "The contract could not be retrieved from Sourcify; it may not be verified there.",
+            code="sourcify_unavailable",
+        )
+
+    raise BytecodeUnavailableError(
+        "Could not reach any RPC endpoint to retrieve contract bytecode.",
+        code="rpc_unreachable",
+    )
+
+
+__all__ = [
+    "BytecodeArtifact",
+    "BytecodeUnavailableError",
+    "DEFAULT_PUBLIC_RPC_URLS",
+    "SOURCIFY_BASE_URL",
+    "SOURCIFY_CHAIN_IDS",
+    "fetch_runtime_bytecode",
+]

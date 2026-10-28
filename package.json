@@ -9,9 +9,13 @@
   ],
   "scripts": {
     "generate:opcodes": "node scripts/generate_opcodes.mjs",
-    "lint": "ruff check apps workers tests",
-    "typecheck": "mypy apps workers",
-    "test": "pytest"
+    "lint": "ruff check apps packages tests scripts",
+    "typecheck": "mypy apps packages && npm run typecheck --workspace @cyberstratum/web",
+    "test": "npm run test:web && pytest",
+    "test:web": "npm run test --workspace @cyberstratum/web",
+    "build:web": "npm run build --workspace @cyberstratum/web",
+    "dev:web": "npm run dev --workspace @cyberstratum/web",
+    "typecheck:web": "npm run typecheck --workspace @cyberstratum/web"
   },
   "devDependencies": {
     "@ethereumjs/common": "^10.1.3",

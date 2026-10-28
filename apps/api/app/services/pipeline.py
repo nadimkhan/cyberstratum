@@ -1,0 +1,375 @@
+"""The scan pipeline.
+
+Implements design doc section 5.1 stages 3-9:
+
+* intake (hash + store the bytecode artifact),
+* disassembly with the fork-specific opcode table,
+* CFG construction,
+* feature extraction,
+* rule engine execution,
+* result normalisation into findings,
+* terminal scan status.
+
+Every stage is deterministic and versioned; the parser/ruleset versions are
+recorded on the scan row.
+"""
+
+from __future__ import annotations
+
+import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime
+
+from sqlalchemy import delete
+from sqlalchemy.orm import Session
+
+from app.core.logging import get_logger
+from app.db.enums import FindingStatus, ScanJobStatus, ScanStatus
+from app.db.models.scans import (
+    BasicBlock,
+    CfgEdge,
+    FeatureRecord,
+    Finding,
+    Instruction,
+    Scan,
+    ScanArtifact,
+    ScanJob,
+)
+from app.services import storage
+from app.services.bytecode import BytecodeArtifact, BytecodeUnavailableError, fetch_runtime_bytecode
+from app.services.rules import PARSER_VERSION, RULESET_VERSION, RuleFinding, run_rules
+from evm_analysis import (
+    ContractFeatures,
+    ControlFlowGraph,
+    Disassembly,
+    build_cfg,
+    disassemble,
+    extract_features,
+    load_fork,
+)
+
+log = get_logger(__name__)
+
+#: Version of the feature schema recorded on every feature row.
+FEATURE_SCHEMA_VERSION = "1"
+
+
+@dataclass(slots=True)
+class ScanOutcome:
+    """The terminal result of a scan run."""
+
+    scan_id: uuid.UUID
+    status: ScanStatus
+    finding_count: int
+    error_code: str | None = None
+    error_message: str | None = None
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _block_id_for(
+    cfg: ControlFlowGraph, block_ids: dict[int, uuid.UUID], offset: int
+) -> uuid.UUID | None:
+    """Resolve the basic block containing ``offset``, if any."""
+    block = cfg.block_at(offset)
+    if block is None:
+        return None
+    return block_ids.get(block.start)
+
+
+def _persist_graph(
+    session: Session,
+    scan_id: uuid.UUID,
+    disassembly: Disassembly,
+    cfg: ControlFlowGraph,
+    features: ContractFeatures,
+) -> None:
+    """Store instructions, blocks, edges and the feature record for a scan."""
+    session.execute(delete(Instruction).where(Instruction.scan_id == scan_id))
+    session.execute(delete(CfgEdge).where(CfgEdge.scan_id == scan_id))
+    session.execute(delete(BasicBlock).where(BasicBlock.scan_id == scan_id))
+
+    block_ids: dict[int, uuid.UUID] = {}
+    for start, block in cfg.blocks.items():
+        block_id = uuid.uuid4()
+        block_ids[start] = block_id
+        session.add(
+            BasicBlock(
+                id=block_id,
+                scan_id=scan_id,
+                start_offset=block.start,
+                end_offset=block.end,
+                terminator_opcode=block.terminator,
+                is_entry=start == cfg.entry_offset,
+                is_exit=block.terminator in {"RETURN", "REVERT", "STOP", "INVALID", "SELFDESTRUCT"},
+                metadata_json={"instructionCount": block.size, "byteSize": block.byte_size},
+            )
+        )
+
+    for edge in cfg.edges:
+        session.add(
+            CfgEdge(
+                scan_id=scan_id,
+                from_block_id=block_ids[edge.source],
+                to_block_id=block_ids.get(edge.target) if edge.target is not None else None,
+                edge_type=edge.edge_type.value,
+                resolution=edge.resolution.value,
+                evidence_json={"instructionOffset": edge.instruction_offset},
+            )
+        )
+
+    for instr in disassembly.instructions:
+        session.add(
+            Instruction(
+                scan_id=scan_id,
+                byte_offset=instr.offset,
+                opcode_byte=instr.opcode,
+                opcode_name=instr.name,
+                immediate_hex=instr.immediate.hex() if instr.immediate else None,
+                instruction_size=instr.size,
+                block_id=_block_id_for(cfg, block_ids, instr.offset),
+                stack_in=instr.stack_in,
+                stack_out=instr.stack_out,
+            )
+        )
+
+    session.add(
+        FeatureRecord(
+            scan_id=scan_id,
+            feature_schema_version=FEATURE_SCHEMA_VERSION,
+            feature_type="contract_features",
+            feature_json=features.as_vector(),
+        )
+    )
+
+
+def _persist_findings(
+    session: Session, scan: Scan, findings: list[RuleFinding]
+) -> None:
+    """Replace the findings of a scan with the newly produced ones."""
+    session.execute(delete(Finding).where(Finding.scan_id == scan.id))
+    for finding in findings:
+        session.add(
+            Finding(
+                workspace_id=scan.workspace_id,
+                scan_id=scan.id,
+                detector_id=finding.detector_id,
+                detector_version=RULESET_VERSION,
+                category=finding.category,
+                title=finding.title,
+                description=finding.description,
+                severity=finding.severity,
+                confidence=finding.confidence,
+                status=FindingStatus.NEW,
+                evidence_json=finding.evidence,
+                limitations=finding.limitations or None,
+            )
+        )
+
+
+def _store_artifacts(
+    session: Session,
+    scan: Scan,
+    artifact: BytecodeArtifact,
+    disassembly: Disassembly,
+    cfg: ControlFlowGraph,
+    features: ContractFeatures,
+) -> None:
+    """Persist the bytecode, disassembly and feature artifacts for a scan."""
+    prefix = f"scans/{scan.id}"
+    session.execute(delete(ScanArtifact).where(ScanArtifact.scan_id == scan.id))
+
+    code_key = storage.put_bytes(f"{prefix}/bytecode.bin", artifact.code)
+    session.add(
+        ScanArtifact(
+            scan_id=scan.id,
+            kind="bytecode",
+            content_type="application/octet-stream",
+            object_key=code_key,
+            byte_size=len(artifact.code),
+            sha256=artifact.sha256,
+        )
+    )
+
+    disassembly_key = storage.put_json(
+        f"{prefix}/disassembly.json",
+        {
+            "fork": disassembly.fork,
+            "codeSize": disassembly.code_size,
+            "warnings": list(disassembly.warnings),
+            "instructions": [
+                {
+                    "offset": instr.offset,
+                    "opcode": instr.opcode,
+                    "name": instr.name,
+                    "immediateHex": instr.immediate.hex() if instr.immediate else "",
+                    "size": instr.size,
+                    "stackIn": instr.stack_in,
+                    "stackOut": instr.stack_out,
+                }
+                for instr in disassembly.instructions
+            ],
+        },
+    )
+    session.add(
+        ScanArtifact(
+            scan_id=scan.id,
+            kind="disassembly",
+            content_type="application/json",
+            object_key=disassembly_key,
+        )
+    )
+
+    cfg_key = storage.put_json(
+        f"{prefix}/cfg.json",
+        {
+            "entryOffset": cfg.entry_offset,
+            "blocks": [
+                {
+                    "start": block.start,
+                    "end": block.end,
+                    "terminator": block.terminator,
+                    "instructionCount": block.size,
+                }
+                for block in cfg.blocks.values()
+            ],
+            "edges": [
+                {
+                    "source": edge.source,
+                    "target": edge.target,
+                    "edgeType": edge.edge_type.value,
+                    "resolution": edge.resolution.value,
+                    "instructionOffset": edge.instruction_offset,
+                }
+                for edge in cfg.edges
+            ],
+        },
+    )
+    session.add(
+        ScanArtifact(
+            scan_id=scan.id,
+            kind="cfg",
+            content_type="application/json",
+            object_key=cfg_key,
+        )
+    )
+
+    features_key = storage.put_json(f"{prefix}/features.json", features.as_vector())
+    session.add(
+        ScanArtifact(
+            scan_id=scan.id,
+            kind="features",
+            content_type="application/json",
+            object_key=features_key,
+        )
+    )
+
+
+def run_scan(session: Session, scan: Scan) -> ScanOutcome:
+    """Execute the full pipeline for ``scan`` and persist the results.
+
+    The function never raises for expected operational failures (missing RPC,
+    malformed bytecode): it records the status and error on the scan instead.
+    """
+    scan.started_at = _now()
+    scan.status = ScanStatus.FETCHING_BYTECODE
+    session.flush()
+
+    target = scan.target
+    address = target.address or ""
+    chain_id = target.chain.chain_id
+
+    inline = target.inline_bytecode
+    if inline:
+        # The user supplied the bytecode: analyse exactly those bytes and
+        # contact nothing (design doc section 6.1).
+        artifact = BytecodeArtifact(
+            code=inline,
+            source="upload",
+            source_uri=None,
+            address=address or None,
+        )
+    else:
+        try:
+            artifact = fetch_runtime_bytecode(address, chain_id)
+        except BytecodeUnavailableError as exc:
+            scan.status = ScanStatus.FAILED
+            scan.error_code = exc.code
+            scan.error_message_redacted = str(exc)
+            scan.completed_at = _now()
+            log.warning("scan_bytecode_unavailable", scan_id=str(scan.id), code=exc.code)
+            return ScanOutcome(
+                scan_id=scan.id,
+                status=scan.status,
+                finding_count=0,
+                error_code=exc.code,
+                error_message=str(exc),
+            )
+
+    scan.bytecode_source = artifact.source
+    scan.parser_version = PARSER_VERSION
+    scan.ruleset_version = RULESET_VERSION
+    scan.status = ScanStatus.DISASSEMBLING
+    session.flush()
+
+    try:
+        table = load_fork(scan.fork)
+        disassembly = disassemble(artifact.code, table)
+    except Exception as exc:  # noqa: BLE001 - any parser failure is a scan failure
+        scan.status = ScanStatus.FAILED
+        scan.error_code = "disassembly_failed"
+        scan.error_message_redacted = f"Disassembly failed: {exc}"
+        scan.completed_at = _now()
+        log.warning("scan_disassembly_failed", scan_id=str(scan.id), error=str(exc))
+        return ScanOutcome(
+            scan_id=scan.id,
+            status=scan.status,
+            finding_count=0,
+            error_code="disassembly_failed",
+            error_message=str(exc),
+        )
+
+    scan.status = ScanStatus.BUILDING_CFG
+    session.flush()
+    cfg = build_cfg(disassembly)
+
+    scan.status = ScanStatus.EXTRACTING_FEATURES
+    session.flush()
+    features = extract_features(disassembly, cfg)
+
+    scan.status = ScanStatus.RUNNING_DETECTORS
+    session.flush()
+    findings = run_rules(disassembly, cfg, features)
+
+    _store_artifacts(session, scan, artifact, disassembly, cfg, features)
+    _persist_graph(session, scan.id, disassembly, cfg, features)
+    _persist_findings(session, scan, findings)
+
+    partial = bool(disassembly.warnings) or bool(cfg.unresolved_edges)
+    scan.status = ScanStatus.PARTIAL if partial else ScanStatus.COMPLETED
+    scan.completed_at = _now()
+    session.flush()
+
+    return ScanOutcome(
+        scan_id=scan.id,
+        status=scan.status,
+        finding_count=len(findings),
+    )
+
+
+def mark_job(session: Session, job: ScanJob, status: ScanJobStatus, **fields: object) -> None:
+    """Update a scan job row with a new status and optional extra fields."""
+    job.status = status
+    for key, value in fields.items():
+        setattr(job, key, value)
+    session.flush()
+
+
+__all__ = [
+    "FEATURE_SCHEMA_VERSION",
+    "ScanOutcome",
+    "mark_job",
+    "run_scan",
+]
