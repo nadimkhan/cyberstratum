@@ -360,13 +360,41 @@ def process_mythril_job(scan_id: str, job_id: str | None = None) -> dict[str, ob
 
         finding_count = 0
         if result.findings:
-            persist_findings(
-                session,
-                scan,
-                to_rule_findings(result.findings),
-                source="mythril",
-            )
-            finding_count = len(result.findings)
+            try:
+                persist_findings(
+                    session,
+                    scan,
+                    to_rule_findings(result.findings),
+                    source="mythril",
+                )
+                finding_count = len(result.findings)
+            except Exception as exc:  # noqa: BLE001 - never kill the worker
+                # The engine produced a real verdict and the storage layer
+                # refused it. Discarding the verdict silently would be the
+                # worst possible outcome: the contract would look exactly
+                # like one Mythril never examined. The scan is therefore
+                # marked as having produced no verdict, with the reason
+                # spelled out, and the failure is logged with the number of
+                # findings that were lost.
+                log.exception(
+                    "mythril_findings_not_persisted",
+                    scan_id=scan_id,
+                    error=str(exc),
+                    lost_findings=len(result.findings),
+                )
+                scan.mythril_ran = False
+                scan.mythril_skipped = "findings_persist_failed"
+                if job is not None:
+                    job.status = ScanJobStatus.FAILED
+                    job.finished_at = _now()
+                    job.duration_ms = _elapsed_ms(job.started_at)
+                session.flush()
+                return {
+                    "scan_id": scan_id,
+                    "status": "failed",
+                    "skipped": "findings_persist_failed",
+                    "finding_count": 0,
+                }
 
         if job is not None:
             job.status = ScanJobStatus.FINISHED

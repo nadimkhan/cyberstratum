@@ -5,7 +5,7 @@ Update this file after every completed task. Mark the item done, note the commit
 and update the "Remaining" list so the next session knows exactly where to resume.
 
 **Last updated:** 2026-10-29
-**Latest commit:** see `git log -1 --oneline`
+**Latest commit:** `54fced8` — *feat: manual Mythril, correspondence proof service, dataset ingestion, deterministic reports*
 
 ---
 
@@ -67,56 +67,90 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
 - [x] Correspondence proof reproduced natively in WSL — same 807 instructions, same 4/4 opcode-to-source-line mappings. WSL solc `0.4.24` and `0.8.26` installed into the `solc-select` layout so the product's compiler discovery finds them there too (previously WSL had them only in `~/bin`, where discovery could not see them).
 - [x] Two Sourcify traps found and documented — the stored `stdJsonInput` has **no** `outputSelection`, so solc emits no bytecode and the check falsely reports "no match"; and the gate must be metadata-aware executable-code equality, not whole-byte equality.
 
+### Pending-list completion — 2026-10-29 (`54fced8`)
+- [x] **Dataset ingestion machinery** — a separate licence-clean distribution
+      `packages/dataset_ingest` (`evm-dataset` / `evm_dataset`), installed
+      editable. Licence + provenance records, label tiers
+      (`heuristic`/`reviewed`/`unlabelled`, and an unknown label is never a
+      negative), exact + normalised + near-duplicate detection, `family_key`,
+      family-level splits, immutable content-addressed manifests, and a
+      promotion gate that only accepts reviewed labels.
+- [x] **Mythril as a manual action** — out-of-process runner with the exit-code
+      inversion and the creation-vs-runtime false clean handled explicitly; its
+      own queue, worker and systemd unit; a `202`-only API endpoint; a button on
+      the scan detail page; findings persisted with `source="mythril"`; a run
+      that learned nothing records a skip reason and is never presented as clean.
+- [x] **Correspondence proof as a stored service** —
+      `apps/api/app/services/correspondence.py`: Sourcify standard-JSON input,
+      metadata-aware executable-code comparison, source-map expansion. Its own
+      queue, worker and systemd unit, a `202`-only endpoint, a button, and a
+      first-class `correspondence_proofs` table linked to the scan. Four
+      outcomes — `established` / `skipped` / `mismatch` / `unavailable`.
+- [x] **Deterministic PDF reporting** — ReportLab in invariant mode, evidence
+      kinds kept apart, source lines only where correspondence is proven,
+      per-engine verdicts that read as "no verdict" when that is the truth, and a
+      limitations block. Served by the API and proxied through a Next.js server
+      route so the API key stays server-only.
+- [x] **Migration** — `e2f5a1b9c740` adds the Mythril status columns and the
+      `correspondence_proofs` table, and widens `scan_jobs.job_type` from
+      `VARCHAR(12)` to `VARCHAR(14)` because `correspondence` is 14 characters.
+      Round trip proven on the isolated `5433` cluster: upgrade → head →
+      downgrade `-1` → upgrade head again, every step exit `0`.
+- [x] **Two real defects found by proving it live** — see §11.
+
+### Deployment configuration (done earlier, `835ce16`)
+- [x] Netlify config for the Next.js frontend — Next.js runtime, publish `apps/web/.next`.
+- [x] Frontend API base URL is public build config; `API_KEY` stays server-only.
+- [x] VPS deployment script + hardened systemd units for the API and the worker.
+- [x] Alembic migration path verified (`upgrade → downgrade → upgrade`) on WSL.
+- [x] CORS for the Netlify origin — `WEB_BASE_URL` + `CORS_EXTRA_ORIGINS`.
+
 ---
 
 ## 3. Remaining — ordered by priority
 
-### P0 — dataset ingestion (current focus, per decision)
+### P0 — dataset corpus
 - [ ] Ingest SmartBugs Curated (Apache-2.0) as the primary evaluation corpus.
+      **The machinery is done; the fetch and the redistribution terms are not.**
 - [ ] Ingest DeFiHackLabs (Apache-2.0) for exploit PoCs.
 - [ ] Load SWC Registry (MIT) as weakness taxonomy + join key.
 - [ ] Audit Web3Bugs per-repository — `not-yet-determined` labels are NOT negatives.
-- [ ] Record licence + provenance + redistribution terms per dataset.
-- [ ] Label tiers: heuristic / reviewed / unlabelled, kept explicit.
-- [ ] Exact + normalised + near-duplicate detection.
-- [ ] `family_key` assignment; family-level train/val/test splits (no family leakage).
-- [ ] Immutable content-addressed dataset manifests.
-- [ ] Model promotion gates (promotion only from reviewed labels).
+- [x] Record licence + provenance + redistribution terms per dataset.
+- [x] Label tiers: heuristic / reviewed / unlabelled, kept explicit.
+- [x] Exact + normalised + near-duplicate detection.
+- [x] `family_key` assignment; family-level train/val/test splits (no family leakage).
+- [x] Immutable content-addressed dataset manifests.
+- [x] Model promotion gates (promotion only from reviewed labels).
+- [!] The actual corpus fetch is blocked on the redistribution terms — see `docs/PENDING.md` §4.3.
 
-### P0 — Mythril as a manual action
-- [ ] API endpoint to trigger a Mythril run on demand.
-- [ ] RQ job with an explicit long budget and its own queue.
-- [ ] Frontend button on the scan detail page.
-- [ ] Persist Mythril findings with `source=mythril` provenance.
-- [ ] Enforce the no-verdict rule for Mythril (`success`/`error` checked before findings).
-- [ ] Do not map Mythril's exit code to success or failure: exit `1` means issues were found, exit `0` means none were. Read the JSON envelope for the verdict and the exit code only to detect a dead process.
-- [ ] Feed Mythril the **runtime** bytecode, never the creation bytecode, and fail loudly if it was handed creation code. Creation code analysed as runtime returns a silent `issues: []` false clean.
-- [ ] Invoke `~/venvs/mythril/bin/myth`. The `mythril` console script does not exist.
-
-### P1 — deployment topology
-- [x] Netlify config for the Next.js frontend — Next.js runtime, publish `apps/web/.next`. `835ce16`
-- [x] Frontend API base URL is public build config; `API_KEY` stays server-only. `835ce16`
-- [x] VPS deployment script + hardened systemd units for the API and the worker. `835ce16`
-- [x] Alembic migration path verified (`upgrade → downgrade → upgrade`) on WSL. `835ce16`
-- [x] CORS for the Netlify origin — `WEB_BASE_URL` + `CORS_EXTRA_ORIGINS`. `835ce16`
+### P0 — deployment for real
 - [ ] Model artifact serving on the VPS.
-- [ ] Actual Netlify site creation and a real deployment.
-- [ ] Actual VPS provisioning and a real deployment.
+- [ ] Actual Netlify site creation and a real deployment. **Blocked on the account and the public backend URL.**
+- [ ] Actual VPS provisioning and a real deployment. **Blocked on a host and SSH access.**
 
-### P1 — reporting
-- [ ] Deterministic PDF report endpoint (ReportLab, `invariant=True`).
-- [ ] Evidence rendering: source line, bytecode offset, PC, instruction sequence, CFG path, reachability.
-- [ ] Provenance section: tool versions, dataset manifest, model manifest.
-
-### P2 — platform hardening
+### P1 — platform hardening
 - [ ] Multi-tenant enforcement — workspace isolation across every query path.
 - [ ] Google OAuth for humans + hashed API keys for machine clients.
 - [ ] Daily dependency update checks (check only; upgrade through gated CI).
 - [ ] Authorised bug-bounty scope ingestion + safe-harbour rules.
-- [ ] EVM source↔bytecode correspondence service — the pipeline is proven and scripted
-      (`scripts/live_check_correspondence.py`, verified live on both Windows and WSL);
-      it still needs to become a service that stores the correspondence proof
-      alongside a scan and feeds the PDF report.
+- [ ] Store the generated PDF as a scan artifact with its own sha256, so a report
+      can be proven to be the one that was issued.
+
+### P2 — housekeeping
+- [ ] `ruff format` over the whole repository. 44 committed files are still
+      unformatted; `ruff check` and `mypy` are clean, so this is cosmetic, but it
+      wants to be one mechanical pass of its own.
+- [ ] Move the Windows development history (12 scans, 10 scan jobs, 38 findings,
+      3 feed cursors, 1 discovery run) into WSL, and decide what happens to the
+      Windows working copy. Both need the user's decision; neither is urgent.
+
+### Done in the 2026-10-29 round
+- [x] Mythril as a manual action — API, own queue and worker, own systemd unit,
+      frontend button, `source="mythril"` provenance, no-verdict rule enforced.
+- [x] Source↔bytecode correspondence as a stored service — own queue and worker,
+      own systemd unit, frontend button, stored proof, four honest outcomes.
+- [x] Deterministic PDF report endpoint + the Next.js server proxy.
+- [x] Dataset ingestion machinery as its own installable distribution.
 
 ---
 

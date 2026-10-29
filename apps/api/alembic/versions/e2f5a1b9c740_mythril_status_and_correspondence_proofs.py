@@ -24,6 +24,13 @@ every value on the way in. Widening the enum therefore needs a wider column,
 not a rewritten constraint - and "correspondence" is fourteen characters
 where the old longest value, "reproduction", was twelve.
 
+The ``findings.source`` column is the opposite: it *does* carry a database
+CHECK constraint, and it allowed only 'rule', 'slither' and 'ml'. A Mythril
+finding was therefore rejected with a CheckViolation - the engine ran, found
+real issues, and the product discarded them. The constraint is widened to
+include 'mythril'; it is not dropped, so an unknown provenance still cannot
+be written by accident.
+
 Revision ID: e2f5a1b9c740
 Revises: c4a90d1e7b23
 Create Date: 2026-10-29
@@ -52,6 +59,18 @@ _CORRESPONDENCE_STATUSES = ("established", "skipped", "mismatch", "unavailable")
 
 
 def upgrade() -> None:
+    # --- findings may now come from Mythril -------------------------------
+    # The ``findings.source`` CHECK constraint still allowed only 'rule',
+    # 'slither' and 'ml', so a Mythril finding was rejected by the database
+    # with a CheckViolation. The engine ran, produced a verdict and found
+    # real issues, and the product threw them away. The constraint is
+    # widened rather than removed, so an unknown provenance still cannot be
+    # written by accident.
+    op.drop_constraint("source", "findings", type_="check")
+    op.create_check_constraint(
+        "source", "findings", "source IN ('rule', 'slither', 'ml', 'mythril')"
+    )
+
     # --- scan_job_type gains 'mythril' and 'correspondence' ---------------
     # The column is a VARCHAR whose allowed values are enforced by the ORM
     # type rather than by a database CHECK constraint, so the only schema
@@ -149,3 +168,10 @@ def downgrade() -> None:
         existing_nullable=False,
         postgresql_using=f"job_type::varchar({_JOB_TYPE_OLD_LENGTH})",
     )
+
+    # The findings written by Mythril cannot exist in the older schema, so
+    # they go before the CHECK constraint is narrowed back to the three
+    # provenances it allowed.
+    op.execute("DELETE FROM findings WHERE source = 'mythril'")
+    op.drop_constraint("source", "findings", type_="check")
+    op.create_check_constraint("source", "findings", "source IN ('rule', 'slither', 'ml')")
