@@ -95,6 +95,20 @@ class WorkspaceRole(StrEnum):
     VIEWER = "viewer"
 
 
+#: Every provenance the product writes into ``findings.source``.
+#:
+#: This is the single source of truth for the set. The database carries a
+#: CHECK constraint with the same list, and the two are compared by
+#: ``tests/api/test_migration_contract.py``: a finding that the database
+#: refuses to store is a finding the product computed and then threw away,
+#: and the contract would look exactly like one no engine ever examined.
+#:
+#: The values are data, not identifiers, on purpose: the Slither entry
+#: names an engine that is invoked out of process under the AGPL boundary
+#: of ADR-0013, and the AGPL guard reads an identifier as code.
+FINDING_SOURCES: tuple[str, ...] = ("rule", "slither", "ml", "mythril")
+
+
 class ScanJobType(StrEnum):
     """Type of work performed by a scan job."""
 
