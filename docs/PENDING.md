@@ -136,6 +136,7 @@ credentials — §4.
 | 3.5 | Report as a first-class artifact | The generated PDF is stored as a scan artifact with its own sha256, so a report can be proven to be the one that was issued. | `[ ]` |
 | 3.6 | Repository-wide formatting | `ruff format` has never been run over the whole repository: 44 committed files are still unformatted. `ruff check` and `mypy` are clean, so this is cosmetic, but it should be one mechanical pass of its own rather than mixed into a feature commit. | `[ ]` |
 | 3.7 | Windows history migration | The Windows development database holds 12 scans, 10 scan jobs, 38 findings, 3 feed cursors and 1 discovery run. The WSL database has the schema but no rows. Moving the history is a separate decision, and deleting the Windows working copy is another. | `[ ]` needs the user's decision |
+| 3.8 | Migration-vs-model diff over every table | `tests/api/test_migration_contract.py` applies the real migration chain and checks the one constraint that bit us. A general autogenerate diff would catch the next column width, index, or constraint that exists only in a migration and is therefore invisible to the suite. | `[ ]` |
 
 ---
 
@@ -184,8 +185,32 @@ Moved here as it lands. Each entry names the commit and how it was verified.
 | 1.2.1 – 1.2.8 Mythril as a manual action | `54fced8` | Live: the action returns `202` and says only *queued*; the dedicated worker runs the external executable and stores findings with `source="mythril"`. On Windows, where Mythril is not installed, the same path records the honest skip `mythril_not_installed` instead of a clean verdict. |
 | 1.3.1 – 1.3.6 deterministic PDF reporting | `54fced8` | Live: the report endpoint serves a PDF with an `X-Report-SHA256` header; the renderer pins its metadata and uses ReportLab's invariant mode, so identical evidence renders byte-identically. |
 | 1.4.1 – 1.4.4 correspondence as a stored service | `54fced8` | Live: USDC established — `FiatTokenProxy.sol`, solc `0.4.24+commit.e67f0147` — with the proof stored against the scan and readable from the scan detail. |
+| 1.2.7 persisted with provenance | `49e248e`, `e8d6269` | Live in WSL: Mythril ran on the runtime bytecode of a known reentrancy fixture, produced **SWC-105 High** and **SWC-114 Medium**, and both findings are stored with `source="mythril"`. Two database defects stood in the way and both are fixed — see §6.1. |
+| 1.2.7 no-verdict rule for a lost verdict | `49e248e` | When storage refuses a finding, the worker records `findings_persist_failed` with the number of findings lost. A verdict that is computed and then discarded must never read as a clean contract. |
+| Migration contract | `e8d6269`, `c00be88` | `findings.source` is widened by its own revision `f7d9a3c1e5b2` — a revision is never re-run, so editing an applied one would have fixed only fresh databases — and the constraint is dropped by the name it actually has. `tests/api/test_migration_contract.py` applies the real migration chain and compares the result with `FINDING_SOURCES`. |
 | The `scan_jobs.job_type` width fix | `54fced8` | `VARCHAR(12)` could not hold `correspondence` (14 characters). The migration widens it to `VARCHAR(14)` and removes the new job rows before narrowing it again on downgrade. |
 | The artifact storage-root fix | `54fced8` | The root was relative, so the API wrote artifacts in one directory and the workers read from another, and every worker-side artifact read failed as if the file had never been stored. It is now resolved against the repository root, with a regression test that fails if two processes disagree. |
+
+---
+
+### 6.1 Defects found by proving it live (2026-10-29)
+
+The pending work was proved against the real stack, with the real database,
+rather than only in the test suite. Three defects showed up that the suite
+could not see, because the suite builds its schema from `Base.metadata` and
+anything a migration adds on top of that is invisible to it.
+
+| Defect | What happened | Fix |
+|---|---|---|
+| Relative artifact root | The API stored artifacts in one directory and the workers looked in another, so every worker-side artifact read failed as if the file had never been written. | The root resolves against the repository root; `tests/unit/test_storage_root.py`. |
+| `scan_jobs.job_type VARCHAR(12)` | `correspondence` is fourteen characters and did not fit. | Widened to `VARCHAR(14)`; the new job types' rows are removed on downgrade. |
+| `findings.source` CHECK constraint | Mythril found SWC-105 High and SWC-114 Medium and the database refused both rows. The verdict was discarded and the contract looked exactly like one Mythril never examined. | The constraint is widened — not dropped — by its own revision `f7d9a3c1e5b2`; the worker records `findings_persist_failed` when storage refuses a verdict. |
+
+Three lessons came out of it and are now in the code rather than in a
+notebook: a migration is never re-run, so a fix needs its own revision; a
+constraint's name is not a constant, because the naming convention rewrites
+it, so the name is looked up; and the AGPL guard reads an identifier as
+code, so the canonical set of provenances is a tuple of string literals.
 
 ---
 

@@ -5,7 +5,8 @@ Update this file after every completed task. Mark the item done, note the commit
 and update the "Remaining" list so the next session knows exactly where to resume.
 
 **Last updated:** 2026-10-29
-**Latest commit:** `54fced8` — *feat: manual Mythril, correspondence proof service, dataset ingestion, deterministic reports*
+**Latest commit:** `c00be88` — *test: prove the migrated schema accepts every provenance the code writes*
+**Feature commit:** `54fced8` — *feat: manual Mythril, correspondence proof service, dataset ingestion, deterministic reports*
 
 ---
 
@@ -98,6 +99,39 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
       downgrade `-1` → upgrade head again, every step exit `0`.
 - [x] **Two real defects found by proving it live** — see §11.
 
+### Live-proof round — 2026-10-29 (`49e248e`, `e8d6269`, `c00be88`)
+Proving the pending work end to end, rather than only in tests, found three
+defects that the suite could not see. All three are fixed and all three are
+now covered by a test that fails without the fix.
+
+- [x] **Artifact root** — a relative `OBJECT_STORAGE_ROOT` was resolved
+      against each process's working directory, so the API wrote artifacts
+      one place and the workers looked in another. Every worker-side
+      artifact read failed as if the file had never been stored. Now
+      resolved against the repository root; `tests/unit/test_storage_root.py`.
+- [x] **`scan_jobs.job_type VARCHAR(12)`** could not hold `correspondence`,
+      which is fourteen characters. Widened to `VARCHAR(14)`, with the rows
+      that use the new job types removed on downgrade.
+- [x] **`findings.source` CHECK constraint** allowed only `rule`, `slither`
+      and `ml`. Mythril ran, found SWC-105 **High** and SWC-114 **Medium**,
+      and the database refused to store either one. The engine's verdict was
+      discarded and the contract looked exactly like one Mythril never
+      examined. The constraint is widened — not dropped — by its own
+      revision `f7d9a3c1e5b2`, and the worker now records
+      `findings_persist_failed` instead of losing a verdict silently.
+- [x] **The constraint's name is not the same everywhere** — one database
+      has it as `source`, another as `ck_findings_source`, because the
+      project's naming convention rewrites it. The revision looks the name up
+      in `pg_constraint` and drops what is actually there.
+- [x] **A migration is never re-run** — the first attempt edited a revision
+      that had already been applied to the development databases, so the
+      fix would have existed only on a database built from scratch. The
+      change has a revision of its own.
+- [x] **The migration contract is now a test** —
+      `tests/api/test_migration_contract.py` applies the real migration
+      chain to the test database and compares the resulting constraint with
+      the set of provenances the code writes (`FINDING_SOURCES`).
+
 ### Deployment configuration (done earlier, `835ce16`)
 - [x] Netlify config for the Next.js frontend — Next.js runtime, publish `apps/web/.next`.
 - [x] Frontend API base URL is public build config; `API_KEY` stays server-only.
@@ -135,6 +169,10 @@ Frontend → Netlify. Backend, PostgreSQL, Redis/worker, ML model → Linux VPS.
 - [ ] Authorised bug-bounty scope ingestion + safe-harbour rules.
 - [ ] Store the generated PDF as a scan artifact with its own sha256, so a report
       can be proven to be the one that was issued.
+- [ ] A migration-vs-model diff over **every** table. The contract test now
+      covers the one constraint that bit us; a general autogenerate diff
+      would catch the next column width, index, or constraint that exists
+      only in a migration.
 
 ### P2 — housekeeping
 - [ ] `ruff format` over the whole repository. 44 committed files are still
@@ -218,6 +256,9 @@ Commands (from WSL, project root): `npm run dev` · `npm run stop` · `npm run l
 | 19 | ADR-0017 corrected | the gate is metadata-aware, not whole-byte | `61f7bb9` |
 | 20 | Stale-install guard | a shadowing install now fails the suite and `npm run check` | `ecf1fca`, `9c9e0cf` |
 | 21 | Docs | editable-install warning in README + runbook; WSL port clash documented | `9822640` |
+| 22 | Pending-list implementation | manual Mythril, correspondence service, dataset ingestion, deterministic reports | `54fced8` |
+| 23 | Live-proof defects | artifact root, job type width, provenance constraint, constraint naming, own revision | `49e248e`, `e8d6269` |
+| 24 | Migration contract test | the migrated schema must accept every provenance the code writes | `c00be88` |
 
 ---
 
@@ -404,3 +445,81 @@ be run at all, and a check that the three exit codes stay distinct.
   and the WSL CyberStratum cluster on 5433 are both stopped; the unrelated
   Windows PostgreSQL on 5432 is still `RUNNING` and untouched; the WSL
   systemd PostgreSQL and Redis are both `active` and Redis answers `PONG`.
+
+---
+
+## 11. What the live proof found that the tests could not
+
+The suite builds its schema from `Base.metadata`. Everything a migration
+adds on top of that — a CHECK constraint, an index, a column width — is
+invisible to it. The proof below was run against the real stack, with the
+real database, and it found three defects that way. Each one is now
+covered by a test that fails without the fix.
+
+### 11.1 The artifact root was per-process
+
+`OBJECT_STORAGE_ROOT` was relative, so it resolved against each process's
+working directory. The API stored artifacts in one directory and the
+workers looked in another, so every worker-side artifact read failed as if
+the file had never been written. The Mythril job reported
+`bytecode_artifact_missing` while the artifact was sitting in the database
+and on disk. The root is now resolved against the repository root, and
+`tests/unit/test_storage_root.py` checks that the configuration resolves
+the same way from the repository root and from `apps/api`.
+
+### 11.2 A job type that could not be stored
+
+`scan_jobs.job_type` was `VARCHAR(12)`. `correspondence` is fourteen
+characters, so the job type the correspondence worker writes did not fit.
+The column is widened to `VARCHAR(14)`; the rows that use the new job
+types are removed on downgrade, because they cannot exist in the older
+schema.
+
+### 11.3 A verdict the database threw away
+
+`findings.source` carries a CHECK constraint that allowed only `rule`,
+`slither` and `ml`. In WSL, Mythril ran against the runtime bytecode of a
+known reentrancy fixture and produced **SWC-105 High** and **SWC-114
+Medium** — and the database refused both rows with a `CheckViolation`.
+
+This is the worst shape of failure the product has: the engine did its
+work, the work was correct, and the contract then looked exactly like one
+Mythril never examined. The constraint is widened, not dropped: an unknown
+provenance still cannot be written by accident. The worker also records
+`findings_persist_failed`, with the number of findings lost, when storage
+refuses the verdict.
+
+### 11.4 Three lessons that outlive the defects
+
+**A migration is never re-run.** The first fix edited the revision that had
+already been applied to the development databases. The widening would have
+existed only on a database built from scratch, and the environments where
+the failure was actually found would have kept the narrow constraint. The
+change has a revision of its own, `f7d9a3c1e5b2`.
+
+**A constraint's name is not a constant.** One database has it as
+`source` and another as `ck_findings_source`, because the project's naming
+convention (`ck_%(table_name)s_%(constraint_name)s`) rewrites it. A
+migration that drops a constraint by a hard-coded name fails on whichever
+database disagrees, and a migration that fails halfway leaves a schema
+that matches no code at all. The revision looks the name up in
+`pg_constraint` and drops what is actually there.
+
+**The AGPL guard reads identifiers as code.** `FINDING_SOURCES` is a tuple
+of string literals for exactly that reason. An enum member called `SLITHER`
+was flagged by `tests/unit/test_agpl_boundary.py` as Slither being used
+in-process. The guard was right: a mention of an engine inside a string is
+data, and a mention inside an identifier is code.
+
+### 11.5 What the proof now shows
+
+Live in WSL, on the committed code: the scan is created, the manual
+Mythril action returns `202` and says only *queued*, the dedicated worker
+runs the external executable, the job reaches `finished`, the two findings
+are stored with `source="mythril"`, `mythril_ran` is `true` and
+`mythril_skipped` is `null`. The manual correspondence action returns
+`202`, the job finishes, and the outcome is `unavailable` — correct for a
+fixture with no verified source, and deliberately *not* `mismatch`. The
+report endpoint serves a PDF with its `X-Report-SHA256` header. The stack
+stops cleanly afterwards.
+
