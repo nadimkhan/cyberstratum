@@ -272,6 +272,7 @@ uv venv --python 3.12
 uv pip install -e ".[dev]"
 uv pip install -e packages/evm_analysis
 uv pip install -e packages/ml_baseline     # ML baseline package
+uv pip install -e packages/dataset_ingest  # licensing-safe dataset ingestion
 uv pip install "evmole==0.9.4"             # validation oracle only
 
 # 2. Node dependencies (opcode-table generator, web app)

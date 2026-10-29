@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -13,17 +14,32 @@ from app.core.logging import get_logger
 from app.core.security import CurrentPrincipal, SessionDep
 from app.db.enums import ScanJobStatus, ScanJobType, ScanStatus
 from app.db.models.identity import Chain, ContractTarget, Workspace
-from app.db.models.scans import Finding, Scan, ScanJob
-from app.queue.connection import get_queue
+from app.db.models.scans import (
+    CorrespondenceProof,
+    Finding,
+    Scan,
+    ScanArtifact,
+    ScanJob,
+)
+from app.queue.connection import get_correspondence_queue, get_mythril_queue, get_queue
 from app.schemas.findings import FindingListResponse, FindingRead
 from app.schemas.scans import (
+    CorrespondenceProofRead,
+    CorrespondenceRunResponse,
+    MythrilRunResponse,
     ScanAcceptedResponse,
     ScanCreateRequest,
     ScanDetail,
     ScanListResponse,
     ScanSummary,
 )
-from app.worker import enqueue_scan
+from app.services.report import (
+    ReportLabUnavailableError,
+    build_report_data,
+    render_report,
+    report_sha256,
+)
+from app.worker import enqueue_correspondence, enqueue_mythril, enqueue_scan
 
 log = get_logger(__name__)
 
@@ -290,6 +306,16 @@ def get_scan(
     counts = _finding_counts(session, [scan.id]).get(scan.id, {})
     detail.finding_counts = counts
     detail.total_findings = sum(counts.values())
+
+    # The correspondence proof is attached explicitly: it is a first-class
+    # evidence object, not a column on the scan row.
+    proof = session.scalars(
+        select(CorrespondenceProof)
+        .where(CorrespondenceProof.scan_id == scan.id)
+        .order_by(CorrespondenceProof.created_at.desc())
+    ).first()
+    if proof is not None:
+        detail.correspondence = CorrespondenceProofRead.model_validate(proof)
     return detail
 
 
@@ -322,11 +348,7 @@ def list_scan_findings(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Scan {scan_id} not found."
         )
 
-    stmt = (
-        select(Finding)
-        .where(Finding.scan_id == scan_id)
-        .order_by(Finding.created_at.desc())
-    )
+    stmt = select(Finding).where(Finding.scan_id == scan_id).order_by(Finding.created_at.desc())
     count_stmt = select(func.count()).select_from(Finding).where(Finding.scan_id == scan_id)
 
     total = session.scalar(count_stmt) or 0
@@ -336,6 +358,348 @@ def list_scan_findings(
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+def _get_scan_for_principal(
+    session: Session,
+    principal: CurrentPrincipal,
+    scan_id: uuid.UUID,
+) -> Scan:
+    """Return a scan the caller is allowed to see, or raise 404.
+
+    A scan belonging to another workspace is reported as *not found* rather
+    than as forbidden, so the endpoint does not confirm that the id exists.
+    """
+    scan = session.get(Scan, scan_id)
+    if scan is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Scan {scan_id} not found."
+        )
+    workspace_filter = principal.workspace_id
+    if workspace_filter is not None and scan.workspace_id != workspace_filter:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Scan {scan_id} not found."
+        )
+    return scan
+
+
+@router.post(
+    "/{scan_id}/mythril",
+    response_model=MythrilRunResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Queue an on-demand Mythril deep analysis",
+)
+def trigger_mythril(
+    scan_id: uuid.UUID,
+    session: SessionDep,
+    principal: CurrentPrincipal,
+) -> MythrilRunResponse:
+    """Queue an on-demand Mythril deep analysis for one scan.
+
+    Mythril is manual-only. Nothing on this path starts a symbolic
+    execution automatically, and the response says only that the work was
+    *queued*: the verdict does not exist yet. A run that later produces no
+    verdict is recorded as "no verdict" and never as a clean contract.
+    """
+    scan = _get_scan_for_principal(session, principal, scan_id)
+
+    job = ScanJob(
+        scan_id=scan.id,
+        job_type=ScanJobType.MYTHRIL,
+        queue_name=get_mythril_queue().name,
+        status=ScanJobStatus.QUEUED,
+        attempt=0,
+    )
+    session.add(job)
+    session.flush()
+
+    try:
+        rq_job_id = enqueue_mythril(scan.id, job.id)
+    except Exception as exc:  # noqa: BLE001 - queue failure must be reported, not crash
+        log.error("mythril_enqueue_failed", scan_id=str(scan.id), error=str(exc))
+        job.status = ScanJobStatus.FAILED
+        session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The job queue is unavailable. Please retry later.",
+        ) from exc
+
+    job.rq_job_id = rq_job_id
+    session.commit()
+
+    return MythrilRunResponse(
+        scan_id=scan.id,
+        job_id=job.id,
+        status="queued",
+        queue_name=job.queue_name,
+        message=(
+            "Mythril deep analysis queued. It runs out of process on its own "
+            "queue and will not change this scan until it completes."
+        ),
+    )
+
+
+@router.post(
+    "/{scan_id}/correspondence",
+    response_model=CorrespondenceRunResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Queue an on-demand source-to-bytecode correspondence proof",
+)
+def trigger_correspondence(
+    scan_id: uuid.UUID,
+    session: SessionDep,
+    principal: CurrentPrincipal,
+) -> CorrespondenceRunResponse:
+    """Queue an on-demand correspondence proof for one scan.
+
+    The proof recompiles the contract's verified source and compares the
+    result with the deployed runtime, so it is a compiler run rather than a
+    bytecode scan. It is therefore manual-only, and it runs on its own
+    queue with its own budget.
+
+    The response says only that the work was *queued*. No source line may be
+    claimed until a proof with the ``established`` status exists.
+    """
+    scan = _get_scan_for_principal(session, principal, scan_id)
+
+    job = ScanJob(
+        scan_id=scan.id,
+        job_type=ScanJobType.CORRESPONDENCE,
+        queue_name=get_correspondence_queue().name,
+        status=ScanJobStatus.QUEUED,
+        attempt=0,
+    )
+    session.add(job)
+    session.flush()
+
+    try:
+        rq_job_id = enqueue_correspondence(scan.id, job.id)
+    except Exception as exc:  # noqa: BLE001 - queue failure must be reported, not crash
+        log.error("correspondence_enqueue_failed", scan_id=str(scan.id), error=str(exc))
+        job.status = ScanJobStatus.FAILED
+        session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The job queue is unavailable. Please retry later.",
+        ) from exc
+
+    job.rq_job_id = rq_job_id
+    session.commit()
+
+    return CorrespondenceRunResponse(
+        scan_id=scan.id,
+        job_id=job.id,
+        status="queued",
+        queue_name=job.queue_name,
+        message=(
+            "Correspondence proof queued. It recompiles the verified source "
+            "and compares it with the deployed runtime; no source line may be "
+            "claimed until a proof with the 'established' status exists."
+        ),
+    )
+
+
+@router.get(
+    "/{scan_id}/correspondence",
+    response_model=CorrespondenceProofRead,
+    summary="Get the source-to-bytecode correspondence proof",
+)
+def get_correspondence(
+    scan_id: uuid.UUID,
+    session: SessionDep,
+    principal: CurrentPrincipal,
+) -> CorrespondenceProofRead:
+    """Return the stored correspondence proof for one scan.
+
+    A proof is the only thing that licenses the product to print an exact
+    source path and line against a finding. The endpoint distinguishes
+    ``mismatch`` (the source genuinely does not describe the deployed
+    contract) from ``unavailable`` (the check could not be performed), and
+    a missing proof is a 404 - never an implied mismatch.
+    """
+    scan = _get_scan_for_principal(session, principal, scan_id)
+    proof = session.scalars(
+        select(CorrespondenceProof)
+        .where(CorrespondenceProof.scan_id == scan.id)
+        .order_by(CorrespondenceProof.created_at.desc())
+    ).first()
+    if proof is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "No correspondence proof has been recorded for this scan. "
+                "The absence of a proof is not evidence of a mismatch."
+            ),
+        )
+    return CorrespondenceProofRead.model_validate(proof)
+
+
+def _report_engine_rows(
+    scan: Scan,
+    findings: list[Finding],
+) -> list[dict[str, Any]]:
+    """Describe which engines ran on a scan, and which produced no verdict.
+
+    Every engine is listed, including the ones that did not run. A report
+    that silently omits the source engine would be indistinguishable from
+    a report where the source engine found nothing.
+    """
+    counts: dict[str, int] = {}
+    for finding in findings:
+        counts[finding.source] = counts.get(finding.source, 0) + 1
+
+    return [
+        {
+            "name": "bytecode_rules",
+            "ran": True,
+            "finding_count": counts.get("rule", 0),
+            "detail": "Licence-clean bytecode engine; always part of a scan.",
+        },
+        {
+            "name": "source_audit",
+            "ran": bool(scan.source_audited),
+            "finding_count": counts.get("slither", 0),
+            "detail": scan.source_audit_skipped
+            or (
+                "Source engine ran over verified source."
+                if scan.source_audited
+                else "No recorded outcome."
+            ),
+        },
+        {
+            "name": "mythril",
+            "ran": bool(scan.mythril_ran),
+            "finding_count": counts.get("mythril", 0),
+            "detail": scan.mythril_skipped
+            or (
+                "Mythril produced a verdict for this scan."
+                if scan.mythril_ran
+                else "Mythril did not run for this scan."
+            ),
+        },
+        {
+            "name": "ml_model",
+            "ran": bool(scan.model_version),
+            "finding_count": counts.get("ml", 0),
+            "detail": (
+                f"Model {scan.model_version}."
+                if scan.model_version
+                else "No model was applied to this scan."
+            ),
+        },
+    ]
+
+
+@router.get(
+    "/{scan_id}/report.pdf",
+    summary="Download the deterministic PDF report",
+    response_class=Response,
+    responses={
+        200: {"content": {"application/pdf": {}}, "description": "The PDF report."},
+        404: {"description": "The scan does not exist."},
+        503: {"description": "The PDF renderer is unavailable."},
+    },
+)
+def download_report(
+    scan_id: uuid.UUID,
+    session: SessionDep,
+    principal: CurrentPrincipal,
+) -> Response:
+    """Render the scan's PDF report.
+
+    The report is deterministic: the same evidence always renders the same
+    document, byte for byte. The digest of the rendered document is returned
+    in ``X-Report-SHA256`` so a recipient can verify it.
+    """
+    scan = _get_scan_for_principal(session, principal, scan_id)
+
+    findings = session.scalars(select(Finding).where(Finding.scan_id == scan.id)).all()
+    artifacts = session.scalars(select(ScanArtifact).where(ScanArtifact.scan_id == scan.id)).all()
+    proof = session.scalars(
+        select(CorrespondenceProof)
+        .where(CorrespondenceProof.scan_id == scan.id)
+        .order_by(CorrespondenceProof.created_at.desc())
+    ).first()
+
+    target = scan.target
+    chain_id = None
+    contract_address = ""
+    if target is not None:
+        contract_address = target.address or ""
+        chain_id = getattr(target.chain, "chain_id", None)
+
+    correspondence_payload = None
+    if proof is not None:
+        correspondence_payload = {
+            "status": proof.status.value if hasattr(proof.status, "value") else str(proof.status),
+            "compiler": proof.compiler_version or "",
+            "settings": proof.source_path or "",
+            "statement": proof.skipped or "",
+        }
+
+    data = build_report_data(
+        scan_id=str(scan.id),
+        contract_address=contract_address,
+        chain_id=chain_id,
+        fork=scan.fork,
+        scan_status=scan.status.value,
+        findings=[
+            {
+                "detector_id": finding.detector_id,
+                "category": finding.category,
+                "title": finding.title,
+                "description": finding.description,
+                "severity": finding.severity.value
+                if hasattr(finding.severity, "value")
+                else str(finding.severity),
+                "confidence": finding.confidence,
+                "source": finding.source,
+                "evidence": finding.evidence_json,
+                "limitations": finding.limitations,
+                "status": finding.status.value
+                if hasattr(finding.status, "value")
+                else str(finding.status),
+            }
+            for finding in findings
+        ],
+        artifacts=[
+            {
+                "kind": artifact.kind,
+                "object_key": artifact.object_key,
+                "content_type": artifact.content_type,
+                "byte_size": artifact.byte_size,
+                "sha256": artifact.sha256 or "",
+            }
+            for artifact in artifacts
+        ],
+        tool_versions={
+            "parser": scan.parser_version or "",
+            "ruleset": scan.ruleset_version or "",
+            "model": scan.model_version or "",
+        },
+        correspondence=correspondence_payload,
+        source_audited=scan.source_audited,
+        source_audit_skipped=scan.source_audit_skipped,
+        engines=_report_engine_rows(scan, list(findings)),
+    )
+
+    try:
+        pdf_bytes = render_report(data)
+    except ReportLabUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The PDF renderer is not available in this environment.",
+        ) from exc
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (f'attachment; filename="cyberstratum-{scan.id}.pdf"'),
+            "X-Report-SHA256": report_sha256(pdf_bytes),
+            "Cache-Control": "no-store",
+        },
     )
 
 

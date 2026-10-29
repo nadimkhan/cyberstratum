@@ -100,12 +100,32 @@ class ScanJobType(StrEnum):
 
     SCAN = "scan"
     REPRODUCTION = "reproduction"
+    MYTHRIL = "mythril"
+    CORRESPONDENCE = "correspondence"
+
+
+class CorrespondenceStatus(StrEnum):
+    """Outcome of a source-to-bytecode correspondence check.
+
+    The distinction between ``MISMATCH`` and ``UNAVAILABLE`` is the whole
+    point of the enum. A mismatch is a finding: the published source does not
+    describe the deployed contract. An unavailable check is *not* a finding:
+    the compiler hung, crashed, was missing, or emitted something that was
+    not JSON, so the check simply did not run. Collapsing the two would let a
+    tooling failure be reported as evidence against a contract.
+    """
+
+    ESTABLISHED = "established"
+    SKIPPED = "skipped"
+    MISMATCH = "mismatch"
+    UNAVAILABLE = "unavailable"
 
 
 __all__ = [
     "AuthorizationStatus",
     "BytecodeType",
     "ChainEnvironment",
+    "CorrespondenceStatus",
     "FindingStatus",
     "ScanJobStatus",
     "ScanJobType",

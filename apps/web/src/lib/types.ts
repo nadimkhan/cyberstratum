@@ -34,6 +34,70 @@ export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 /** Pipeline stage state. */
 export type StageStatus = "pending" | "running" | "completed" | "failed" | "skipped";
 
+/**
+ * Outcome of a source-to-bytecode correspondence check.
+ *
+ * `mismatch` means the published source genuinely does not describe the
+ * deployed contract. `unavailable` means the check could not be performed at
+ * all - the compiler hung, crashed, was missing, or emitted non-JSON. The
+ * two are kept apart on purpose: a tooling failure must never be reported as
+ * evidence against a contract.
+ */
+export const CORRESPONDENCE_STATUSES = [
+  "established",
+  "skipped",
+  "mismatch",
+  "unavailable",
+] as const;
+export type CorrespondenceStatus = (typeof CORRESPONDENCE_STATUSES)[number];
+
+/**
+ * The stored evidence that a contract's published source compiles to its
+ * deployed bytecode.
+ *
+ * This is the only thing that licenses the product to print an exact source
+ * path and line against a finding. Without one, a finding is bytecode-only.
+ */
+export interface CorrespondenceProof {
+  scanId: string;
+  status: CorrespondenceStatus;
+  /** Why the check did not run, when it did not. */
+  skipped: string | null;
+  compilerVersion: string | null;
+  sourcePath: string | null;
+  runtimeSha256: string | null;
+  executableSha256: string | null;
+  metadataSha256: string | null;
+  runtimeByteSize: number | null;
+  executableByteSize: number | null;
+  instructionCount: number | null;
+  mappedInstructionCount: number | null;
+}
+
+/** The response from requesting an on-demand Mythril deep analysis. */
+export interface MythrilRunRequest {
+  scanId: string;
+  jobId: string | null;
+  status: string;
+  queue: string | null;
+  message: string | null;
+}
+
+/**
+ * The result of asking for an on-demand correspondence proof.
+ *
+ * `status` is `queued` and nothing more. A source line may only be claimed
+ * once a proof with the `established` status exists, so this response never
+ * licenses a source claim.
+ */
+export interface CorrespondenceRunRequest {
+  scanId: string;
+  jobId: string | null;
+  status: string;
+  queue: string | null;
+  message: string | null;
+}
+
 export interface ScanStage {
   key: string;
   label: string;
@@ -118,6 +182,14 @@ export interface ScanSummary {
   sourceAudited: boolean;
   /** Why the source engine did not run, when it did not. */
   sourceAuditSkipped: string | null;
+  /**
+   * Whether the Mythril engine ran for this scan. Mythril is manual-only, so
+   * this is normally false - and a false value means "not run", never
+   * "nothing found".
+   */
+  mythrilRan: boolean;
+  /** Why Mythril did not run, when it did not. */
+  mythrilSkipped: string | null;
   error: string | null;
 }
 
@@ -129,6 +201,8 @@ export interface ScanDetail extends ScanSummary {
   reproducibility: Reproducibility;
   warnings: string[];
   coverage: { resolvedJumps: number | null; unresolvedJumps: number | null } | null;
+  /** The stored source-to-bytecode correspondence proof, when one exists. */
+  correspondence: CorrespondenceProof | null;
 }
 
 export interface Finding {

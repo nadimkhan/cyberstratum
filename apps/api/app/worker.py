@@ -7,33 +7,65 @@ Run with::
 The worker consumes the ``cyberstratum:scans`` queue and executes the scan
 pipeline for each job. Failures are recorded on the scan and job rows rather
 than crashing the worker.
+
+The Mythril queue is served by a *separate* worker, started with::
+
+    python -m app.worker --queues mythril --name cyberstratum-worker-mythril
+
+It is deliberately not served by the ordinary worker: a symbolic-execution
+run can take minutes, and it must never delay an ordinary scan.
 """
 
 from __future__ import annotations
 
+import argparse
 import os
 import sys
 import uuid
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
 from rq import SimpleWorker, Worker
 from rq.worker import BaseWorker
+from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
-from app.db.enums import ScanJobStatus, ScanStatus
-from app.db.models.scans import Scan, ScanJob
+from app.db.enums import CorrespondenceStatus, ScanJobStatus, ScanStatus
+from app.db.models.scans import CorrespondenceProof, Scan, ScanArtifact, ScanJob
 from app.db.session import session_scope
-from app.queue.connection import get_discovery_queue, get_queue, get_redis
+from app.queue.connection import (
+    get_correspondence_queue,
+    get_discovery_queue,
+    get_mythril_queue,
+    get_queue,
+    get_redis,
+)
+from app.services import storage
+from app.services.correspondence import CorrespondenceOutcome, CorrespondenceProver
 from app.services.discovery import DEFAULT_BATCH_SIZE
-from app.services.pipeline import run_scan
+from app.services.mythril import MythrilRunner, to_rule_findings
+from app.services.pipeline import persist_findings, run_scan
 
 log = get_logger(__name__)
 
 #: The name the worker registers itself under in Redis.
 WORKER_NAME = "cyberstratum-worker"
+
+#: The name the dedicated Mythril worker registers itself under in Redis.
+MYTHRIL_WORKER_NAME = "cyberstratum-worker-mythril"
+
+#: The name the dedicated correspondence worker registers itself under.
+CORRESPONDENCE_WORKER_NAME = "cyberstratum-worker-correspondence"
+
+#: The logical queues this platform knows about, and how to resolve them.
+QUEUE_RESOLVERS = {
+    "scans": get_queue,
+    "discovery": get_discovery_queue,
+    "mythril": get_mythril_queue,
+    "correspondence": get_correspondence_queue,
+}
 
 
 class WorkerAlreadyRunningError(RuntimeError):
@@ -137,9 +169,7 @@ def process_discovery_job(
         async with BlockscoutClient() as client:
             with _session_scope() as session:
                 service = DiscoveryService(session, client)
-                outcome = await service.run_cycle(
-                    chain_ids=chain_ids, batch_size=batch_size
-                )
+                outcome = await service.run_cycle(chain_ids=chain_ids, batch_size=batch_size)
                 return {
                     "run_id": str(outcome.run_id),
                     "status": outcome.status,
@@ -191,6 +221,354 @@ def enqueue_scan(scan_id: uuid.UUID, job_id: uuid.UUID | None = None) -> str:
         str(scan_id),
         str(job_id) if job_id is not None else None,
         job_timeout=settings.scan_job_timeout_seconds,
+        result_ttl=3600,
+        failure_ttl=3600,
+    )
+    return rq_job.id
+
+
+def _load_runtime_bytecode(session: Any, scan: Scan) -> bytes | None:
+    """Read back the runtime bytecode the scan actually analysed.
+
+    The stored bytecode artifact is the single source of truth here. Reading
+    it back - rather than re-fetching from a chain or re-deriving it - is
+    what guarantees Mythril sees the same runtime the bytecode engine saw.
+    In particular it guarantees Mythril is never handed creation code, which
+    would produce a silent false clean.
+
+    Args:
+        session: The open database session.
+        scan: The scan whose bytecode should be loaded.
+
+    Returns:
+        The runtime bytecode, or ``None`` when it is not stored or cannot
+        be read.
+    """
+    artifact = session.scalars(
+        select(ScanArtifact)
+        .where(ScanArtifact.scan_id == scan.id, ScanArtifact.kind == "bytecode")
+        .order_by(ScanArtifact.created_at.desc())
+    ).first()
+    if artifact is None:
+        return None
+    try:
+        return storage.get_bytes(artifact.object_key)
+    except Exception as exc:  # noqa: BLE001 - a missing artifact is a skip
+        log.warning(
+            "mythril_bytecode_artifact_unreadable",
+            object_key=artifact.object_key,
+            error=str(exc),
+        )
+        return None
+
+
+def process_mythril_job(scan_id: str, job_id: str | None = None) -> dict[str, object]:
+    """Execute one on-demand Mythril deep analysis.
+
+    Mythril is manual-only: this job is queued only by an explicit human
+    action, on its own queue, with its own budget. It never runs as part of
+    a standard scan.
+
+    Three facts are recorded separately, because collapsing them is how a
+    security product starts to lie:
+
+    * whether Mythril produced a verdict at all,
+    * why it did not, when it did not,
+    * what it found, when it did.
+
+    A Mythril run that learned nothing leaves ``mythril_ran`` false and a
+    reason in ``mythril_skipped``. It is never recorded as a clean contract.
+
+    Args:
+        scan_id: The UUID of the scan to analyse, as a string.
+        job_id: The UUID of the ``scan_jobs`` row to update, as a string.
+
+    Returns:
+        A summary dict describing the outcome.
+    """
+    parsed_scan_id = uuid.UUID(scan_id)
+    parsed_job_id = uuid.UUID(job_id) if job_id else None
+
+    with session_scope() as session:
+        scan = session.get(Scan, parsed_scan_id)
+        if scan is None:
+            log.error("mythril_scan_not_found", scan_id=scan_id)
+            return {"scan_id": scan_id, "status": "not_found", "finding_count": 0}
+
+        job: ScanJob | None = None
+        if parsed_job_id is not None:
+            job = session.get(ScanJob, parsed_job_id)
+            if job is not None:
+                job.status = ScanJobStatus.STARTED
+                job.started_at = _now()
+                job.attempt += 1
+                session.flush()
+
+        bytecode = _load_runtime_bytecode(session, scan)
+        if bytecode is None:
+            scan.mythril_ran = False
+            scan.mythril_skipped = "bytecode_artifact_missing"
+            if job is not None:
+                job.status = ScanJobStatus.FINISHED
+                job.finished_at = _now()
+                job.duration_ms = _elapsed_ms(job.started_at)
+            session.flush()
+            log.warning("mythril_skipped_no_bytecode", scan_id=scan_id)
+            return {
+                "scan_id": scan_id,
+                "status": "no_verdict",
+                "skipped": "bytecode_artifact_missing",
+                "finding_count": 0,
+            }
+
+        target = scan.target
+        contract_name = ""
+        if target is not None:
+            contract_name = target.label or target.address or ""
+
+        settings = get_settings()
+        runner = MythrilRunner(
+            executable=settings.mythril_bin,
+            timeout=settings.mythril_timeout_seconds,
+            solver_timeout_ms=settings.mythril_solver_timeout_ms,
+        )
+
+        try:
+            result = runner.run(bytecode, contract_name=contract_name)
+        except Exception as exc:  # noqa: BLE001 - never kill the worker
+            log.exception("mythril_failed", scan_id=scan_id, error=str(exc))
+            scan.mythril_ran = False
+            scan.mythril_skipped = "engine_error"
+            if job is not None:
+                job.status = ScanJobStatus.FAILED
+                job.finished_at = _now()
+                job.duration_ms = _elapsed_ms(job.started_at)
+            session.flush()
+            return {
+                "scan_id": scan_id,
+                "status": "failed",
+                "skipped": "engine_error",
+                "finding_count": 0,
+            }
+
+        # A verdict means the engine produced an envelope it could stand
+        # behind. Anything else - no output, a crash, an unusable envelope -
+        # is recorded as "no verdict", never as a clean result.
+        produced_verdict = result.ran and result.skipped is None
+        scan.mythril_ran = produced_verdict
+        scan.mythril_skipped = result.skipped
+
+        finding_count = 0
+        if result.findings:
+            persist_findings(
+                session,
+                scan,
+                to_rule_findings(result.findings),
+                source="mythril",
+            )
+            finding_count = len(result.findings)
+
+        if job is not None:
+            job.status = ScanJobStatus.FINISHED
+            job.finished_at = _now()
+            job.duration_ms = _elapsed_ms(job.started_at)
+        session.flush()
+
+        log.info(
+            "mythril_finished",
+            scan_id=scan_id,
+            verdict=produced_verdict,
+            skipped=result.skipped,
+            findings=finding_count,
+        )
+        return {
+            "scan_id": scan_id,
+            "status": "completed" if produced_verdict else "no_verdict",
+            "skipped": result.skipped,
+            "finding_count": finding_count,
+        }
+
+
+def _record_correspondence_proof(
+    session: Any,
+    scan: Scan,
+    outcome: Any,
+) -> None:
+    """Store a correspondence outcome against its scan.
+
+    The proof is stored rather than computed on demand, because the report
+    must be reproducible: a reader has to be able to see the proof that was
+    in force when the report was issued.
+
+    Args:
+        session: The open database session.
+        scan: The scan the proof belongs to.
+        outcome: The :class:`CorrespondenceOutcome` to store.
+    """
+    evidence = outcome.to_evidence()
+    session.add(
+        CorrespondenceProof(
+            scan_id=scan.id,
+            status=outcome.status,
+            skipped=outcome.skipped,
+            compiler_version=outcome.compiler_version,
+            source_path=outcome.source_path,
+            runtime_sha256=outcome.runtime_sha256,
+            executable_sha256=outcome.executable_sha256,
+            metadata_sha256=outcome.metadata_sha256,
+            runtime_byte_size=outcome.runtime_byte_size,
+            executable_byte_size=outcome.executable_byte_size,
+            instruction_count=outcome.instruction_count,
+            mapped_instruction_count=outcome.mapped_instruction_count,
+            proof_json=evidence,
+        )
+    )
+    session.flush()
+
+
+def process_correspondence_job(scan_id: str, job_id: str | None = None) -> dict[str, object]:
+    """Execute one on-demand source-to-bytecode correspondence proof.
+
+    The proof is manual-only, like Mythril: it runs a compiler, so it is
+    queued by an explicit human action and never joins a default scan.
+
+    The outcome is always stored, including the outcomes that prove nothing.
+    A proof that could not be performed is recorded as *unavailable*, which
+    is a tooling fact and never an accusation against the contract.
+
+    Args:
+        scan_id: The UUID of the scan to prove, as a string.
+        job_id: The UUID of the ``scan_jobs`` row to update, as a string.
+
+    Returns:
+        A summary dict describing the outcome.
+    """
+    parsed_scan_id = uuid.UUID(scan_id)
+    parsed_job_id = uuid.UUID(job_id) if job_id else None
+
+    with session_scope() as session:
+        scan = session.get(Scan, parsed_scan_id)
+        if scan is None:
+            log.error("correspondence_scan_not_found", scan_id=scan_id)
+            return {"scan_id": scan_id, "status": "not_found"}
+
+        job: ScanJob | None = None
+        if parsed_job_id is not None:
+            job = session.get(ScanJob, parsed_job_id)
+            if job is not None:
+                job.status = ScanJobStatus.STARTED
+                job.started_at = _now()
+                job.attempt += 1
+                session.flush()
+
+        target = scan.target
+        address = target.address if target is not None else None
+        chain_id = target.chain.chain_id if target is not None else None
+
+        bytecode = _load_runtime_bytecode(session, scan)
+        if bytecode is None or not address or chain_id is None:
+            reason = "bytecode_artifact_missing" if bytecode is None else "contract_target_unknown"
+            outcome = CorrespondenceOutcome(
+                status=CorrespondenceStatus.SKIPPED,
+                skipped=reason,
+                detail="The proof could not run because the runtime or the target is unknown.",
+            )
+            _record_correspondence_proof(session, scan, outcome)
+            if job is not None:
+                job.status = ScanJobStatus.FINISHED
+                job.finished_at = _now()
+                job.duration_ms = _elapsed_ms(job.started_at)
+            session.flush()
+            log.warning("correspondence_skipped", scan_id=scan_id, reason=reason)
+            return {"scan_id": scan_id, "status": outcome.status.value, "skipped": reason}
+
+        settings = get_settings()
+        prover = CorrespondenceProver(
+            timeout_seconds=settings.correspondence_http_timeout_seconds,
+            compile_timeout_seconds=settings.correspondence_compile_timeout_seconds,
+            artifacts_dir=settings.solc_artifacts_dir or None,
+            fork=settings.default_evm_fork,
+        )
+
+        try:
+            outcome = prover.prove(address, str(chain_id), bytecode)
+        except Exception as exc:  # noqa: BLE001 - never kill the worker
+            log.exception("correspondence_failed", scan_id=scan_id, error=str(exc))
+            outcome = CorrespondenceOutcome(
+                status=CorrespondenceStatus.UNAVAILABLE,
+                skipped="prover_error",
+                detail=f"The proof could not be performed: {exc}"[:300],
+            )
+
+        _record_correspondence_proof(session, scan, outcome)
+
+        if job is not None:
+            job.status = ScanJobStatus.FINISHED
+            job.finished_at = _now()
+            job.duration_ms = _elapsed_ms(job.started_at)
+        session.flush()
+
+        log.info(
+            "correspondence_finished",
+            scan_id=scan_id,
+            status=outcome.status.value,
+            skipped=outcome.skipped,
+        )
+        return {
+            "scan_id": scan_id,
+            "status": outcome.status.value,
+            "skipped": outcome.skipped,
+        }
+
+
+def enqueue_correspondence(scan_id: uuid.UUID, job_id: uuid.UUID | None = None) -> str:
+    """Enqueue an on-demand correspondence proof on its own queue.
+
+    The proof recompiles the contract's verified source, which is a compiler
+    run rather than a bytecode scan. It therefore gets a queue and a budget
+    of its own, so a slow recompilation can never delay an ordinary scan.
+
+    Args:
+        scan_id: The scan to prove.
+        job_id: The ``scan_jobs`` row to update when the job runs.
+
+    Returns:
+        The RQ job id.
+    """
+    queue = get_correspondence_queue()
+    settings = get_settings()
+    rq_job = queue.enqueue(
+        process_correspondence_job,
+        str(scan_id),
+        str(job_id) if job_id is not None else None,
+        job_timeout=settings.correspondence_timeout_seconds + 60,
+        result_ttl=3600,
+        failure_ttl=3600,
+    )
+    return rq_job.id
+
+
+def enqueue_mythril(scan_id: uuid.UUID, job_id: uuid.UUID | None = None) -> str:
+    """Enqueue an on-demand Mythril run on the dedicated Mythril queue.
+
+    The Mythril queue is separate from the scan queue on purpose. A
+    symbolic-execution run is expensive, and it must not delay the ordinary
+    scan path or consume the scan worker's budget.
+
+    Args:
+        scan_id: The scan to analyse.
+        job_id: The ``scan_jobs`` row to update when the job runs.
+
+    Returns:
+        The RQ job id.
+    """
+    queue = get_mythril_queue()
+    settings = get_settings()
+    rq_job = queue.enqueue(
+        process_mythril_job,
+        str(scan_id),
+        str(job_id) if job_id is not None else None,
+        job_timeout=settings.mythril_timeout_seconds + 60,
         result_ttl=3600,
         failure_ttl=3600,
     )
@@ -300,33 +678,87 @@ def clear_stale_worker_registrations(
     return cleared
 
 
-def build_worker() -> BaseWorker:
+def build_worker(
+    queue_names: Sequence[str] | None = None,
+    name: str = WORKER_NAME,
+) -> BaseWorker:
     """Create the RQ worker for this platform.
 
     RQ's default worker forks a work horse per job, which is unavailable on
     Windows. ``SimpleWorker`` runs jobs in-process instead, so the same
     entrypoint works on every platform.
+
+    Args:
+        queue_names: The logical queues to listen on. Defaults to the
+            ordinary scan and discovery queues. The Mythril queue is *not*
+            included by default: it gets its own worker so a deep analysis
+            cannot delay an ordinary scan.
+        name: The name the worker registers itself under in Redis.
+
+    Returns:
+        The worker.
+
+    Raises:
+        ValueError: If an unknown logical queue name is given.
     """
-    queues = [get_queue(), get_discovery_queue()]
+    if queue_names is None:
+        queue_names = ("scans", "discovery")
+    queues = []
+    for queue_name in queue_names:
+        resolver = QUEUE_RESOLVERS.get(queue_name)
+        if resolver is None:
+            raise ValueError(
+                f"unknown queue {queue_name!r}; expected one of {sorted(QUEUE_RESOLVERS)}"
+            )
+        queues.append(resolver())
     connection = get_redis()
     if hasattr(os, "fork"):
-        return Worker(queues, connection=connection, name=WORKER_NAME)
-    return SimpleWorker(queues, connection=connection, name=WORKER_NAME)
+        return Worker(queues, connection=connection, name=name)
+    return SimpleWorker(queues, connection=connection, name=name)
+
+
+def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    """Parse the worker's command line."""
+    parser = argparse.ArgumentParser(description="CyberStratum RQ worker.")
+    parser.add_argument(
+        "--queues",
+        default="scans,discovery",
+        help=("Comma-separated logical queues to listen on. One of: scans, discovery, mythril."),
+    )
+    parser.add_argument(
+        "--name",
+        default=WORKER_NAME,
+        help="The name the worker registers itself under in Redis.",
+    )
+    return parser.parse_args(list(argv) if argv is not None else None)
 
 
 def main() -> int:
     """Run the worker until interrupted."""
     configure_logging()
-    queue = get_queue()
+    args = _parse_args()
+    queue_names = [part.strip() for part in str(args.queues).split(",") if part.strip()]
+    if not queue_names:
+        log.error("worker_no_queues")
+        return 2
+    worker_name = str(args.name)
     try:
-        cleared = clear_stale_worker_registrations()
+        cleared = clear_stale_worker_registrations(name=worker_name)
     except WorkerAlreadyRunningError as exc:
         log.error("worker_already_running", detail=str(exc))
         return 1
     if cleared:
         log.warning("stale_worker_registrations_cleared", count=len(cleared))
-    log.info("worker_starting", queue=queue.name)
-    worker = build_worker()
+    try:
+        worker = build_worker(queue_names, name=worker_name)
+    except ValueError as exc:
+        log.error("worker_bad_queue", detail=str(exc))
+        return 2
+    log.info(
+        "worker_starting",
+        queues=[queue.name for queue in worker.queues],
+        name=worker_name,
+    )
     try:
         worker.work(with_scheduler=False)
     except KeyboardInterrupt:  # pragma: no cover - interactive shutdown

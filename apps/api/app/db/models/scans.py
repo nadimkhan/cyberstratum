@@ -26,6 +26,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, created_at_column, enum_column, updated_at_column, uuid_pk
 from app.db.enums import (
+    CorrespondenceStatus,
     FindingStatus,
     ScanJobStatus,
     ScanJobType,
@@ -81,19 +82,36 @@ class Scan(Base):
             "'compilation_failed', and so on."
         ),
     )
+    mythril_ran: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        doc="Whether the Mythril engine actually ran for this scan.",
+    )
+    mythril_skipped: Mapped[str | None] = mapped_column(
+        String(64),
+        doc=(
+            "Why Mythril did not run, when it did not: "
+            "'mythril_not_installed', 'creation_bytecode_supplied', "
+            "'no_runtime_bytecode', 'no_verdict', 'timeout', and so on. "
+            "A Mythril run that produced no verdict is recorded here and is "
+            "never treated as a clean result."
+        ),
+    )
     error_code: Mapped[str | None] = mapped_column(String(64))
     error_message_redacted: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 
     target: Mapped[ContractTarget] = relationship(back_populates="scans")
-    jobs: Mapped[list[ScanJob]] = relationship(
-        back_populates="scan", cascade="all, delete-orphan"
-    )
+    jobs: Mapped[list[ScanJob]] = relationship(back_populates="scan", cascade="all, delete-orphan")
     findings: Mapped[list[Finding]] = relationship(
         back_populates="scan", cascade="all, delete-orphan"
     )
     artifacts: Mapped[list[ScanArtifact]] = relationship(
+        back_populates="scan", cascade="all, delete-orphan"
+    )
+    correspondence_proofs: Mapped[list[CorrespondenceProof]] = relationship(
         back_populates="scan", cascade="all, delete-orphan"
     )
 
@@ -283,7 +301,8 @@ class Finding(Base):
         index=True,
         doc=(
             "Which engine produced this finding: 'rule' for the bytecode "
-            "rules, 'slither' for the source engine, 'ml' for the model."
+            "rules, 'slither' for the source engine, 'ml' for the model, "
+            "'mythril' for the on-demand symbolic-execution engine."
         ),
     )
     category: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
@@ -310,9 +329,59 @@ class Finding(Base):
     scan: Mapped[Scan] = relationship(back_populates="findings")
 
 
+class CorrespondenceProof(Base):
+    """A stored source-to-bytecode correspondence proof for one scan.
+
+    A proof is the *only* thing that licenses the product to print an exact
+    source path and line against a finding. Without one, a finding is
+    bytecode-only and the report must say so.
+
+    The ``status`` column deliberately separates ``MISMATCH`` from
+    ``UNAVAILABLE``. A mismatch means the published source genuinely does not
+    describe the deployed contract. ``UNAVAILABLE`` means the check could not
+    be performed at all - the compiler hung, crashed, was missing, or emitted
+    something that was not JSON. Reporting a tooling failure as a
+    correspondence failure would be a false accusation against a contract.
+    """
+
+    __tablename__ = "correspondence_proofs"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    scan_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("scans.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    status: Mapped[CorrespondenceStatus] = mapped_column(
+        enum_column(CorrespondenceStatus, "correspondence_status"),
+        nullable=False,
+        default=CorrespondenceStatus.SKIPPED,
+        index=True,
+    )
+    skipped: Mapped[str | None] = mapped_column(
+        String(64),
+        doc="Why the check did not run, when it did not.",
+    )
+    compiler_version: Mapped[str | None] = mapped_column(String(64))
+    source_path: Mapped[str | None] = mapped_column(String(512))
+    runtime_sha256: Mapped[str | None] = mapped_column(String(64))
+    executable_sha256: Mapped[str | None] = mapped_column(String(64))
+    metadata_sha256: Mapped[str | None] = mapped_column(String(64))
+    runtime_byte_size: Mapped[int | None] = mapped_column(Integer)
+    executable_byte_size: Mapped[int | None] = mapped_column(Integer)
+    instruction_count: Mapped[int | None] = mapped_column(Integer)
+    mapped_instruction_count: Mapped[int | None] = mapped_column(Integer)
+    proof_json: Mapped[dict[str, object] | None] = mapped_column(
+        JSONB,
+        doc="The full proof payload, including the PC-to-line instruction map.",
+    )
+    created_at: Mapped[datetime] = created_at_column()
+
+    scan: Mapped[Scan] = relationship(back_populates="correspondence_proofs")
+
+
 __all__ = [
     "BasicBlock",
     "CfgEdge",
+    "CorrespondenceProof",
     "FeatureRecord",
     "Finding",
     "Instruction",

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
+
 from evm_ml.dataset import (
     Dataset,
     Sample,
@@ -19,9 +20,7 @@ FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "dataset_smoke.json
 
 def _write(tmp_path: Path, lines: list[dict]) -> Path:
     path = tmp_path / "dataset.jsonl"
-    path.write_text(
-        "\n".join(json.dumps(line) for line in lines) + "\n", encoding="utf-8"
-    )
+    path.write_text("\n".join(json.dumps(line) for line in lines) + "\n", encoding="utf-8")
     return path
 
 

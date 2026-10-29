@@ -101,6 +101,9 @@ uv pip install -e packages/evm_analysis
 # Install the ML baseline package (separate distribution) in editable mode.
 uv pip install -e packages/ml_baseline
 
+# Install the dataset ingestion package (separate distribution) in editable mode.
+uv pip install -e packages/dataset_ingest
+
 # Install the oracle used only for cross-validation (not a runtime dependency).
 uv pip install "evmole==0.9.4"
 ```

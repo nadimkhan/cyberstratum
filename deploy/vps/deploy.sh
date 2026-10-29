@@ -18,7 +18,8 @@
 #   2. installs Python dependencies into /opt/cyberstratum/app/.venv
 #   3. installs the systemd units
 #   4. runs the database migrations
-#   5. enables and starts the API and the worker
+#   5. enables and starts the API, the scan worker, the Mythril worker and
+#      the correspondence worker
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/cyberstratum/app}"
@@ -69,7 +70,8 @@ if command -v uv >/dev/null 2>&1; then
 else
   python3 -m venv .venv
   .venv/bin/pip install --upgrade pip
-  .venv/bin/pip install -e . -e packages/evm_analysis -e packages/ml_baseline
+  .venv/bin/pip install -e . -e packages/evm_analysis -e packages/ml_baseline \
+    -e packages/dataset_ingest
   .venv/bin/pip install ".[dev,ml]" "reportlab==5.1.0"
 fi
 chown -R "$SERVICE_USER":"$SERVICE_USER" "$APP_DIR"
@@ -77,6 +79,8 @@ chown -R "$SERVICE_USER":"$SERVICE_USER" "$APP_DIR"
 log "3. systemd units"
 install -m 644 "$APP_DIR/deploy/systemd/cyberstratum-api.service" /etc/systemd/system/
 install -m 644 "$APP_DIR/deploy/systemd/cyberstratum-worker.service" /etc/systemd/system/
+install -m 644 "$APP_DIR/deploy/systemd/cyberstratum-worker-mythril.service" /etc/systemd/system/
+install -m 644 "$APP_DIR/deploy/systemd/cyberstratum-worker-correspondence.service" /etc/systemd/system/
 systemctl daemon-reload
 
 log "4. database migrations"
@@ -86,10 +90,16 @@ sudo -u "$SERVICE_USER" env $(grep -v '^#' "$ENV_FILE" | grep -v '^$' | xargs) \
   "$APP_DIR/.venv/bin/python" -m alembic -c "$APP_DIR/alembic.ini" upgrade head
 
 log "5. start services"
-systemctl enable cyberstratum-api cyberstratum-worker
-systemctl restart cyberstratum-api cyberstratum-worker
+# The Mythril and correspondence workers are separate units: a symbolic
+# execution run and a recompilation both need a budget of their own, so
+# neither may delay an ordinary scan.
+systemctl enable cyberstratum-api cyberstratum-worker \
+  cyberstratum-worker-mythril cyberstratum-worker-correspondence
+systemctl restart cyberstratum-api cyberstratum-worker \
+  cyberstratum-worker-mythril cyberstratum-worker-correspondence
 sleep 3
-systemctl --no-pager --lines=20 status cyberstratum-api cyberstratum-worker || true
+systemctl --no-pager --lines=20 status cyberstratum-api cyberstratum-worker \
+  cyberstratum-worker-mythril cyberstratum-worker-correspondence || true
 
 echo
 echo "=== DEPLOY DONE ==="

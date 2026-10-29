@@ -56,6 +56,31 @@ class Settings(BaseSettings):
     scan_queue_name: str = Field(default="scans", alias="SCAN_QUEUE_NAME")
     discovery_queue_name: str = Field(default="discovery", alias="DISCOVERY_QUEUE_NAME")
     sandbox_queue_name: str = Field(default="sandbox", alias="SANDBOX_QUEUE_NAME")
+    mythril_queue_name: str = Field(default="mythril", alias="MYTHRIL_QUEUE_NAME")
+    correspondence_queue_name: str = Field(
+        default="correspondence", alias="CORRESPONDENCE_QUEUE_NAME"
+    )
+
+    # --- Mythril (manual, on-demand) -------------------------------------
+    # Mythril runs out of process, outside this application's Python
+    # environment, and only when a human asks for it. It is deliberately on
+    # its own queue with its own generous budget: a default scan must never
+    # inherit Mythril's runtime cost.
+    mythril_bin: str = Field(default="myth", alias="MYTHRIL_BIN")
+    mythril_timeout_seconds: int = Field(default=300, alias="MYTHRIL_TIMEOUT_SECONDS")
+    mythril_solver_timeout_ms: int = Field(default=60000, alias="MYTHRIL_SOLVER_TIMEOUT_MS")
+
+    # --- Source/bytecode correspondence (manual, on-demand) --------------
+    # The proof recompiles a contract's verified source and compares the
+    # result with the deployed runtime. That is a compiler run, so it gets
+    # its own queue and its own budget rather than delaying a scan.
+    correspondence_timeout_seconds: int = Field(default=900, alias="CORRESPONDENCE_TIMEOUT_SECONDS")
+    correspondence_compile_timeout_seconds: int = Field(
+        default=600, alias="CORRESPONDENCE_COMPILE_TIMEOUT_SECONDS"
+    )
+    correspondence_http_timeout_seconds: int = Field(
+        default=60, alias="CORRESPONDENCE_HTTP_TIMEOUT_SECONDS"
+    )
 
     # --- Auth ------------------------------------------------------------
     auth_secret: str = Field(default="dev-only-change-me", alias="AUTH_SECRET")
@@ -70,6 +95,23 @@ class Settings(BaseSettings):
         default=REPO_ROOT / "var" / "artifacts", alias="OBJECT_STORAGE_ROOT"
     )
     signed_url_ttl_seconds: int = Field(default=300, alias="SIGNED_URL_TTL_SECONDS")
+
+    @field_validator("object_storage_root")
+    @classmethod
+    def _resolve_storage_root(cls, value: Path) -> Path:
+        """Resolve a relative artifact root against the repository root.
+
+        The API, the scan worker and the deep-analysis workers do not all
+        run from the same working directory. A relative root therefore
+        points at a different directory for each of them: the pipeline
+        writes artifacts into one place and the workers look for them in
+        another, and every artifact lookup then fails as if the file had
+        never been stored. Resolving the path once, against the repository
+        root, makes every process agree on where the artifacts live.
+        """
+        if value.is_absolute():
+            return value
+        return (REPO_ROOT / value).resolve()
 
     # --- EVM / chain -----------------------------------------------------
     evm_chain_id: int = Field(default=1, alias="EVM_CHAIN_ID")
@@ -118,9 +160,21 @@ class Settings(BaseSettings):
     @classmethod
     def _validate_fork(cls, v: str) -> str:
         allowed = {
-            "frontier", "homestead", "tangerine_whistle", "spurious_dragon",
-            "byzantium", "constantinople", "petersburg", "istanbul", "berlin",
-            "london", "paris", "shanghai", "cancun", "prague", "osaka",
+            "frontier",
+            "homestead",
+            "tangerine_whistle",
+            "spurious_dragon",
+            "byzantium",
+            "constantinople",
+            "petersburg",
+            "istanbul",
+            "berlin",
+            "london",
+            "paris",
+            "shanghai",
+            "cancun",
+            "prague",
+            "osaka",
         }
         if v.lower() not in allowed:
             raise ValueError(f"DEFAULT_EVM_FORK must be one of {sorted(allowed)}, got {v!r}")

@@ -1,0 +1,29 @@
+[Unit]
+Description=CyberStratum RQ worker (source-to-bytecode correspondence proofs, manual-only)
+Documentation=https://github.com/nadimkhan/cyberstratum
+After=network-online.target cyberstratum-api.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=cyberstratum
+Group=cyberstratum
+WorkingDirectory=/opt/cyberstratum/app
+EnvironmentFile=/etc/cyberstratum/app.env
+# The correspondence queue is served by its own worker so that a proof -
+# which recompiles the verified source and needs a compiler and its own
+# budget - never delays an ordinary scan. The worker is named explicitly so
+# it registers under a name of its own in Redis.
+ExecStart=/opt/cyberstratum/app/.venv/bin/python -m app.worker --queues correspondence --name cyberstratum-worker-correspondence
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/cyberstratum
+StandardOutput=append:/var/log/cyberstratum/worker-correspondence.log
+StandardError=append:/var/log/cyberstratum/worker-correspondence.err
+
+[Install]
+WantedBy=multi-user.target

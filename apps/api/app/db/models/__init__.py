@@ -23,6 +23,7 @@ from app.db.models.identity import (
 from app.db.models.scans import (
     BasicBlock,
     CfgEdge,
+    CorrespondenceProof,
     FeatureRecord,
     Finding,
     Instruction,
@@ -38,6 +39,7 @@ __all__ = [
     "CfgEdge",
     "Chain",
     "ContractTarget",
+    "CorrespondenceProof",
     "DiscoveryRun",
     "FeatureRecord",
     "FeedCursor",

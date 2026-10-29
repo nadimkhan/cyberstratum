@@ -1,0 +1,28 @@
+[Unit]
+Description=CyberStratum RQ worker (Mythril deep analysis, manual-only)
+Documentation=https://github.com/nadimkhan/cyberstratum
+After=network-online.target cyberstratum-api.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=cyberstratum
+Group=cyberstratum
+WorkingDirectory=/opt/cyberstratum/app
+EnvironmentFile=/etc/cyberstratum/app.env
+# The Mythril queue is served by its own worker so that a symbolic-execution
+# run - which can take minutes - never delays an ordinary scan. The worker
+# is named explicitly so it registers under a name of its own in Redis.
+ExecStart=/opt/cyberstratum/app/.venv/bin/python -m app.worker --queues mythril --name cyberstratum-worker-mythril
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/cyberstratum
+StandardOutput=append:/var/log/cyberstratum/worker-mythril.log
+StandardError=append:/var/log/cyberstratum/worker-mythril.err
+
+[Install]
+WantedBy=multi-user.target

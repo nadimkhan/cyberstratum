@@ -3,11 +3,19 @@ import { notFound } from "next/navigation";
 import { ApiUnreachable } from "@/components/ApiUnreachable";
 import { EmptyState } from "@/components/EmptyState";
 import { FindingTable } from "@/components/FindingTable";
+import { MythrilRunButton } from "@/components/MythrilRunButton";
+import { CorrespondenceRunButton } from "@/components/CorrespondenceRunButton";
 import { RiskScoreGauge } from "@/components/RiskScoreGauge";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { StageTimeline } from "@/components/StageTimeline";
-import { API_BASE_URL, describeApiError, getScan, getScanFindings } from "@/lib/api";
+import {
+  API_BASE_URL,
+  describeApiError,
+  getScan,
+  getScanFindings,
+  scanReportUrl,
+} from "@/lib/api";
 import {
   formatBytes,
   formatChainId,
@@ -18,7 +26,7 @@ import {
   shortHash,
 } from "@/lib/format";
 import { estimateRiskScore } from "@/lib/severity";
-import { SEVERITY_ORDER } from "@/lib/types";
+import { SEVERITY_ORDER, type CorrespondenceProof } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -234,6 +242,50 @@ export default async function ScanDetailPage({
         </div>
       </section>
 
+      <section aria-labelledby="deep-heading" className="space-y-3">
+        <h2 id="deep-heading" className="text-lg font-semibold text-[var(--cs-fg)]">
+          Deep analysis &amp; report
+        </h2>
+        <div className="space-y-4 rounded-lg border border-[var(--cs-border)] bg-[var(--cs-surface)] p-4">
+          <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            <Detail
+              label="Mythril"
+              value={
+                scan.mythrilRan
+                  ? "ran (manual deep analysis)"
+                  : scan.mythrilSkipped
+                    ? `not run (${scan.mythrilSkipped})`
+                    : "not run"
+              }
+            />
+            <Detail
+              label="Source-to-bytecode correspondence"
+              value={describeCorrespondence(scan.correspondence)}
+            />
+          </dl>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <MythrilRunButton scanId={scan.id} />
+            <CorrespondenceRunButton scanId={scan.id} />
+            <a
+              href={scanReportUrl(scan.id)}
+              className="rounded-md border border-[var(--cs-border)] bg-[var(--cs-raised)] px-3 py-1.5 text-sm text-[var(--cs-fg)] underline decoration-dotted underline-offset-2 transition hover:border-[var(--cs-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
+            >
+              Download PDF report
+            </a>
+          </div>
+
+          <p className="text-xs text-[var(--cs-muted)]">
+            Mythril is manual-only: it runs out of process, on its own queue, and
+            never as part of a standard scan. The correspondence proof is
+            manual-only for the same reason - it recompiles the verified source.
+            The PDF report is deterministic - the same evidence always renders
+            the same document - and it lists which engines produced a verdict and
+            which produced none.
+          </p>
+        </div>
+      </section>
+
       <section aria-labelledby="artifacts-heading" className="space-y-3">
         <h2 id="artifacts-heading" className="text-lg font-semibold text-[var(--cs-fg)]">
           Artifacts
@@ -303,4 +355,27 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
       <dd className="mt-0.5 text-sm text-[var(--cs-fg)]">{value}</dd>
     </div>
   );
+}
+
+/**
+ * Describe the correspondence proof in one line.
+ *
+ * The wording is deliberately careful. "Not established" is not "failed" -
+ * a proof that was never attempted says nothing about whether the source
+ * matches. And "unavailable" is explicitly a tooling outcome, never an
+ * accusation against the contract.
+ */
+function describeCorrespondence(proof: CorrespondenceProof | null): string {
+  if (!proof) return "not established";
+  switch (proof.status) {
+    case "established":
+      return `established (${proof.sourcePath ?? "verified source"} · ${proof.compilerVersion ?? "compiler not recorded"})`;
+    case "mismatch":
+      return "mismatch — the published source does not match the deployed bytecode";
+    case "unavailable":
+      return `unavailable — the check could not be performed${proof.skipped ? ` (${proof.skipped})` : ""}`;
+    case "skipped":
+    default:
+      return `not established${proof.skipped ? ` (${proof.skipped})` : ""}`;
+  }
 }

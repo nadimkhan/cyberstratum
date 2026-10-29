@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 import pytest
+
 from evm_ml import (
     ArtifactManifest,
     FeatureBuilder,

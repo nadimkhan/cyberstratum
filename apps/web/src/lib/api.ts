@@ -4,10 +4,15 @@ import {
   toSeverity,
 } from "./severity";
 import { toReviewStatus, toScanStatus, toStageStatus } from "./status";
+import { CORRESPONDENCE_STATUSES } from "./types";
 import type {
   Artifact,
+  CorrespondenceProof,
+  CorrespondenceRunRequest,
+  CorrespondenceStatus,
   CreatedScan,
   Finding,
+  MythrilRunRequest,
   Reproducibility,
   ScanDetail,
   ScanJobInfo,
@@ -29,6 +34,9 @@ import type {
  *   GET  /api/v1/scans              paginated scan summaries
  *   GET  /api/v1/scans/{id}         scan detail (jobs, artifacts, findings)
  *   POST /api/v1/scans              queue a scan
+ *   POST /api/v1/scans/{id}/mythril queue an on-demand Mythril deep analysis
+ *   GET  /api/v1/scans/{id}/correspondence  stored source-to-bytecode proof
+ *   GET  /api/v1/scans/{id}/report.pdf     the deterministic PDF report
  *   GET  /api/v1/findings           paginated findings, filterable
  *   GET  /api/v1/findings/summary   severity / status breakdown
  *
@@ -65,6 +73,13 @@ export type ApiResult<T> =
   | { ok: false; error: ApiError };
 
 const REQUEST_TIMEOUT_MS = 8000;
+
+/**
+ * The report endpoint assembles a PDF from stored evidence and its
+ * provenance, so it gets a longer budget than an ordinary JSON call. It is
+ * still a bounded wait: an unresponsive backend must not hang the page.
+ */
+const REPORT_TIMEOUT_MS = 30000;
 
 async function request<T>(
   path: string,
@@ -631,6 +646,9 @@ function normaliseScanSummary(value: unknown): ScanSummary {
       "source_audit_skipped",
       "sourceAuditSkipped",
     ]),
+    // A Mythril run that did not happen is "not run", never "nothing found".
+    mythrilRan: pickBoolean(record, ["mythril_ran", "mythrilRan"]) ?? false,
+    mythrilSkipped: pickString(record, ["mythril_skipped", "mythrilSkipped"]),
     error:
       pickString(record, [
         "error_message_redacted",
@@ -952,7 +970,230 @@ function normaliseScanDetail(value: unknown): ScanDetail {
       )
       .filter((warning): warning is string => typeof warning === "string"),
     coverage: coverageValue,
+    correspondence: normaliseCorrespondence(
+      pickRecord(record, ["correspondence", "correspondence_proof"]),
+      summary.id,
+    ),
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Correspondence proof                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Normalise a correspondence proof.
+ *
+ * A missing proof is `null`, not a fabricated one. A proof whose status the
+ * backend did not report defaults to "skipped" - the honest reading of "the
+ * check did not run", and never "mismatch", which would be an accusation.
+ */
+function normaliseCorrespondence(
+  value: Record<string, unknown>,
+  scanId: string,
+): CorrespondenceProof | null {
+  if (Object.keys(value).length === 0) return null;
+  const raw = value["status"];
+  const statusText = typeof raw === "string" ? raw.toLowerCase() : "";
+  const status = (
+    CORRESPONDENCE_STATUSES as readonly string[]
+  ).includes(statusText)
+    ? (statusText as CorrespondenceStatus)
+    : "skipped";
+
+  return {
+    scanId: pickString(value, ["scan_id", "scanId"]) ?? scanId,
+    status,
+    skipped: pickString(value, ["skipped", "skipped_reason", "reason"]),
+    compilerVersion: pickString(value, ["compiler_version", "compilerVersion"]),
+    sourcePath: pickString(value, ["source_path", "sourcePath"]),
+    runtimeSha256: pickString(value, ["runtime_sha256", "runtimeSha256"]),
+    executableSha256: pickString(value, [
+      "executable_sha256",
+      "executableSha256",
+    ]),
+    metadataSha256: pickString(value, ["metadata_sha256", "metadataSha256"]),
+    runtimeByteSize: pickNumber(value, ["runtime_byte_size", "runtimeByteSize"]),
+    executableByteSize: pickNumber(value, [
+      "executable_byte_size",
+      "executableByteSize",
+    ]),
+    instructionCount: pickNumber(value, ["instruction_count", "instructionCount"]),
+    mappedInstructionCount: pickNumber(value, [
+      "mapped_instruction_count",
+      "mappedInstructionCount",
+    ]),
+  };
+}
+
+/**
+ * Fetch the stored source-to-bytecode correspondence proof for a scan.
+ *
+ * `null` means no proof has been established. It does not mean the source
+ * failed to match - that is a separate, explicit status.
+ */
+export async function getCorrespondence(
+  id: string,
+): Promise<ApiResult<CorrespondenceProof | null>> {
+  const result = await request<unknown>(
+    `/scans/${encodeURIComponent(id)}/correspondence`,
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    data: normaliseCorrespondence(asRecord(result.data), id),
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Mythril (manual, on-demand)                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Request an on-demand Mythril deep analysis for a scan.
+ *
+ * Mythril is manual-only by decision: it runs out of process, on its own
+ * queue, with its own budget, and never as part of a standard scan. The
+ * response reports that the work was *queued* - it says nothing about what
+ * Mythril will find, and a later run that produced no verdict must not be
+ * read as "clean".
+ */
+export async function triggerMythril(
+  id: string,
+): Promise<ApiResult<MythrilRunRequest>> {
+  const result = await request<unknown>(
+    `/scans/${encodeURIComponent(id)}/mythril`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
+  if (!result.ok) return result;
+  const record = asRecord(result.data);
+  return {
+    ok: true,
+    data: {
+      scanId: pickString(record, ["scan_id", "scanId"]) ?? id,
+      jobId: pickString(record, ["job_id", "jobId"]),
+      status: pickString(record, ["status"]) ?? "queued",
+      queue: pickString(record, ["queue", "queue_name", "queueName"]),
+      message: pickString(record, ["message", "detail"]),
+    },
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Correspondence (manual, on-demand)                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Request an on-demand source-to-bytecode correspondence proof.
+ *
+ * The proof recompiles the contract's verified source and compares it with
+ * the deployed runtime, so it is a compiler run rather than a bytecode scan.
+ * It is therefore manual-only, on its own queue, with its own budget.
+ *
+ * The response reports that the work was *queued*. It does not license a
+ * source claim: only a proof with the `established` status does that, and a
+ * missing proof is not a mismatch.
+ */
+export async function triggerCorrespondence(
+  id: string,
+): Promise<ApiResult<CorrespondenceRunRequest>> {
+  const result = await request<unknown>(
+    `/scans/${encodeURIComponent(id)}/correspondence`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
+  if (!result.ok) return result;
+  const record = asRecord(result.data);
+  return {
+    ok: true,
+    data: {
+      scanId: pickString(record, ["scan_id", "scanId"]) ?? id,
+      jobId: pickString(record, ["job_id", "jobId"]),
+      status: pickString(record, ["status"]) ?? "queued",
+      queue: pickString(record, ["queue", "queue_name", "queueName"]),
+      message: pickString(record, ["message", "detail"]),
+    },
+  };
+}
+
+/**
+ * The same-origin URL of the PDF report for a scan.
+ *
+ * The report has to be fetched server-side. The browser cannot present the
+ * server-only `API_KEY`, so a direct link to the backend would come back
+ * unauthorised. The route handler at `/api/scans/[id]/report` attaches the
+ * key and streams the PDF back.
+ */
+export function scanReportUrl(id: string): string {
+  return `/api/scans/${encodeURIComponent(id)}/report`;
+}
+
+/**
+ * Fetch the PDF report for a scan as raw bytes.
+ *
+ * The report is binary, so it cannot go through the JSON `request` helper.
+ * The server-only API key is attached here and the bytes are handed back to
+ * the route handler, which streams them to the browser.
+ */
+export async function fetchScanReport(
+  id: string,
+): Promise<ApiResult<{ bytes: Uint8Array; sha256: string | null }>> {
+  const url = `${API_BASE_URL}${API_PREFIX}/scans/${encodeURIComponent(
+    id,
+  )}/report.pdf`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REPORT_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      cache: "no-store",
+      headers: {
+        Accept: "application/pdf",
+        ...(API_KEY ? { "X-API-Key": API_KEY } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const detail = await readDetail(response);
+      return {
+        ok: false,
+        error: {
+          kind: response.status === 404 ? "not_found" : "http",
+          message:
+            response.status === 404
+              ? "The backend has no report endpoint for this scan."
+              : `The backend responded with HTTP ${response.status}.`,
+          status: response.status,
+          detail,
+        },
+      };
+    }
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return {
+      ok: true,
+      data: { bytes, sha256: response.headers.get("X-Report-SHA256") },
+    };
+  } catch (error) {
+    const aborted = error instanceof Error && error.name === "AbortError";
+    return {
+      ok: false,
+      error: {
+        kind: "network",
+        message: aborted
+          ? `The backend did not produce a report within ${REPORT_TIMEOUT_MS / 1000}s.`
+          : `Could not reach the backend at ${API_BASE_URL}.`,
+        detail: error instanceof Error ? error.message : undefined,
+      },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function normaliseFinding(value: unknown): Finding {
@@ -1089,6 +1330,7 @@ export const __testing = {
   normaliseScanDetail,
   normaliseArtifacts,
   normaliseStages,
+  normaliseCorrespondence,
   countSeverities,
   toSeverity,
 };

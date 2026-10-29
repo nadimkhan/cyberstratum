@@ -83,6 +83,26 @@ const SUPERVISOR = process.argv.includes("--supervise");
 const PG_PORT = 5433;
 const REDIS_PORT = 6379;
 
+// The names the RQ workers register themselves under in Redis. They must
+// match the names in apps/api/app/worker.py exactly: the readiness check
+// matches the registration key, not a substring of it.
+const WORKER_NAME = "cyberstratum-worker";
+const MYTHRIL_WORKER_NAME = "cyberstratum-worker-mythril";
+const CORRESPONDENCE_WORKER_NAME = "cyberstratum-worker-correspondence";
+
+// The logical process name and the failure flag for each RQ worker. The
+// three workers are separate on purpose: the Mythril worker runs symbolic
+// execution and the correspondence worker runs a compiler, so neither may
+// delay an ordinary scan.
+const WORKER_PROCESSES = {
+  worker: { name: WORKER_NAME, failureFlag: "workerFailed" },
+  "worker-mythril": { name: MYTHRIL_WORKER_NAME, failureFlag: "mythrilWorkerFailed" },
+  "worker-correspondence": {
+    name: CORRESPONDENCE_WORKER_NAME,
+    failureFlag: "correspondenceWorkerFailed",
+  },
+};
+
 const logDir = path.join(root, ".dev-logs");
 const logFile = path.join(logDir, "dev.log");
 const stateFile = path.join(root, ".dev-session.json");
@@ -185,29 +205,37 @@ async function waitForService(ports, label, path = "/", timeoutMs = 60_000) {
 }
 
 /**
- * Whether a worker is registered on the RQ queue.
+ * Whether a worker is registered in Redis under the given name.
  *
  * The worker has no port of its own, so a worker that failed to start is
  * invisible to the port checks. A stack with no worker accepts scans that
  * are then never processed, so this is checked explicitly.
+ *
+ * The name is matched exactly. A substring match would let the Mythril
+ * worker satisfy the check for the scan worker, and the two are separate on
+ * purpose: the Mythril worker must never stand in for the scan worker.
  */
-function workerIsRegistered() {
+function workerIsRegistered(name) {
   const cli = redisTool("redis-cli");
   if (!existsSync(cli)) return true; // cannot check, so do not block the start
   const result = spawnSync(cli, ["-h", "127.0.0.1", "-p", String(REDIS_PORT),
     "--scan", "--pattern", "rq:worker:*"], { encoding: "utf8", shell: false });
   if (result.status !== 0) return true;
-  return (result.stdout ?? "").includes("cyberstratum-worker");
+  const wanted = `rq:worker:${name}`;
+  return (result.stdout ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .includes(wanted);
 }
 
-async function waitForWorker(timeoutMs = 30_000) {
+async function waitForWorker(name, timeoutMs = 30_000, failureFlag = "workerFailed") {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     // A worker child that has already died will never register.
-    if (loadState().workerFailed) return false;
-    if (workerIsRegistered()) {
+    if (loadState()[failureFlag]) return false;
+    if (workerIsRegistered(name)) {
       // Re-check, in case it died in the same moment it registered.
-      return !loadState().workerFailed;
+      return !loadState()[failureFlag];
     }
     await sleep(500);
   }
@@ -312,15 +340,16 @@ function supervise(name, command, args, options = {}) {
       `(code ${code}, signal ${signal ?? "none"})\n`;
     appendToLog(text);
     if (!SUPERVISOR) process.stderr.write(text);
-    if (name === "worker") {
+    if (WORKER_PROCESSES[name]) {
       // Record it, so the launcher can tell the user instead of reporting
       // a stack that will never process a scan.
       const state = loadState();
-      state.workerFailed = true;
+      state[WORKER_PROCESSES[name].failureFlag] = true;
       saveState(state);
       // The usual cause is a worker of the same name that is still alive.
+      const workerName = WORKER_PROCESSES[name].name;
       const hint = `${COLOURS.yellow}[dev]${COLOURS.reset} the worker could not ` +
-        `register: a worker named 'cyberstratum-worker' is most likely still ` +
+        `register: a worker named '${workerName}' is most likely still ` +
         `running. Run "npm run stop" and then "npm run dev" again.\n`;
       appendToLog(hint);
       if (!SUPERVISOR) process.stderr.write(hint);
@@ -406,6 +435,8 @@ async function supervisorMain() {
   const state = loadState();
   state.supervisor = { pid: process.pid, startedAt: new Date().toISOString() };
   state.workerFailed = false;
+  state.mythrilWorkerFailed = false;
+  state.correspondenceWorkerFailed = false;
   // A fresh start is not a continuation of a deliberate stop.
   state.stopping = false;
   saveState(state);
@@ -446,6 +477,22 @@ async function supervisorMain() {
   supervise("worker", process.execPath, [path.join(root, "scripts", "py.mjs"), "--cwd", "apps/api",
     "-m", "app.worker"], { colour: COLOURS.green });
 
+  // The Mythril worker is a separate process on purpose. Mythril runs
+  // symbolic execution, which can take minutes; serving it from the scan
+  // worker would let a deep analysis delay an ordinary scan.
+  log("starting the Mythril worker...");
+  supervise("worker-mythril", process.execPath, [path.join(root, "scripts", "py.mjs"), "--cwd", "apps/api",
+    "-m", "app.worker", "--queues", "mythril", "--name", "cyberstratum-worker-mythril"],
+  { colour: COLOURS.green });
+
+  // The correspondence worker is separate for the same reason: the proof
+  // recompiles the verified source, so it needs a compiler and a budget of
+  // its own rather than competing with an ordinary scan.
+  log("starting the correspondence worker...");
+  supervise("worker-correspondence", process.execPath, [path.join(root, "scripts", "py.mjs"), "--cwd", "apps/api",
+    "-m", "app.worker", "--queues", "correspondence", "--name", "cyberstratum-worker-correspondence"],
+  { colour: COLOURS.green });
+
   log("starting the web UI...");
   // The hostname is pinned to IPv4 so that the address printed by the
   // launcher is the address the server actually answers on.
@@ -459,16 +506,43 @@ async function supervisorMain() {
   // The worker has no port, so it is checked explicitly. A stack without a
   // worker accepts scans that are then never processed, and saying "up"
   // would be a lie.
-  const workerReady = await waitForWorker(20_000);
+  const workerReady = await waitForWorker(WORKER_NAME, 20_000, "workerFailed");
   if (!workerReady) {
     fail("the RQ worker did not register on the queue.");
     fail("The stack will not process scans. Check .dev-logs/dev.log.");
     return;
   }
 
+  // The Mythril worker is checked separately. It is not on the scan path,
+  // so its absence does not stop the stack - but the launcher says so
+  // rather than letting a manual Mythril request queue forever.
+  const mythrilReady = await waitForWorker(
+    MYTHRIL_WORKER_NAME, 20_000, "mythrilWorkerFailed");
+  if (!mythrilReady) {
+    log(`${COLOURS.yellow}warning${COLOURS.reset}: the Mythril worker did not register.`);
+    log("         Scans are unaffected; manual Mythril requests will queue");
+    log("         without being picked up. Check .dev-logs/dev.log.");
+  }
+
+  // The correspondence worker is checked separately, for the same reason:
+  // a manual proof request must not queue forever in silence.
+  const correspondenceReady = await waitForWorker(
+    CORRESPONDENCE_WORKER_NAME, 20_000, "correspondenceWorkerFailed");
+  if (!correspondenceReady) {
+    log(`${COLOURS.yellow}warning${COLOURS.reset}: the correspondence worker did not register.`);
+    log("         Scans are unaffected; manual correspondence proofs will");
+    log("         queue without being picked up. Check .dev-logs/dev.log.");
+  }
+
   // The launcher prints the banner, so the log line adds what the banner
   // cannot show: that the worker is registered and will pick up scans.
   appendToLog("\nthe RQ worker is registered on cyberstratum:scans.\n");
+  if (mythrilReady) {
+    appendToLog("the Mythril worker is registered on cyberstratum:mythril.\n");
+  }
+  if (correspondenceReady) {
+    appendToLog("the correspondence worker is registered on cyberstratum:correspondence.\n");
+  }
   log("the stack is up");
 }
 
@@ -740,26 +814,43 @@ async function checkEverything() {
  * site-packages, and that copy shadows the working tree. The API and the
  * worker would then run code that is not the code in the repository, and
  * the tests would certify that stale copy rather than the real thing.
+ *
+ * Every project package is checked, not just the application: a stale
+ * snapshot of the bytecode engine or the dataset package would quietly
+ * change what the platform measures.
  */
 function checkEditableInstall() {
   const python = path.join(root, ".venv", IS_WINDOWS ? "Scripts" : "bin",
     IS_WINDOWS ? "python.exe" : "python");
   if (!existsSync(python)) return true;
 
-  const probe = spawnSync(python, ["-c",
-    "import app, os; print(os.path.dirname(os.path.abspath(app.__file__)))"],
+  const packages = [
+    ["app", path.join(root, "apps", "api", "app")],
+    ["evm_analysis", path.join(root, "packages", "evm_analysis", "evm_analysis")],
+    ["evm_ml", path.join(root, "packages", "ml_baseline", "evm_ml")],
+    ["evm_dataset", path.join(root, "packages", "dataset_ingest", "evm_dataset")],
+  ];
+
+  let ok = true;
+  for (const [name, expected] of packages) {
+    const probe = spawnSync(python, ["-c",
+      `import ${name}, os; print(os.path.dirname(os.path.abspath(${name}.__file__)))`],
     { encoding: "utf8", windowsHide: true });
-  if (probe.status !== 0) return true;
+    // A package that is not installed at all is reported by the tests, not
+    // here: this check is about shadowing, not about completeness.
+    if (probe.status !== 0) continue;
 
-  const resolved = (probe.stdout || "").trim();
-  const expected = path.join(root, "apps", "api", "app");
-  if (!resolved) return true;
-  if (path.resolve(resolved) === path.resolve(expected)) return true;
+    const resolved = (probe.stdout || "").trim();
+    if (!resolved) continue;
+    if (path.resolve(resolved) === path.resolve(expected)) continue;
 
-  fail("the app package resolves outside the working tree, so an installed");
-  console.log(`         copy would shadow it: ${resolved}`);
-  console.log(`         Fix with: uv pip install -e .`);
-  return false;
+    fail(`the ${name} package resolves outside the working tree, so an installed`);
+    console.log(`         copy would shadow it: ${resolved}`);
+    console.log("         Fix with: uv pip install -e . -e packages/evm_analysis");
+    console.log("         -e packages/ml_baseline -e packages/dataset_ingest");
+    ok = false;
+  }
+  return ok;
 }
 
 /* ----------------------------------------------------------------- front */
@@ -860,12 +951,28 @@ async function main() {
 
   const ready = await waitForService([API_PORT], "The API", "/api/health", 120_000);
   const webReady = await waitForService([WEB_PORT], "The web UI", "/", 120_000);
-  const workerReady = await waitForWorker(30_000);
+  const workerReady = await waitForWorker(WORKER_NAME, 30_000, "workerFailed");
+  const mythrilReady = await waitForWorker(
+    MYTHRIL_WORKER_NAME, 20_000, "mythrilWorkerFailed");
+  const correspondenceReady = await waitForWorker(
+    CORRESPONDENCE_WORKER_NAME, 20_000, "correspondenceWorkerFailed");
 
   if (!workerReady) {
     fail("the RQ worker did not register on the queue.");
     fail("A worker named 'cyberstratum-worker' is most likely still running.");
     fail("Run \"npm run stop\" and then \"npm run dev\" again.");
+  }
+
+  if (!mythrilReady) {
+    fail(`${COLOURS.yellow}warning${COLOURS.reset}: the Mythril worker did not register.`);
+    fail("Scans are unaffected; manual Mythril requests will queue without");
+    fail("being picked up until it is running.");
+  }
+
+  if (!correspondenceReady) {
+    fail(`${COLOURS.yellow}warning${COLOURS.reset}: the correspondence worker did not register.`);
+    fail("Scans are unaffected; manual correspondence proofs will queue");
+    fail("without being picked up until it is running.");
   }
 
   if (ready && webReady && workerReady) {

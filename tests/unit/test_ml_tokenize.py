@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import pytest
+
+from evm_analysis import disassemble, load_fork
 from evm_ml.tokenize import (
     Normalization,
     address_like,
@@ -10,8 +12,6 @@ from evm_ml.tokenize import (
     normalize_instruction,
     tokenize,
 )
-
-from evm_analysis import disassemble, load_fork
 
 TABLE = load_fork("cancun")
 

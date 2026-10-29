@@ -1,0 +1,40 @@
+[project]
+name = "evm-dataset"
+version = "0.1.0"
+description = "Licensing-safe dataset ingestion, deduplication, family splitting and promotion gating for CyberStratum"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+  "ruff>=0.7",
+  "mypy>=1.13",
+]
+
+[project.scripts]
+evm-dataset = "evm_dataset.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["evm_dataset"]
+
+[tool.setuptools.package-data]
+evm_dataset = ["py.typed"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "S", "C4", "SIM"]
+ignore = ["S101", "B008"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true

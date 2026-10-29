@@ -23,8 +23,18 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-#: The directory the application package must live in.
+#: The directories the application packages must live in.
 APP_DIR = REPO_ROOT / "apps" / "api" / "app"
+
+#: Every project package, and the directory it must resolve to. A package
+#: installed non-editable puts a snapshot into site-packages, and that
+#: snapshot is what the test suite would then certify.
+PROJECT_PACKAGES = {
+    "app": APP_DIR,
+    "evm_analysis": REPO_ROOT / "packages" / "evm_analysis" / "evm_analysis",
+    "evm_ml": REPO_ROOT / "packages" / "ml_baseline" / "evm_ml",
+    "evm_dataset": REPO_ROOT / "packages" / "dataset_ingest" / "evm_dataset",
+}
 
 
 def _app_location() -> Path:
@@ -39,6 +49,31 @@ def _app_location() -> Path:
     if origin is None:  # pragma: no cover - a namespace package
         pytest.fail("the app package has no __file__, so it cannot be verified")
     return Path(origin).resolve()
+
+
+@pytest.mark.parametrize(("module_name", "expected_dir"), sorted(PROJECT_PACKAGES.items()))
+def test_every_project_package_resolves_to_the_working_tree(
+    module_name: str, expected_dir: Path
+) -> None:
+    """Each project package must resolve to the working tree, not a snapshot.
+
+    A snapshot in ``site-packages`` is a copy of the code at install time.
+    Once installed, it stops tracking the repository, and the test suite
+    then certifies code that no longer exists.
+    """
+    module = __import__(module_name)
+
+    origin = getattr(module, "__file__", None)
+    if origin is None:  # pragma: no cover - a namespace package
+        pytest.fail(f"the {module_name} package has no __file__")
+    location = Path(origin).resolve()
+    assert expected_dir in location.parents, (
+        f"the {module_name} package resolves to {location}, but the working "
+        f"tree is {expected_dir}. The project is installed non-editable, so "
+        f"a stale snapshot is shadowing it. Fix with: uv pip install -e . "
+        f"-e packages/evm_analysis -e packages/ml_baseline "
+        f"-e packages/dataset_ingest"
+    )
 
 
 def test_the_app_package_resolves_to_the_working_tree() -> None:

@@ -8,7 +8,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.db.enums import ScanJobStatus, ScanStatus
+from app.db.enums import CorrespondenceStatus, ScanJobStatus, ScanStatus
 from app.schemas.findings import FindingRead
 
 ADDRESS_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
@@ -37,9 +37,7 @@ class ScanCreateRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    contract_address: str = Field(
-        description="Deployed contract address (0x-prefixed, 20 bytes)."
-    )
+    contract_address: str = Field(description="Deployed contract address (0x-prefixed, 20 bytes).")
     chain_id: int = Field(default=1, ge=1, description="EVM chain id.")
     fork: str = Field(default="cancun", description="EVM fork / opcode table to use.")
     label: str | None = Field(default=None, max_length=200)
@@ -147,9 +145,37 @@ class ScanSummary(BaseModel):
     model_version: str | None = None
     source_audited: bool = False
     source_audit_skipped: str | None = None
+    mythril_ran: bool = False
+    mythril_skipped: str | None = None
     error_code: str | None = None
     error_message_redacted: str | None = None
     created_at: datetime
+
+
+class CorrespondenceProofRead(BaseModel):
+    """The stored source-to-bytecode correspondence proof for a scan.
+
+    A proof is the only thing that licenses the product to print an exact
+    source path and line against a finding. ``status`` keeps ``mismatch``
+    (the source genuinely does not describe the deployed contract) separate
+    from ``unavailable`` (the check could not be performed at all).
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    scan_id: uuid.UUID
+    status: CorrespondenceStatus
+    skipped: str | None = None
+    compiler_version: str | None = None
+    source_path: str | None = None
+    runtime_sha256: str | None = None
+    executable_sha256: str | None = None
+    metadata_sha256: str | None = None
+    runtime_byte_size: int | None = None
+    executable_byte_size: int | None = None
+    instruction_count: int | None = None
+    mapped_instruction_count: int | None = None
+    created_at: datetime | None = None
 
 
 class ScanDetail(ScanSummary):
@@ -158,6 +184,37 @@ class ScanDetail(ScanSummary):
     jobs: list[ScanJobRead] = Field(default_factory=list)
     artifacts: list[ScanArtifactRead] = Field(default_factory=list)
     findings: list[FindingRead] = Field(default_factory=list)
+    correspondence: CorrespondenceProofRead | None = None
+
+
+class MythrilRunResponse(BaseModel):
+    """202 response returned when an on-demand Mythril run is queued.
+
+    The response says the work was *queued*. It says nothing about what
+    Mythril will find, and it deliberately does not claim success: a Mythril
+    run that later produces no verdict must never be presented as clean.
+    """
+
+    scan_id: uuid.UUID
+    job_id: uuid.UUID | None = None
+    status: str = "queued"
+    queue_name: str
+    message: str
+
+
+class CorrespondenceRunResponse(BaseModel):
+    """202 response returned when a correspondence proof is queued.
+
+    The response says the work was *queued*. It does not say a source line
+    may be claimed: only a proof with the ``established`` status licenses
+    that, and until it exists nothing has been proven.
+    """
+
+    scan_id: uuid.UUID
+    job_id: uuid.UUID | None = None
+    status: str = "queued"
+    queue_name: str
+    message: str
 
 
 class ScanListResponse(BaseModel):
@@ -182,6 +239,9 @@ ScanDetail.model_rebuild()
 
 
 __all__ = [
+    "CorrespondenceProofRead",
+    "CorrespondenceRunResponse",
+    "MythrilRunResponse",
     "ScanAcceptedResponse",
     "ScanArtifactRead",
     "ScanCreateRequest",

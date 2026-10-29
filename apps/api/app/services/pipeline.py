@@ -17,6 +17,7 @@ recorded on the scan row.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -149,10 +150,10 @@ def _persist_graph(
     )
 
 
-def _persist_findings(
+def persist_findings(
     session: Session,
     scan: Scan,
-    findings: list[RuleFinding],
+    findings: Sequence[RuleFinding],
     source: str = "rule",
 ) -> None:
     """Replace the findings of a scan with the newly produced ones.
@@ -333,9 +334,7 @@ def _audit_verified_source(
     _store_source_artifact(session, scan, artifact)
 
     extra_files = {
-        path: content
-        for path, content in artifact.files.items()
-        if path != artifact.main_file_name
+        path: content for path, content in artifact.files.items() if path != artifact.main_file_name
     }
     audit = audit_source(
         artifact.code,
@@ -363,9 +362,7 @@ def _audit_verified_source(
     return (list(audit.findings), None)
 
 
-def _store_source_artifact(
-    session: Session, scan: Scan, artifact: SourceArtifact
-) -> None:
+def _store_source_artifact(session: Session, scan: Scan, artifact: SourceArtifact) -> None:
     """Store the verified source as a scan artifact.
 
     The source is stored as a file tree rather than as a database column,
@@ -479,15 +476,13 @@ def run_scan(session: Session, scan: Scan) -> ScanOutcome:
 
     _store_artifacts(session, scan, artifact, disassembly, cfg, features)
     _persist_graph(session, scan.id, disassembly, cfg, features)
-    _persist_findings(session, scan, findings)
+    persist_findings(session, scan, findings)
 
     # The source engine is a second opinion on the same contract. It runs
     # after the bytecode analysis, and a failure there never undoes the
     # bytecode results.
-    source_findings, source_skipped = _audit_verified_source(
-        session, scan, chain_id, address
-    )
-    _persist_findings(session, scan, source_findings, source="slither")
+    source_findings, source_skipped = _audit_verified_source(session, scan, chain_id, address)
+    persist_findings(session, scan, source_findings, source="slither")
     scan.source_audited = source_skipped is None
     scan.source_audit_skipped = source_skipped
 
@@ -522,5 +517,6 @@ __all__ = [
     "FEATURE_SCHEMA_VERSION",
     "ScanOutcome",
     "mark_job",
+    "persist_findings",
     "run_scan",
 ]

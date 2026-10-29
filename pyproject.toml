@@ -51,7 +51,7 @@ select = ["E", "F", "I", "N", "UP", "B", "S", "C4", "SIM"]
 ignore = ["S101", "B008"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["app", "evm_analysis"]
+known-first-party = ["app", "evm_analysis", "evm_ml", "evm_dataset"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "N"]
