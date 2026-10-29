@@ -27,9 +27,10 @@ where the old longest value, "reproduction", was twelve.
 The ``findings.source`` column is the opposite: it *does* carry a database
 CHECK constraint, and it allowed only 'rule', 'slither' and 'ml'. A Mythril
 finding was therefore rejected with a CheckViolation - the engine ran, found
-real issues, and the product discarded them. The constraint is widened to
-include 'mythril'; it is not dropped, so an unknown provenance still cannot
-be written by accident.
+real issues, and the product discarded them. Widening that constraint is
+not done here: this revision was already applied to the development
+databases, and a migration is never re-run. The constraint is widened by
+the revision that follows, ``f7d9a3c1e5b2``.
 
 Revision ID: e2f5a1b9c740
 Revises: c4a90d1e7b23
@@ -59,18 +60,6 @@ _CORRESPONDENCE_STATUSES = ("established", "skipped", "mismatch", "unavailable")
 
 
 def upgrade() -> None:
-    # --- findings may now come from Mythril -------------------------------
-    # The ``findings.source`` CHECK constraint still allowed only 'rule',
-    # 'slither' and 'ml', so a Mythril finding was rejected by the database
-    # with a CheckViolation. The engine ran, produced a verdict and found
-    # real issues, and the product threw them away. The constraint is
-    # widened rather than removed, so an unknown provenance still cannot be
-    # written by accident.
-    op.drop_constraint("source", "findings", type_="check")
-    op.create_check_constraint(
-        "source", "findings", "source IN ('rule', 'slither', 'ml', 'mythril')"
-    )
-
     # --- scan_job_type gains 'mythril' and 'correspondence' ---------------
     # The column is a VARCHAR whose allowed values are enforced by the ORM
     # type rather than by a database CHECK constraint, so the only schema
@@ -173,5 +162,3 @@ def downgrade() -> None:
     # they go before the CHECK constraint is narrowed back to the three
     # provenances it allowed.
     op.execute("DELETE FROM findings WHERE source = 'mythril'")
-    op.drop_constraint("source", "findings", type_="check")
-    op.create_check_constraint("source", "findings", "source IN ('rule', 'slither', 'ml')")

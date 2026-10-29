@@ -42,9 +42,7 @@ def upgrade() -> None:
         "workspaces",
         sa.Column("kind", sa.String(length=32), nullable=False, server_default="tenant"),
     )
-    op.create_check_constraint(
-        "kind", "workspaces", "kind IN ('tenant', 'discovery')"
-    )
+    op.create_check_constraint("kind", "workspaces", "kind IN ('tenant', 'discovery')")
 
     # --- 3. one findings table, told apart by its source ----------------
     op.add_column(
@@ -52,9 +50,7 @@ def upgrade() -> None:
         sa.Column("source", sa.String(length=16), nullable=False, server_default="rule"),
     )
     op.create_index("ix_findings_source", "findings", ["source"])
-    op.create_check_constraint(
-        "source", "findings", "source IN ('rule', 'slither', 'ml')"
-    )
+    op.create_check_constraint("source", "findings", "source IN ('rule', 'slither', 'ml')")
 
     # --- 1. a discovery cycle is not a scan ----------------------------
     op.create_table(
