@@ -151,6 +151,14 @@ class Settings(BaseSettings):
     enable_experimental_ml: bool = Field(default=False, alias="ENABLE_EXPERIMENTAL_ML")
     ml_model_version: str = Field(default="", alias="ML_MODEL_VERSION")
     ml_model_artifact_uri: str = Field(default="", alias="ML_MODEL_ARTIFACT_URI")
+    ml_model_dir: str = Field(
+        default="",
+        alias="ML_MODEL_DIR",
+        description=(
+            "Directory holding the installed model and its auditable "
+            "manifest.json. Empty means no model is installed."
+        ),
+    )
     scan_max_bytecode_bytes: int = Field(default=2_000_000, alias="SCAN_MAX_BYTECODE_BYTES")
     scan_job_timeout_seconds: int = Field(default=300, alias="SCAN_JOB_TIMEOUT_SECONDS")
     scan_max_retries: int = Field(default=3, alias="SCAN_MAX_RETRIES")
@@ -209,6 +217,16 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() == "production"
+
+    @property
+    def repo_root(self) -> Path:
+        """The repository root.
+
+        Relative paths in the configuration - the artefact store, the model
+        directory - are resolved against this, so a configured path means
+        the same thing wherever the service is started from.
+        """
+        return REPO_ROOT
 
     @property
     def cors_origins(self) -> list[str]:

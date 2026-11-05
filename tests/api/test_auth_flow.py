@@ -28,7 +28,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.api import auth as auth_api
-from app.core.auth import AuthStore, GoogleAuthError, GoogleIdentity
+from app.core.auth import GoogleAuthError, GoogleIdentity
 from app.core.config import get_settings
 from app.db.enums import ScanStatus, UserStatus
 from app.db.models.identity import Chain, ContractTarget, User, Workspace
@@ -106,9 +106,20 @@ def google_configured(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 @pytest.fixture()
 def fake_redis(monkeypatch: pytest.MonkeyPatch) -> FakeRedis:
-    """Replace the auth store's Redis with an in-memory fake."""
+    """Replace the auth store's Redis with an in-memory fake.
+
+    The fake is installed at the Redis client, not at one call site,
+    because two different places reach the revocation list: the API's
+    own store and the security layer's default store. A revocation
+    written by one must be visible to the other, and the suite must
+    never depend on a running Redis to prove it.
+    """
     store = FakeRedis()
-    monkeypatch.setattr(auth_api, "_auth_store", lambda: AuthStore(store))
+
+    import app.queue.connection as queue_connection
+
+    monkeypatch.setattr(auth_api, "get_redis", lambda: store)
+    monkeypatch.setattr(queue_connection, "get_redis", lambda: store)
     return store
 
 

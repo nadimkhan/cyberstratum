@@ -28,7 +28,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.logging import get_logger
@@ -61,6 +61,8 @@ from app.schemas.scans import (
     ScanListResponse,
     ScanSummary,
 )
+from app.services import storage
+from app.services.model_manifest import ModelManifestError, read_model_manifest
 from app.services.report import (
     ReportLabUnavailableError,
     build_report_data,
@@ -649,6 +651,74 @@ def _report_engine_rows(
     ]
 
 
+#: The artefact kind under which a rendered report is stored. The report
+#: is a first-class artefact of the scan: it has a location, a size and a
+#: digest, exactly like the bytecode and the disassembly.
+REPORT_ARTIFACT_KIND = "report"
+
+
+def _model_manifest_reference() -> dict[str, str] | None:
+    """Return the reference to the installed model's manifest, if any.
+
+    A manifest that cannot be read is not cited. The report then shows
+    the manifest as unavailable, which is true; it never shows a
+    manifest it could not verify.
+    """
+    try:
+        manifest = read_model_manifest()
+    except ModelManifestError:
+        return None
+    if manifest is None:
+        return None
+    return manifest.as_reference()
+
+
+def _store_report_artifact(
+    session: Session,
+    scan: Scan,
+    pdf_bytes: bytes,
+    digest: str,
+) -> str:
+    """Store the rendered report as an artefact of the scan.
+
+    The object key is deterministic, so rendering the same evidence twice
+    stores the same bytes at the same place rather than accumulating
+    copies. The artefact row is replaced rather than appended, so the
+    registry holds one report per scan.
+
+    Returns:
+        The artefact's object key, or an empty string when the artefact
+        store could not be written. A failed write does not stop the
+        download: the report is still the correct document, it simply
+        could not be filed, and that is logged rather than hidden.
+    """
+    key = f"scans/{scan.id}/report.pdf"
+    try:
+        storage.put_bytes(key, pdf_bytes)
+    except storage.ObjectStorageError as exc:
+        log.warning("report_artifact_not_stored", scan_id=str(scan.id), error=str(exc))
+        return ""
+
+    session.execute(
+        delete(ScanArtifact).where(
+            ScanArtifact.scan_id == scan.id,
+            ScanArtifact.kind == REPORT_ARTIFACT_KIND,
+        )
+    )
+    session.add(
+        ScanArtifact(
+            scan_id=scan.id,
+            kind=REPORT_ARTIFACT_KIND,
+            content_type="application/pdf",
+            object_key=key,
+            byte_size=len(pdf_bytes),
+            sha256=digest,
+        )
+    )
+    session.commit()
+    return key
+
+
 @router.get(
     "/{scan_id}/report.pdf",
     summary="Download the deterministic PDF report",
@@ -696,6 +766,8 @@ def download_report(
             "statement": proof.skipped or "",
         }
 
+    model_manifest_reference = _model_manifest_reference()
+
     data = build_report_data(
         scan_id=str(scan.id),
         contract_address=contract_address,
@@ -729,8 +801,13 @@ def download_report(
                 "byte_size": artifact.byte_size,
                 "sha256": artifact.sha256 or "",
             }
+            # The report itself is deliberately excluded: a document that
+            # contained its own digest could never render to the same bytes
+            # twice, and the report has to be reproducible.
             for artifact in artifacts
+            if artifact.kind != REPORT_ARTIFACT_KIND
         ],
+        model_manifest=model_manifest_reference,
         tool_versions={
             "parser": scan.parser_version or "",
             "ruleset": scan.ruleset_version or "",
@@ -750,12 +827,16 @@ def download_report(
             detail="The PDF renderer is not available in this environment.",
         ) from exc
 
+    digest = report_sha256(pdf_bytes)
+    artifact_key = _store_report_artifact(session, scan, pdf_bytes, digest)
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
             "Content-Disposition": (f'attachment; filename="cyberstratum-{scan.id}.pdf"'),
-            "X-Report-SHA256": report_sha256(pdf_bytes),
+            "X-Report-SHA256": digest,
+            "X-Report-Artifact": artifact_key,
             "Cache-Control": "no-store",
         },
     )
