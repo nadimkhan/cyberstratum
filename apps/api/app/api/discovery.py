@@ -4,6 +4,31 @@ These routes are the operator-facing side of the continuous discovery feed.
 A discovery cycle is deliberately *not* a scan: it reads many chains and
 analyses nothing, so it gets its own resource rather than being folded into
 ``/api/v1/scans``.
+
+Tenant scoping
+--------------
+
+Discovery is deliberately **shared**, and that sharing is a product
+decision rather than an oversight. The feed reads public chains and
+publishes what it finds into a single *discovery* workspace, so every
+tenant sees the same public-contract corpus. A discovered contract is
+promoted into a tenant's own workspace deliberately, by that tenant.
+
+What this means for these routes:
+
+* Every query is scoped to the discovery workspace by construction. No
+  route in this module reads or writes a tenant's own workspace, so a
+  tenant principal can neither read another tenant's data nor write into
+  another tenant's workspace through this module.
+* The discovery workspace is shared, so the data these routes return is
+  shared too: it is the same for every caller. That is intended, and it
+  is why these routes are not filtered by the caller's workspace.
+* The configured service key is the administrative credential and behaves
+  exactly the same way here, because discovery data is not tenant data.
+
+The tenant-facing rules (own workspace always, cross-tenant reads answer
+404, a stored key without a membership is denied with 403) are defined in
+:mod:`app.core.security` and apply to every other router.
 """
 
 from __future__ import annotations

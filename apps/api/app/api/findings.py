@@ -1,4 +1,21 @@
-"""Findings endpoints: list/filter findings and a severity breakdown."""
+"""Findings endpoints: list/filter findings and a severity breakdown.
+
+Tenant scoping
+--------------
+
+Findings belong to the workspace of the scan that produced them. Following
+the conventions defined in :mod:`app.core.security`:
+
+* A tenant principal's effective workspace is always its own workspace. A
+  ``workspace_id`` query parameter naming a different workspace is refused
+  with ``403`` rather than silently honoured or silently ignored.
+* The configured service key is an explicit administrative credential and
+  may act across every tenant.
+* A list endpoint only ever contains the caller's own findings. Filtering
+  by a ``scan_id`` from another tenant simply yields an empty list, exactly
+  as a ``scan_id`` that does not exist does -- the endpoint never confirms
+  that the id exists in another tenant.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +24,7 @@ import uuid
 from fastapi import APIRouter, Query
 from sqlalchemy import func, select
 
-from app.core.security import CurrentPrincipal, SessionDep
+from app.core.security import CurrentPrincipal, SessionDep, read_scope
 from app.db.enums import FindingStatus, Severity
 from app.db.models.scans import Finding
 from app.schemas.findings import (
@@ -33,11 +50,15 @@ def list_findings(
     scan_id: uuid.UUID | None = Query(default=None),
     workspace_id: uuid.UUID | None = Query(default=None),
 ) -> FindingListResponse:
-    """List findings with optional severity/status/category filters."""
+    """List findings with optional severity/status/category filters.
+
+    The list only ever contains the caller's own findings. A
+    ``workspace_id`` naming another workspace is refused with ``403``.
+    """
     stmt = select(Finding).order_by(Finding.created_at.desc())
     count_stmt = select(func.count()).select_from(Finding)
 
-    workspace_filter = workspace_id or principal.workspace_id
+    workspace_filter = read_scope(principal, workspace_id)
     if workspace_filter is not None:
         stmt = stmt.where(Finding.workspace_id == workspace_filter)
         count_stmt = count_stmt.where(Finding.workspace_id == workspace_filter)
@@ -72,8 +93,12 @@ def severity_breakdown(
     scan_id: uuid.UUID | None = Query(default=None),
     workspace_id: uuid.UUID | None = Query(default=None),
 ) -> SeverityBreakdown:
-    """Return aggregate counts of findings by severity and triage status."""
-    workspace_filter = workspace_id or principal.workspace_id
+    """Return aggregate counts of findings by severity and triage status.
+
+    The counts only ever cover the caller's own findings. A
+    ``workspace_id`` naming another workspace is refused with ``403``.
+    """
+    workspace_filter = read_scope(principal, workspace_id)
 
     filters = []
     if workspace_filter is not None:

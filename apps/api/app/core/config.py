@@ -89,6 +89,32 @@ class Settings(BaseSettings):
     access_token_ttl_minutes: int = Field(default=60 * 8, alias="ACCESS_TOKEN_TTL_MINUTES")
     refresh_token_ttl_days: int = Field(default=30, alias="REFRESH_TOKEN_TTL_DAYS")
 
+    # --- Human identity: Google OAuth (ADR-0020) -------------------------
+    # Humans sign in with Google; machine clients keep using API keys. The
+    # client secret is a credential: it is deployment configuration, never
+    # committed, and never exposed to the browser.
+    google_client_id: str = Field(default="", alias="GOOGLE_CLIENT_ID")
+    google_client_secret: str = Field(default="", alias="GOOGLE_CLIENT_SECRET")  # noqa: S105
+    google_auth_endpoint: str = Field(
+        default="https://accounts.google.com/o/oauth2/v2/auth", alias="GOOGLE_AUTH_ENDPOINT"
+    )
+    google_token_endpoint: str = Field(
+        default="https://oauth2.googleapis.com/token", alias="GOOGLE_TOKEN_ENDPOINT"
+    )
+    google_tokeninfo_endpoint: str = Field(
+        default="https://oauth2.googleapis.com/tokeninfo", alias="GOOGLE_TOKENINFO_ENDPOINT"
+    )
+    #: How long a session token stays valid. The session token is signed and
+    #: stateless; this is the bound on its lifetime.
+    session_ttl_minutes: int = Field(default=60 * 8, alias="SESSION_TTL_MINUTES")
+    #: How long an in-flight OAuth ``state`` record may be redeemed.
+    auth_state_ttl_seconds: int = Field(default=600, alias="AUTH_STATE_TTL_SECONDS")
+    #: How long a one-time sign-in ticket may be redeemed.
+    auth_ticket_ttl_seconds: int = Field(default=300, alias="AUTH_TICKET_TTL_SECONDS")
+    #: Name of the cookie the frontend stores the session token in. It is
+    #: ``HttpOnly`` on the frontend side, so the browser cannot read it.
+    session_cookie_name: str = Field(default="cs_session", alias="SESSION_COOKIE_NAME")
+
     # --- Object storage --------------------------------------------------
     object_storage_driver: str = Field(default="local", alias="OBJECT_STORAGE_DRIVER")
     object_storage_root: Path = Field(

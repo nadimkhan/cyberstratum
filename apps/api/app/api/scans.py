@@ -1,4 +1,25 @@
-"""Scan endpoints: submit, list and inspect scans."""
+"""Scan endpoints: submit, list and inspect scans.
+
+Tenant scoping
+--------------
+
+Every route in this module is scoped to a workspace, following the
+conventions defined in :mod:`app.core.security`:
+
+* A tenant principal's effective workspace is always its own workspace. A
+  ``workspace_id`` query parameter naming a different workspace is refused
+  with ``403`` on a read, and is never honoured on a write: a submitted scan
+  is always filed inside the caller's own workspace.
+* The configured service key is an explicit administrative credential and
+  may act across every tenant; it is the only principal for which a
+  ``workspace_id`` selects another workspace.
+* A scan belonging to another workspace is reported as **404 Not Found**,
+  exactly like a scan that does not exist, so the API never confirms that
+  an id exists in another tenant. This applies to the detail endpoint, the
+  per-scan findings endpoint, the report download and the action
+  endpoints.
+* A list endpoint only ever contains the caller's own scans.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +32,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.logging import get_logger
-from app.core.security import CurrentPrincipal, SessionDep
+from app.core.security import (
+    CurrentPrincipal,
+    Principal,
+    SessionDep,
+    may_read_workspace,
+    read_scope,
+    write_workspace_id,
+)
 from app.db.enums import ScanJobStatus, ScanJobType, ScanStatus
 from app.db.models.identity import Chain, ContractTarget, Workspace
 from app.db.models.scans import (
@@ -61,14 +89,38 @@ def _default_workspace(session: Session) -> Workspace:
     return workspace
 
 
-def _resolve_workspace(session: Session, requested: uuid.UUID | None) -> Workspace:
-    """Resolve the workspace a scan should be filed under."""
-    if requested is not None:
-        workspace = session.get(Workspace, requested)
+def _resolve_workspace(
+    session: Session,
+    principal: Principal,
+    requested: uuid.UUID | None,
+) -> Workspace:
+    """Resolve the workspace a scan should be filed under.
+
+    A tenant principal is always filed inside its own workspace: a
+    ``requested`` workspace naming a different one is ignored, so a tenant
+    can never file a scan inside another tenant's workspace. The
+    administrative service key may name any workspace, and falls back to
+    the default workspace when it names none.
+
+    Ignoring the request is not the same as honouring it: the scan is
+    filed under the caller's own workspace, and the override is logged so
+    an operator can see that a client asked for a workspace it does not
+    have.
+    """
+    effective = write_workspace_id(principal, requested)
+    if requested is not None and effective != requested:
+        log.warning(
+            "scan_workspace_override",
+            requested_workspace_id=str(requested),
+            effective_workspace_id=str(effective),
+            principal_user_id=str(principal.user_id),
+        )
+    if effective is not None:
+        workspace = session.get(Workspace, effective)
         if workspace is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Workspace {requested} not found.",
+                detail=f"Workspace {effective} not found.",
             )
         return workspace
     return _default_workspace(session)
@@ -141,7 +193,7 @@ def submit_scan(
     Returns ``202 Accepted`` with a scan id and a status URL, per design doc
     section 10.1.
     """
-    workspace = _resolve_workspace(session, payload.workspace_id)
+    workspace = _resolve_workspace(session, principal, payload.workspace_id)
     chain = _resolve_chain(session, payload.chain_id)
 
     inline_bytecode: bytes | None = None
@@ -242,11 +294,16 @@ def list_scans(
     scan_status: ScanStatus | None = Query(default=None, alias="status"),
     workspace_id: uuid.UUID | None = Query(default=None),
 ) -> ScanListResponse:
-    """List scans with their status, newest first."""
+    """List scans with their status, newest first.
+
+    The list only ever contains the caller's own scans. A ``workspace_id``
+    naming another workspace is refused with ``403`` rather than silently
+    honoured or silently ignored.
+    """
     stmt = select(Scan).order_by(Scan.created_at.desc())
     count_stmt = select(func.count()).select_from(Scan)
 
-    workspace_filter = workspace_id or principal.workspace_id
+    workspace_filter = read_scope(principal, workspace_id)
     if workspace_filter is not None:
         stmt = stmt.where(Scan.workspace_id == workspace_filter)
         count_stmt = count_stmt.where(Scan.workspace_id == workspace_filter)
@@ -280,7 +337,10 @@ def get_scan(
     session: SessionDep,
     principal: CurrentPrincipal,
 ) -> ScanDetail:
-    """Return a scan with its jobs, artifacts and findings."""
+    """Return a scan with its jobs, artifacts and findings.
+
+    A scan belonging to another workspace is reported as not found.
+    """
     scan = session.scalars(
         select(Scan)
         .options(
@@ -295,8 +355,7 @@ def get_scan(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Scan {scan_id} not found."
         )
 
-    workspace_filter = principal.workspace_id
-    if workspace_filter is not None and scan.workspace_id != workspace_filter:
+    if not may_read_workspace(principal, scan.workspace_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Scan {scan_id} not found."
         )
@@ -334,7 +393,8 @@ def list_scan_findings(
     """Return the findings produced by one scan, newest first.
 
     This is the per-scan view of the findings resource. The workspace-wide
-    list lives at ``GET /api/v1/findings``.
+    list lives at ``GET /api/v1/findings``. A scan belonging to another
+    workspace is reported as not found.
     """
     scan = session.get(Scan, scan_id)
     if scan is None:
@@ -342,8 +402,7 @@ def list_scan_findings(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Scan {scan_id} not found."
         )
 
-    workspace_filter = principal.workspace_id
-    if workspace_filter is not None and scan.workspace_id != workspace_filter:
+    if not may_read_workspace(principal, scan.workspace_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Scan {scan_id} not found."
         )
@@ -376,8 +435,7 @@ def _get_scan_for_principal(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Scan {scan_id} not found."
         )
-    workspace_filter = principal.workspace_id
-    if workspace_filter is not None and scan.workspace_id != workspace_filter:
+    if not may_read_workspace(principal, scan.workspace_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Scan {scan_id} not found."
         )

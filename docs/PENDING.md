@@ -129,14 +129,48 @@ credentials — §4.
 
 | # | Item | Acceptance criterion | Status |
 |---|---|---|---|
-| 3.1 | Multi-tenant enforcement | Workspace isolation across **every** query path, not just the ones already checked. A scan in workspace A is invisible to workspace B, including through list, detail, findings, and report endpoints. | `[ ]` |
-| 3.2 | Identity | Google OAuth for humans, hashed API keys for machine clients. | `[ ]` |
-| 3.3 | Daily update checks | Check-only, every 24 h. Production dependencies are **not** upgraded automatically — upgrades go through gated CI. | `[ ]` |
+| 3.1 | Multi-tenant enforcement | Workspace isolation across **every** query path, not just the ones already checked. A scan in workspace A is invisible to workspace B, including through list, detail, findings, and report endpoints. | `[x]` done 2026-11-05 — 27 isolation tests, every route enumerated from the OpenAPI schema; see §3.1.1 for the exact conventions and the one residual gap |
+| 3.2 | Identity | Google OAuth for humans, hashed API keys for machine clients. | `[ ]` ADR-0020 written; implementation not started |
+| 3.3 | Daily update checks | Check-only, every 24 h. Production dependencies are **not** upgraded automatically — upgrades go through gated CI. | `[x]` done 2026-11-05 — `python -m app.cli.update_check` (check-only, never installs) plus a systemd timer at 03:17; verified against the live PyPI/npm registries |
 | 3.4 | Authorised scanning scope | Bug-bounty / airdrop scope ingestion with safe-harbour rules, plus responsible-disclosure gating. Public-chain reads may be automated; transactions, exploit execution, and disclosure submission require explicit authorisation. | `[ ]` |
 | 3.5 | Report as a first-class artifact | The generated PDF is stored as a scan artifact with its own sha256, so a report can be proven to be the one that was issued. | `[ ]` |
 | 3.6 | Repository-wide formatting | `ruff format` has never been run over the whole repository: 44 committed files are still unformatted. `ruff check` and `mypy` are clean, so this is cosmetic, but it should be one mechanical pass of its own rather than mixed into a feature commit. | `[ ]` |
 | 3.7 | Windows history migration | The Windows development database holds 12 scans, 10 scan jobs, 38 findings, 3 feed cursors and 1 discovery run. The WSL database has the schema but no rows. Moving the history is a separate decision, and deleting the Windows working copy is another. | `[ ]` needs the user's decision |
 | 3.8 | Migration-vs-model diff over every table | `tests/api/test_migration_contract.py` applies the real migration chain and checks the one constraint that bit us. A general autogenerate diff would catch the next column width, index, or constraint that exists only in a migration and is therefore invisible to the suite. | `[ ]` |
+
+### 3.1.1 Workspace isolation — what "done" means here
+
+Every route in the OpenAPI schema was enumerated and every tenant-sensitive
+query path was checked. The conventions are implemented once, in
+`app/core/security.py`, and each router repeats them in its own docstring:
+
+- **A tenant principal is scoped to exactly one workspace** — its own. A
+  `workspace_id` naming a different workspace is **refused on a read**
+  (`403`), and is **never honoured on a write**: the object is filed inside
+  the caller's own workspace and the override is logged as
+  `scan_workspace_override`. Answering a cross-tenant read with the
+  caller's own rows would misrepresent what was asked for.
+- **A cross-tenant object read is indistinguishable from a missing one.**
+  Detail, per-scan findings, report download, the Mythril and correspondence
+  actions, and the correspondence proof all answer `404`, exactly like an
+  object that does not exist. A list endpoint never contains another
+  tenant's objects; filtering by a foreign `scan_id` yields the same empty
+  result as filtering by an unknown one.
+- **A stored key whose owner belongs to no workspace is denied** with `403`
+  and a clear message. It is never widened into an unscoped principal.
+- **The configured service key is an explicit administrative capability**
+  (`Principal.is_service_key`), not an accident of a missing workspace id.
+  It reads across tenants, which is what the Next.js frontend needs.
+
+27 tests in `tests/api/test_tenant_isolation.py` cover exactly this, and
+they fail if any of it regresses.
+
+**The one residual gap (not a leak):** the `api_keys` table has no
+`workspace_id` column, so a stored key is bound to its owner's *earliest*
+workspace membership. A key belonging to a user who is in several workspaces
+therefore acts in the first one only. Binding a key to a specific workspace
+needs a schema change (column + migration + issuance route), and it belongs
+with the identity work in §3.2, not as a separate migration.
 
 ---
 

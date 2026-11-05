@@ -1,0 +1,27 @@
+[Unit]
+Description=CyberStratum dependency update check (check-only; never upgrades)
+Documentation=https://github.com/nadimkhan/cyberstratum
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=cyberstratum
+Group=cyberstratum
+WorkingDirectory=/opt/cyberstratum/app
+EnvironmentFile=/etc/cyberstratum/app.env
+# This job REPORTS which upstream versions are newer. It never installs,
+# never upgrades and never writes to the environment: production
+# dependency changes go through gated CI, not through a timer.
+ExecStart=/opt/cyberstratum/app/.venv/bin/python -m app.cli.update_check \
+    --output /var/lib/cyberstratum/update-check.json
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/cyberstratum
+StandardOutput=append:/var/log/cyberstratum/update-check.log
+StandardError=append:/var/log/cyberstratum/update-check.err
+
+[Install]
+WantedBy=multi-user.target

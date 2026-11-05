@@ -1207,6 +1207,10 @@ access, no ORM.
 |---|---|
 | API keys stored as SHA-256 digests with a display prefix; a raw key is never persisted | `apps/api/app/core/security.py`, `api_keys.key_hash` |
 | Requests without a usable key are rejected with `401` | `apps/api/app/core/security.py` |
+| A tenant credential is scoped to exactly one workspace; a `workspace_id` naming another workspace is refused (`403`) on reads and never honoured on writes | `apps/api/app/core/security.py` (`read_scope`, `write_workspace_id`), `apps/api/app/api/scans.py` |
+| A cross-tenant object read answers `404`, identical to a missing object, so the API never confirms that an id exists in another tenant | `apps/api/app/api/scans.py`, `apps/api/app/api/findings.py` |
+| A stored key whose owner is in no workspace is denied (`403`), never widened into an unscoped principal | `apps/api/app/core/security.py` (`NO_MEMBERSHIP_DETAIL`) |
+| The unscoped service key is an explicit, named administrative capability rather than an accidental `None` | `Principal.is_service_key` |
 | Settings validated at startup; an invalid `QUEUE_BACKEND` or fork fails fast | `apps/api/app/core/config.py` |
 | Structured JSON logs; no secrets in log payloads | `apps/api/app/core/logging.py` |
 | Deterministic constraint names keep Alembic diffs stable | `apps/api/app/db/base.py` |

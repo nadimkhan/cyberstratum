@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
@@ -20,6 +21,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    false,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -72,6 +74,7 @@ class Scan(Base):
         Boolean,
         nullable=False,
         default=False,
+        server_default=false(),
         doc="Whether the source engine actually ran for this scan.",
     )
     source_audit_skipped: Mapped[str | None] = mapped_column(
@@ -86,6 +89,7 @@ class Scan(Base):
         Boolean,
         nullable=False,
         default=False,
+        server_default=false(),
         doc="Whether the Mythril engine actually ran for this scan.",
     )
     mythril_skipped: Mapped[str | None] = mapped_column(
@@ -283,6 +287,12 @@ class Finding(Base):
     __table_args__ = (
         Index("ix_findings_scan_severity", "scan_id", "severity"),
         Index("ix_findings_workspace_created", "workspace_id", "created_at"),
+        # The database refuses a provenance it does not know; so does the
+        # model, so that an invalid value is refused before it is sent.
+        CheckConstraint(
+            "source IN ('rule', 'slither', 'ml', 'mythril')",
+            name="source",
+        ),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -298,6 +308,7 @@ class Finding(Base):
         String(16),
         nullable=False,
         default="rule",
+        server_default="rule",
         index=True,
         doc=(
             "Which engine produced this finding: 'rule' for the bytecode "

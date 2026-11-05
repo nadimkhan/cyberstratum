@@ -163,9 +163,13 @@ now covered by a test that fails without the fix.
 - [ ] Actual VPS provisioning and a real deployment. **Blocked on a host and SSH access.**
 
 ### P1 — platform hardening
-- [ ] Multi-tenant enforcement — workspace isolation across every query path.
+- [x] Multi-tenant enforcement — workspace isolation across every query path
+      (2026-11-05: 27 isolation tests, every route enumerated from the OpenAPI
+      schema; conventions in `docs/PENDING.md` §3.1.1).
 - [ ] Google OAuth for humans + hashed API keys for machine clients.
-- [ ] Daily dependency update checks (check only; upgrade through gated CI).
+      **ADR-0020 written; the implementation is in flight.**
+- [x] Daily dependency update checks (check only; upgrade through gated CI)
+      (2026-11-05: `python -m app.cli.update_check` + a systemd timer at 03:17).
 - [ ] Authorised bug-bounty scope ingestion + safe-harbour rules.
 - [ ] Store the generated PDF as a scan artifact with its own sha256, so a report
       can be proven to be the one that was issued.
@@ -181,6 +185,20 @@ now covered by a test that fails without the fix.
 - [ ] Move the Windows development history (12 scans, 10 scan jobs, 38 findings,
       3 feed cursors, 1 discovery run) into WSL, and decide what happens to the
       Windows working copy. Both need the user's decision; neither is urgent.
+      The dump/load scripts are prepared (`scratch/wsl/dump_history.sh`,
+      `scratch/wsl/load_history.sh`).
+
+### Done in the 2026-11-05 round
+- [x] Workspace isolation across every tenant-sensitive query path.
+- [x] Check-only dependency update monitor + daily timer.
+- [x] Production deployment material: `deploy/vps/deploy.sh` (193 lines, verifies
+      it deployed), `deploy/vps/Caddyfile` (TLS + reverse proxy),
+      `deploy/vps/app.env.example` (production template, no secrets), the
+      update-check unit and timer, `docs/DEPLOYMENT.md` (the full runbook).
+- [x] Netlify rehearsal: `next build` succeeds in WSL and every data page is
+      `force-dynamic` with `no-store`, so nothing is baked at build time and a
+      static export would have shipped an empty dashboard.
+- [x] ADR-0020 (human identity via Google OAuth, hashed keys for machines).
 
 ### Done in the 2026-10-29 round
 - [x] Mythril as a manual action — API, own queue and worker, own systemd unit,
@@ -259,6 +277,11 @@ Commands (from WSL, project root): `npm run dev` · `npm run stop` · `npm run l
 | 22 | Pending-list implementation | manual Mythril, correspondence service, dataset ingestion, deterministic reports | `54fced8` |
 | 23 | Live-proof defects | artifact root, job type width, provenance constraint, constraint naming, own revision | `49e248e`, `e8d6269` |
 | 24 | Migration contract test | the migrated schema must accept every provenance the code writes | `c00be88` |
+| 25 | Workspace isolation | every tenant-sensitive query path scoped; 27 isolation tests; cross-tenant reads answer 404 | pending |
+| 26 | Dependency update monitor | check-only CLI + daily systemd timer; verified against live PyPI/npm | pending |
+| 27 | Production deployment material | `deploy.sh`, Caddyfile, env template, update-check unit, `docs/DEPLOYMENT.md` | pending |
+| 28 | Netlify rehearsal | `next build` clean; every data page `force-dynamic` + `no-store` | pending |
+| 29 | Human identity | ADR-0020 written; implementation in flight | pending |
 
 ---
 

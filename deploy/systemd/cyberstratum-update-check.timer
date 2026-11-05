@@ -1,0 +1,15 @@
+[Unit]
+Description=Daily CyberStratum dependency update check (every 24 hours)
+
+[Timer]
+# Once a day, off the hour so the check does not pile up with every other
+# cron job on the box. RandomisedDelaySec spreads it a little further.
+OnCalendar=*-*-* 03:17:00
+RandomizedDelaySec=20m
+# If the machine was off at 03:17, the check runs at the next boot rather
+# than being silently skipped for that day.
+Persistent=true
+Unit=cyberstratum-update-check.service
+
+[Install]
+WantedBy=timers.target

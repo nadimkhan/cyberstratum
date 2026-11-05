@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.auth import router as auth_router
 from app.api.discovery import router as discovery_router
 from app.api.findings import router as findings_router
 from app.api.health import router as health_router
@@ -74,6 +75,7 @@ def create_app() -> FastAPI:
     app.include_router(scans_router)
     app.include_router(findings_router)
     app.include_router(discovery_router)
+    app.include_router(auth_router)
 
     @app.middleware("http")
     async def _request_id_middleware(request: Request, call_next):  # type: ignore[no-untyped-def]

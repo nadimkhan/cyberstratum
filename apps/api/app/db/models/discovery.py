@@ -23,6 +23,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
+    true,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -52,7 +54,6 @@ class FeedCursor(Base):
     __tablename__ = "feed_cursors"
     __table_args__ = (
         UniqueConstraint("chain_id", "workspace_id", name="uq_feed_cursor_scope"),
-        Index("ix_feed_cursors_workspace", "workspace_id"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
@@ -64,7 +65,9 @@ class FeedCursor(Base):
     )
     last_address: Mapped[str | None] = mapped_column(String(42))
     last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    contracts_seen: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    contracts_seen: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     updated_at: Mapped[datetime] = updated_at_column()
 
     chain: Mapped[Chain] = relationship()
@@ -86,23 +89,38 @@ class DiscoveryRun(Base):
 
     __tablename__ = "discovery_runs"
     __table_args__ = (
-        Index("ix_discovery_runs_workspace_started", "workspace_id", "started_at"),
+        # Named as the migration created it: the same (workspace_id,
+        # started_at) coverage under a different name would be a lie the
+        # schema-diff test rightly refuses.
+        Index("ix_discovery_runs_workspace_created", "workspace_id", "started_at"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     workspace_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+        ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
     )
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default="running")
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="running", server_default="running"
+    )
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), default=func.now()
     )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    chains_covered: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    chains_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    contracts_found: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    contracts_new: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    contracts_updated: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    chains_covered: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    chains_failed: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    contracts_found: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    contracts_new: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    contracts_updated: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     errors: Mapped[list[dict[str, object]] | None] = mapped_column(JSONB)
     notes: Mapped[str | None] = mapped_column(Text)
 
@@ -135,7 +153,9 @@ class ProxyTemplateAllowlist(Base):
     added_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
-    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=true()
+    )
     created_at: Mapped[datetime] = created_at_column()
 
     added_by_user: Mapped[User] = relationship()

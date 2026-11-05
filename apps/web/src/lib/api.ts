@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import {
   countSeverities,
   emptySeverityCounts,
@@ -40,7 +41,11 @@ import type {
  *   GET  /api/v1/findings           paginated findings, filterable
  *   GET  /api/v1/findings/summary   severity / status breakdown
  *
- * Every request carries the `X-API-Key` header.
+ * Every request carries the `X-API-Key` header. When a human session cookie
+ * is present, the request additionally carries `Authorization: Bearer <token>`
+ * so the backend can scope the call to that session's workspace. Without a
+ * session the call is still made with the service key alone, so the product
+ * keeps working for an anonymous visitor and for the backend's admin path.
  */
 
 export const API_BASE_URL = (
@@ -58,6 +63,46 @@ export const API_PREFIX = "/api/v1";
  * server component or a route handler, so the key never reaches the browser.
  */
 export const API_KEY = process.env.API_KEY ?? "";
+
+/**
+ * Name of the HttpOnly cookie that carries the human session token.
+ *
+ * The token never leaves the server: the browser only holds the cookie, and
+ * every backend call is made from a server component or a route handler.
+ */
+export const SESSION_COOKIE_NAME = "cs_session";
+
+/**
+ * Read the current session token from the request cookies.
+ *
+ * Returns `null` when there is no session, and also outside a request scope
+ * (a build-time prerender, a unit test), where `cookies()` throws.
+ */
+async function currentSessionToken(): Promise<string | null> {
+  try {
+    const store = await cookies();
+    const value = store.get(SESSION_COOKIE_NAME)?.value;
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed === "" ? null : trimmed;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Headers attached to every backend call.
+ *
+ * The service key is always sent. The bearer token is added only when a
+ * human session cookie is present, so an anonymous visitor keeps the
+ * existing service-key behaviour.
+ */
+async function authHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = API_KEY ? { "X-API-Key": API_KEY } : {};
+  const token = await currentSessionToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
 
 export type ApiErrorKind = "network" | "http" | "parse" | "not_found";
 
@@ -99,7 +144,7 @@ async function request<T>(
       headers: {
         Accept: "application/json",
         ...(init?.body ? { "Content-Type": "application/json" } : {}),
-        ...(API_KEY ? { "X-API-Key": API_KEY } : {}),
+        ...(await authHeaders()),
         ...(init?.headers ?? {}),
       },
     });
@@ -1154,7 +1199,7 @@ export async function fetchScanReport(
       cache: "no-store",
       headers: {
         Accept: "application/pdf",
-        ...(API_KEY ? { "X-API-Key": API_KEY } : {}),
+        ...(await authHeaders()),
       },
     });
 

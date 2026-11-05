@@ -1,0 +1,50 @@
+# TLS-terminating reverse proxy for the CyberStratum API.
+#
+# The API itself listens on 127.0.0.1:8000 and is never exposed to the
+# internet directly. Caddy obtains and renews the certificate automatically;
+# nginx works too, but Caddy needs no certificate plumbing.
+#
+# Install:
+#   sudo cp deploy/vps/Caddyfile /etc/caddy/Caddyfile
+#   sudo caddy validate --config /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# The hostname below MUST match API_BASE_URL in /etc/cyberstratum/app.env,
+# and the DNS A record for it must already point at this server, or the
+# certificate cannot be issued.
+
+api.example.com {
+	encode gzip zstd
+
+	# The API is a JSON API with one exception: the report endpoint
+	# returns a PDF. Nothing else is large, so the body limit stays low.
+	request_body {
+		max_size 2MB
+	}
+
+	reverse_proxy 127.0.0.1:8000 {
+		# The API runs behind this proxy, so it must see the real
+		# client address and protocol.
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/cyberstratum-api.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}
+
+# The frontend is served by Netlify, so there is no site block for it here.
+# The only browser origin that calls the API is the Netlify origin, and it
+# is allowed through CORS_EXTRA_ORIGINS in the application environment.

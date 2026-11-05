@@ -4,12 +4,14 @@ import { EmptyState } from "@/components/EmptyState";
 import { RiskScoreGauge } from "@/components/RiskScoreGauge";
 import { ScanTable } from "@/components/ScanTable";
 import { SeverityBadge } from "@/components/SeverityBadge";
+import { SignInButton } from "@/components/SignInButton";
 import {
   API_BASE_URL,
   describeApiError,
   getFindingsSummary,
   listScans,
 } from "@/lib/api";
+import { fetchCurrentUser } from "@/lib/auth";
 import { formatChainId, formatRelativeTime, shortAddress } from "@/lib/format";
 import { emptySeverityCounts, estimateRiskScore, SEVERITY_META } from "@/lib/severity";
 import { SEVERITY_ORDER, type SeverityCounts } from "@/lib/types";
@@ -18,10 +20,16 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Overview" };
 
-export default async function DashboardPage() {
-  const [scansResult, summaryResult] = await Promise.all([
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ auth?: string }>;
+}) {
+  const [scansResult, summaryResult, session, params] = await Promise.all([
     listScans({ limit: 50 }),
     getFindingsSummary(),
+    fetchCurrentUser(),
+    searchParams,
   ]);
 
   const backendDown = !scansResult.ok && !summaryResult.ok;
@@ -60,13 +68,28 @@ export default async function DashboardPage() {
             Is the system healthy, and what needs attention?
           </p>
         </div>
-        <Link
-          href="/scans/new"
-          className="rounded-md bg-[var(--cs-accent)] px-3 py-2 text-sm font-semibold text-[var(--cs-accent-fg)] hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
-        >
-          New scan
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/scans/new"
+            className="rounded-md bg-[var(--cs-accent)] px-3 py-2 text-sm font-semibold text-[var(--cs-accent-fg)] hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
+          >
+            New scan
+          </Link>
+          <SignInButton
+            email={session?.user.email ?? null}
+            displayName={session?.user.displayName ?? null}
+          />
+        </div>
       </header>
+
+      {params.auth === "failed" ? (
+        <p
+          role="status"
+          className="rounded-md border border-[var(--cs-border)] bg-[var(--cs-surface)] px-3 py-2 text-sm text-[var(--cs-muted)]"
+        >
+          Sign-in did not complete. No session was created - you can try again.
+        </p>
+      ) : null}
 
       {backendDown ? (
         <ApiUnreachable

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -89,11 +90,18 @@ class Workspace(Base):
     """
 
     __tablename__ = "workspaces"
+    __table_args__ = (
+        # The migration enforces this too; the model says so as well, so
+        # that a bad kind is refused by the ORM and by the database alike.
+        CheckConstraint("kind IN ('tenant', 'discovery')", name="kind"),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     slug: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
-    kind: Mapped[str] = mapped_column(String(32), nullable=False, default="tenant")
+    kind: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="tenant", server_default="tenant"
+    )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
