@@ -224,8 +224,9 @@ Moved here as it lands. Each entry names the commit and how it was verified.
 | Migration contract | `e8d6269`, `c00be88` | `findings.source` is widened by its own revision `f7d9a3c1e5b2` — a revision is never re-run, so editing an applied one would have fixed only fresh databases — and the constraint is dropped by the name it actually has. `tests/api/test_migration_contract.py` applies the real migration chain and compares the result with `FINDING_SOURCES`. |
 | The `scan_jobs.job_type` width fix | `54fced8` | `VARCHAR(12)` could not hold `correspondence` (14 characters). The migration widens it to `VARCHAR(14)` and removes the new job rows before narrowing it again on downgrade. |
 | The artifact storage-root fix | `54fced8` | The root was relative, so the API wrote artifacts in one directory and the workers read from another, and every worker-side artifact read failed as if the file had never been stored. It is now resolved against the repository root, with a regression test that fails if two processes disagree. |
-
----
+| The PDF report as a first-class artefact | `b6ac6f9` | The rendered PDF is written to object storage under a deterministic key and recorded in the artefact registry with its size and digest. The report's own artefact row is excluded from the provenance table it prints, so identical evidence still renders byte-identically. `tests/api/test_report_artifact.py`. |
+| The model manifest as a retrievable object | `b6ac6f9` | `GET /api/v1/models/manifest` answers **404** when no model is installed, **200** with the manifest and its SHA-256 when one is, and **503** when a model is configured but its manifest cannot be read. "No model" and "broken model" are different facts and are never collapsed. |
+| The identity suite no longer needs a Redis | `b6ac6f9` | The revocation list is reached from two places — the API's own store and the security layer's default store. The test fake is now installed at the Redis client, so one fake serves both and a revocation written by one is visible to the other. |
 
 ### 6.1 Defects found by proving it live (2026-10-29)
 
@@ -247,6 +248,33 @@ it, so the name is looked up; and the AGPL guard reads an identifier as
 code, so the canonical set of provenances is a tuple of string literals.
 
 ---
+
+### 6.2 The round of 2026-11-06 — evidence as objects
+
+Three things in this round are the same idea seen from different sides: an
+assertion is only worth what it can be pointed at.
+
+**A report that cannot be pointed at is not evidence.** The PDF endpoint
+used to render bytes and return them. It now writes those bytes to object
+storage under a deterministic key, records the artefact with its size and
+digest, and returns the digest in `X-Report-SHA256` alongside the
+artefact's key. The one trap: the report prints its own artefact table, so
+including the report's own row would have made the digest depend on
+itself — the second render would differ from the first. The row is
+excluded, and a test asserts that two downloads are byte-identical.
+
+**A model that cannot be read must not read as a model that is absent.**
+The manifest endpoint separates the three states: nothing installed (404),
+installed and readable (200, with the digest of the file), installed but
+unreadable (503). The middle one is the only one that may be cited in a
+report.
+
+**A test that needs a running Redis is testing the environment.** The
+identity suite had been passing with a Redis up and failing with one
+down, because the revocation check reached the real Redis through a
+second door. The fake is now installed at the Redis client rather than at
+one call site, so both doors open onto the same in-memory store, and the
+suite no longer depends on a service it does not own.
 
 ## 7. How this document relates to the others
 

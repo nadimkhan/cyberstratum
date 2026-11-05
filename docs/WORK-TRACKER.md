@@ -188,6 +188,29 @@ now covered by a test that fails without the fix.
       The dump/load scripts are prepared (`scratch/wsl/dump_history.sh`,
       `scratch/wsl/load_history.sh`).
 
+### Done in the 2026-11-06 round
+- [x] The PDF report is a first-class scan artefact — stored under a
+      deterministic key, recorded with its size and digest, and cited by
+      `X-Report-SHA256` and `X-Report-Artifact`. The report's own artefact
+      row is excluded from the provenance table it prints, so the same
+      evidence still renders byte-identically; `tests/api/test_report_artifact.py`
+      asserts that, plus that the filed bytes are the served bytes and that
+      downloading twice does not accumulate rows.
+- [x] `GET /api/v1/models/manifest` — **404** when no model is installed,
+      **200** with the manifest and its SHA-256 when one is readable, **503**
+      when a model is configured but its manifest cannot be read. A broken
+      installation is never reported as an absent model.
+- [x] The identity suite no longer depends on a running Redis. The
+      revocation list is reached from two call sites — the API's own store
+      and the security layer's default store — and the test fake is now
+      installed at the Redis client, so both doors open onto one in-memory
+      store. Before this, the suite passed with Redis up and failed with
+      Redis down, which is a test of the environment, not of the code.
+- [x] Repository knowledge graph (Graphify, AST-only, no LLM key needed):
+      8270 nodes and 15715 edges over the tracked source, with
+      `.graphifyignore` keeping virtualenvs, caches, build output and
+      runtime data out of the index.
+
 ### Done in the 2026-11-05 round
 - [x] Workspace isolation across every tenant-sensitive query path.
 - [x] Check-only dependency update monitor + daily timer.
