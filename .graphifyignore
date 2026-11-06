@@ -1,0 +1,42 @@
+# Directories and files that must not enter the knowledge graph.
+#
+# The rule: index what a reader of this repository would read. Virtual
+# environments, build output, dependency trees and generated caches are
+# noise - they are large, they change on every install, and they contain
+# no decisions worth recording.
+
+# Dependencies and build output
+node_modules/
+.next/
+out/
+dist/
+build/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Version control and tool state
+.git/
+.graphify/
+*.log
+
+# Generated and runtime data
+artifacts/
+storage/
+data/
+*.sqlite
+*.sqlite3
+*.db
+
+# Graphify's own incremental cache (the graph itself is committed)
+graphify-out/cache/
+
+# Lockfiles and minified output
+package-lock.json
+*.lock
+*.min.js

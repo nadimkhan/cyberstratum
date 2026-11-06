@@ -38,3 +38,9 @@ Thumbs.db
 # Local development stack state and logs
 .dev-session.json
 .dev-logs/
+
+# --- Knowledge graph (Graphify) ---
+# The report and the raw graph are committed so the knowledge graph is
+# available on a fresh checkout; the extraction cache is not, because it
+# is a rebuildable cache of the source files.
+graphify-out/cache/
