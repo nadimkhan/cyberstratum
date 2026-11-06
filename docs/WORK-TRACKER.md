@@ -207,9 +207,33 @@ now covered by a test that fails without the fix.
       store. Before this, the suite passed with Redis up and failed with
       Redis down, which is a test of the environment, not of the code.
 - [x] Repository knowledge graph (Graphify, AST-only, no LLM key needed):
-      8270 nodes and 15715 edges over the tracked source, with
-      `.graphifyignore` keeping virtualenvs, caches, build output and
-      runtime data out of the index.
+      8,351 nodes, 14,171 edges and 549 communities over the tracked
+      source, with `.graphifyignore` keeping virtualenvs, caches, build
+      output and runtime data out of the index. The report and the raw
+      graph are committed; the extraction cache is not.
+- [x] **The working copy is WSL only.** The Windows copy at
+      `E:/projects/cyberstratum` is frozen as a fallback and is no longer
+      edited: two copies of a live database and two test environments
+      produced two different answers to the same question, which is more
+      expensive than it looks. Everything from here is committed, tested
+      and pushed in `~/projects/cyberstratum`.
+- [x] `scripts/wsl/grant_test_privileges.sh` — the schema gate needs
+      `CREATEDB` and ownership of the `public` schema, and a cluster this
+      project did not initialise grants neither. On WSL the five
+      migration-contract tests failed with `permission denied to create
+      database` and `must be owner of schema public`: an environment
+      fault that read as a code fault, and that the Windows copy hid
+      because there the application role had initialised the cluster
+      itself. The script uses the isolated cluster's own superuser role,
+      which that cluster trusts locally, so it needs neither sudo nor a
+      password, and it touches nothing but this project's cluster on 5433.
+- [x] A trap worth naming: **a WSL script run as `bash script.sh` is not a
+      login shell**, so `~/.local/node/bin` is missing from `PATH`, `npm`
+      resolves to the *Windows* npm under `/mnt/d/Program Files/nodejs`, and
+      every npm-based gate fails with `WSL 1 is not supported`. The gate is
+      fine; the shell was wrong. Run WSL work as `bash -lc 'bash <script>'`
+      or export the native Node path first. The same trap is recorded in
+      the `background-process-gates` skill.
 
 ### Done in the 2026-11-05 round
 - [x] Workspace isolation across every tenant-sensitive query path.

@@ -276,6 +276,24 @@ second door. The fake is now installed at the Redis client rather than at
 one call site, so both doors open onto the same in-memory store, and the
 suite no longer depends on a service it does not own.
 
+**A test that fails only on one machine is usually telling you about the
+machine.** The schema gate failed on WSL and passed on Windows, which
+reads as a platform difference in the code. It was not: the gate needs
+`CREATEDB` and ownership of the `public` schema, and the Windows cluster
+had been initialised by the application's own role, which therefore owned
+both. The WSL cluster's initialising superuser was a different role, so
+the same test failed with `permission denied to create database` and
+`must be owner of schema public`. `scripts/wsl/grant_test_privileges.sh`
+fixes the cluster, uses the superuser that cluster already trusts
+locally, and touches nothing outside this project's isolated instance.
+
+**Two copies of a working tree cost more than they save.** The Windows
+copy and the WSL copy each carried their own database, their own Redis
+and their own privileges, so the same test could pass in one place and
+fail in the other for reasons that had nothing to do with the change
+under test. WSL is now the only working copy; the Windows copy is frozen
+as a fallback and is not edited.
+
 ## 7. How this document relates to the others
 
 | Document | Scope |
