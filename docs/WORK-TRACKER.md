@@ -590,6 +590,35 @@ are stored with `source="mythril"`, `mythril_ran` is `true` and
 `mythril_skipped` is `null`. The manual correspondence action returns
 `202`, the job finishes, and the outcome is `unavailable` — correct for a
 fixture with no verified source, and deliberately *not* `mismatch`. The
-report endpoint serves a PDF with its `X-Report-SHA256` header. The stack
+The report endpoint serves a PDF with its `X-Report-SHA256` header. The stack
 stops cleanly afterwards.
+
+### 11.6 The WSL round closes
+
+The final gate, run in WSL against the pushed code:
+
+| Gate | Result |
+|---|---|
+| Ruff | All checks passed! |
+| mypy | no issues found in 86 source files |
+| pytest, full and uncapped | 730 passed, 16 warnings in 79.00s |
+| Vitest | 11 files, 96 tests passed |
+| `npm run check` | exit 0 — every path resolves |
+
+The stack was then stopped with `npm run stop`, and the boundaries were
+verified from outside the launcher:
+
+| Service | State after the stop | Owner |
+|---|---|---|
+| PostgreSQL 5433, isolated | down | this project, stopped |
+| PostgreSQL 5432, system | up | Ubuntu, untouched |
+| Redis 6379 | up, `PONG` | Ubuntu, untouched |
+| API 8000 | down | this project |
+| Frontend 3100 | down | this project |
+
+No application process was left behind. Redis was cleaned of the 14
+`rq:*` keys the live testing created; the 16 `module:*` keys belonging to
+the trading bot were left alone, so Redis ended at `DBSIZE 16` and
+`PONG`. What is still open is not engineering: it is the production
+inputs for the deployment.
 

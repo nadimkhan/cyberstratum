@@ -294,6 +294,33 @@ fail in the other for reasons that had nothing to do with the change
 under test. WSL is now the only working copy; the Windows copy is frozen
 as a fallback and is not edited.
 
+### 6.3 The WSL round closes
+
+The last gate of the round ran in WSL, on the code that is pushed, and it
+is the first time every gate has been exercised in the environment that
+is now canonical rather than in a copy that was about to be frozen:
+
+| Gate | Result |
+|---|---|
+| Ruff | All checks passed! |
+| mypy | no issues found in 86 source files |
+| pytest, full and uncapped | 730 passed, 16 warnings in 79.00s |
+| Vitest | 11 files, 96 tests passed |
+| `npm run check` | exit 0 |
+
+The stack was stopped afterwards and the service boundaries were checked
+from outside the launcher: the isolated PostgreSQL on 5433, the API on
+8000 and the frontend on 3100 are down, while the system PostgreSQL on
+5432 and Redis on 6379 are up and untouched. Redis was cleaned of the 14
+`rq:*` keys the live testing created; the 16 `module:*` keys belonging to
+the trading bot were left alone.
+
+Everything still open is now deployment input rather than engineering:
+a Linux VPS, the public backend URL, the production CORS origins, the
+Google OAuth client and redirect URI, and the Netlify site. Those are
+recorded in `docs/DEPLOYMENT.md` and their values are not in the
+repository.
+
 ## 7. How this document relates to the others
 
 | Document | Scope |
