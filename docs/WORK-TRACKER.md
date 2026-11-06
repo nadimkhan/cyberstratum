@@ -233,7 +233,15 @@ now covered by a test that fails without the fix.
       every npm-based gate fails with `WSL 1 is not supported`. The gate is
       fine; the shell was wrong. Run WSL work as `bash -lc 'bash <script>'`
       or export the native Node path first. The same trap is recorded in
-      the `background-process-gates` skill.
+      the `background-process-gates` skill. The fix is now executable, not
+      just written down: `scripts/wsl/gate.sh` puts the native Node first
+      itself, takes each step's exit code from the step rather than from a
+      pipe, keeps the logs under `.dev-logs/gate/`, and reports the Ruff
+      *format* drift as advisory so it cannot mask a real failure. Run
+      from Windows with
+      `wsl.exe -d Ubuntu -- bash ~/projects/cyberstratum/scripts/wsl/gate.sh`.
+      Proven from a non-login shell with the stack up: lint, type check,
+      730 Python tests, 96 web tests and the launcher check all green.
 
 ### Done in the 2026-11-05 round
 - [x] Workspace isolation across every tenant-sensitive query path.

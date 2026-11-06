@@ -1,7 +1,13 @@
 # CyberStratum — Local Development Runbook
 
-**Audience:** anyone setting up CyberStratum on a fresh Windows machine.
-**Last verified against:** the repository state on 2026-10-28.
+**Audience:** anyone setting up CyberStratum on a fresh WSL machine.
+**Last verified against:** the repository state on 2026-11-06, in WSL.
+
+> **One working copy.** WSL (`~/projects/cyberstratum`) is the only tree that
+> is edited, tested and pushed. The Windows copy at `E:/projects/cyberstratum`
+> is frozen as a fallback and is not a development environment. Two copies,
+> each with its own database and its own privileges, gave two different
+> answers to the same question, which cost more than the copy saved.
 
 > **Credentials.** No real credential appears in this file or in any file in
 > this repository. Where a password is required, the literal placeholder
@@ -507,23 +513,54 @@ database does not need to be migrated by hand.
 ## 6. Tests and quality gates
 
 ```bash
-cd /e/projects/cyberstratum
+cd ~/projects/cyberstratum
 
-# Python tests (138 tests, all passing as of 2026-10-28).
-.venv/Scripts/python.exe -m pytest -q
+# The whole gate, in one command: lint, type check, Python tests, web
+# tests, the launcher check, and the format drift reported separately.
+bash scripts/wsl/gate.sh
+```
 
-# Web tests only (4 Vitest suites).
+`scripts/wsl/gate.sh` is the one to reach for. It exists because of a trap
+that cost a round of misdiagnosis: a script started as `bash script.sh` is
+not a login shell, so `~/.local/node/bin` is missing from `PATH`, `npm`
+resolves to the *Windows* npm under `/mnt/d/Program Files/nodejs`, and every
+npm-based step fails with `WSL 1 is not supported. Please upgrade to WSL 2
+or above.` — an error about the shell that says nothing about the code. The
+script puts the native Node first itself, and it takes each step's exit
+code from the step rather than from a pipe, so a failed lint cannot look
+like a clean run.
+
+Run it from Windows either way:
+
+```bash
+wsl.exe -d Ubuntu -- bash ~/projects/cyberstratum/scripts/wsl/gate.sh
+```
+
+The individual steps, if you want them one at a time:
+
+```bash
+# Python tests (730 passed as of 2026-11-06).
+.venv/bin/python -m pytest -q
+
+# Web tests only (11 Vitest files, 96 tests).
 npm run test:web
 
 # Everything: web tests, then Python tests.
 npm test
 
 # Lint (Python).
-npm run lint          # ruff check apps workers tests
+npm run lint          # ruff check apps packages tests scripts
 
 # Type check (Python + TypeScript).
-npm run typecheck     # mypy apps workers && tsc --noEmit
+npm run typecheck     # mypy apps packages && tsc --noEmit
 ```
+
+The Python suite needs the isolated PostgreSQL on 5433 to be up, because the
+schema gates run the real Alembic chain and compare it against the ORM
+metadata. `npm run dev` starts it; `npm run stop` stops it. With the
+database down the suite does not fail in an interesting way — it reports
+errors, and the count of them is a fact about the environment rather than
+about the change under test.
 
 Coverage of the current suite:
 
