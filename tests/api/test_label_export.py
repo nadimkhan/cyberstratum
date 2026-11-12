@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 from sqlalchemy.orm import Session
 
 from app.db.enums import FindingStatus, ScanStatus, Severity
@@ -184,12 +183,8 @@ def test_a_detector_outside_the_vocabulary_is_ignored(
 def test_exact_clones_share_a_family(
     db_session: Session, workspace: Workspace, chain: Chain, tmp_path: Path
 ) -> None:
-    first = _scan_with_bytecode(
-        db_session, workspace, chain, tmp_path, address="0x" + "aa" * 20
-    )
-    second = _scan_with_bytecode(
-        db_session, workspace, chain, tmp_path, address="0x" + "bb" * 20
-    )
+    first = _scan_with_bytecode(db_session, workspace, chain, tmp_path, address="0x" + "aa" * 20)
+    second = _scan_with_bytecode(db_session, workspace, chain, tmp_path, address="0x" + "bb" * 20)
     _finding(db_session, first, "baseline.delegatecall", FindingStatus.CONFIRMED)
     _finding(db_session, second, "baseline.delegatecall", FindingStatus.CONFIRMED)
 
@@ -202,9 +197,7 @@ def test_exact_clones_share_a_family(
 def test_different_bytecode_is_a_different_family(
     db_session: Session, workspace: Workspace, chain: Chain, tmp_path: Path
 ) -> None:
-    first = _scan_with_bytecode(
-        db_session, workspace, chain, tmp_path, address="0x" + "aa" * 20
-    )
+    first = _scan_with_bytecode(db_session, workspace, chain, tmp_path, address="0x" + "aa" * 20)
     second = _scan_with_bytecode(
         db_session,
         workspace,

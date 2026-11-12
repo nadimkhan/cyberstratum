@@ -48,7 +48,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -163,25 +163,25 @@ def build_records(
     """
     export = LabelExport()
 
-    scans = session.execute(
-        select(Scan)
-        .join(Finding, Finding.scan_id == Scan.id)
-        .where(
-            Finding.status.in_(
-                [FindingStatus.CONFIRMED, FindingStatus.FALSE_POSITIVE]
-            )
+    scans = (
+        session.execute(
+            select(Scan)
+            .join(Finding, Finding.scan_id == Scan.id)
+            .where(Finding.status.in_([FindingStatus.CONFIRMED, FindingStatus.FALSE_POSITIVE]))
+            .distinct()
+            .order_by(Scan.created_at.desc())
         )
-        .distinct()
-        .order_by(Scan.created_at.desc())
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
 
     for scan in scans:
         if limit is not None and len(export.records) >= limit:
             break
 
-        findings = session.execute(
-            select(Finding).where(Finding.scan_id == scan.id)
-        ).scalars().all()
+        findings = (
+            session.execute(select(Finding).where(Finding.scan_id == scan.id)).scalars().all()
+        )
         if not findings:
             continue
 
@@ -237,9 +237,7 @@ def build_records(
                 "metadata": {
                     "scan_id": str(scan.id),
                     "reviewed_categories": sorted(settled),
-                    "review_note_count": sum(
-                        1 for f in findings if f.review_note
-                    ),
+                    "review_note_count": sum(1 for f in findings if f.review_note),
                 },
             }
         )
