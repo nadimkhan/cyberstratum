@@ -345,10 +345,12 @@ What is still open, in the order it blocks the next:
    through. What is still missing is the loop that closes: reviewed
    findings do not yet flow into a dataset manifest, so the labels exist
    but no model has seen them.
-2. **A knowledge base.** A classifier stores weights, not fixes. The
-   "error, its details and its solution" is a table: detector, what it
-   means, why it matters, how to fix it, and the patterns that are known
-   to be false positives.
+2. **A knowledge base.** Done for the six baseline detectors: what the
+   pattern is, why it matters, what to change, and when it is *not* a
+   problem, served from a versioned data file and printed in the report.
+   What is missing is breadth -- the 122 Slither detectors have no
+   guidance yet, and each one that produces a finding without advice is
+   a finding a reviewer has to research from scratch.
 3. **Precision gates.** The gate itself is done: per-category precision
    on the validation split, a per-category threshold chosen to reach the
    precision floor, abstention for the categories that cannot reach it,

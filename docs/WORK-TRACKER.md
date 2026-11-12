@@ -355,6 +355,23 @@ now covered by a test that fails without the fix.
       validation split records "nothing was judged", which is not
       passing. Training against today's reviewed-label dataset therefore
       refuses to promote, and the manifest says exactly why.
+- [x] **A finding now says what to do about it.** A detector reports a
+      pattern; what a developer needs is what the pattern means, why it
+      matters, what to change, and -- the part that saves a reviewer an
+      afternoon -- when it is not a problem at all. A model can rank
+      findings; it cannot tell a developer how to fix a contract, and it
+      must not pretend to. So the solution is its own thing:
+      `app.services.knowledge` serves per-detector guidance from a
+      versioned data file, so the guidance ships with the code that uses
+      it and there is no table to fall out of step. The false-positive
+      half is the point: `delegatecall` and `tx.origin` are patterns, not
+      bugs, and recording when the pattern is expected is what lets the
+      product say "this is expected here" instead of crying wolf. It
+      reaches the reader three ways: the PDF report prints a "What this
+      means" section per finding, the API serves it at
+      `/api/v1/knowledge`, and the tests pin that a detector with no
+      guidance gets none -- advice with a missing half is worse than
+      silence.
 - [x] **The working copy is WSL only.** The Windows copy at
       `E:/projects/cyberstratum` is frozen as a fallback and is no longer
       edited: two copies of a live database and two test environments
