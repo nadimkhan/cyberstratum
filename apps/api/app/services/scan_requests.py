@@ -28,6 +28,7 @@ from app.db.enums import ScanJobStatus, ScanJobType, ScanStatus
 from app.db.models.assets import TrackedAsset
 from app.db.models.identity import Chain, ContractTarget, Workspace
 from app.db.models.scans import Scan, ScanJob
+from app.services.scope import evaluate_scope
 
 
 def resolve_chain(session: Session, chain_id: int) -> Chain:
@@ -141,10 +142,21 @@ def create_scan(
         provenance=provenance,
     )
 
+    # The authorisation is recorded now, while it is true. A grant can
+    # be withdrawn or expire later; a report must keep the
+    # authorisation it was produced under.
+    scope = evaluate_scope(
+        session,
+        workspace.id,
+        chain_id=getattr(chain, "chain_id", None),
+        address=address,
+    )
+
     scan = Scan(
         workspace_id=workspace.id,
         target_id=target.id,
         asset_id=asset.id if asset is not None else None,
+        scope_status=scope.status,
         status=ScanStatus.QUEUED,
         requested_by=requested_by,
         fork=fork,

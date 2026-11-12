@@ -222,6 +222,7 @@ class ScanSummary(BaseModel):
     finding_counts: dict[str, int] = Field(default_factory=dict)
     total_findings: int = 0
     status: ScanStatus
+    scope_status: str = "unknown"
     fork: str
     fork_source: str = "requested"
     fork_conflict: bool = False

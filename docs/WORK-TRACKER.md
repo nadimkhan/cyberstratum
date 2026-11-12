@@ -1568,3 +1568,63 @@ than no record:
 | 3.5 Report as a first-class artifact | `[ ]` | `[x]` `b6ac6f9` |
 | 3.6 Repository-wide formatting | `[ ]` | `[x]` `c11d2fb` |
 | 3.8 Migration-vs-model diff | `[ ]` | `[x]` `70ef088` |
+
+### 30 The authorisation a scan was made under
+
+Until now the product said what it found and how confident it was. It
+never said whether the workspace was *allowed* to look. That is the
+other half of a security product's job, and it is the half that gets
+people sued.
+
+The authorised scope is now a declarative registry. A workspace declares
+what is in bounds — a programme, a chain, or a specific contract — and
+the product records, at the moment a scan is queued, what that
+declaration said about the target.
+
+The rule is deliberately simple and deliberately honest. There are three
+answers and only three:
+
+| Answer | When |
+|---|---|
+| `in_scope` | a live grant of this workspace covers the target |
+| `out_of_scope` | this workspace has declared scope, and the target is not in it |
+| `unknown` | this workspace has declared no scope at all |
+
+`unknown` is the answer that matters. A workspace that has said nothing
+has not been refused and has not been permitted, and a product that
+cannot tell those apart is lying about one of them. `unknown` is never
+quietly read as permission — the report says the analysis is not
+authorised for disclosure, and the scan page says the same.
+
+What landed:
+
+- `ScopeGrant` and `scans.scope_status`, migration `f5a7c3e91b04`.
+- `evaluate_scope()` in `app/services/scope.py` — the three answers, and
+  the sentence each one speaks.
+- `GET/POST /api/v1/scope/grants` and `GET /api/v1/scope/status`.
+- The intake records the authorisation when the scan is queued, so the
+  answer is a fact about that scan, not a fact about the workspace now.
+- The PDF report carries the statement. A report about a target that was
+  never in scope must not read like a report about something the
+  workspace was welcome to examine.
+- The scan page shows it: `ScopePanel`, with `unknown` rendered as
+  "Scope unknown — this is not permission".
+
+Every scope operation is workspace-scoped, and the administrative key
+must name the workspace it acts in: a scope that applies to every
+workspace at once is not a scope, and one that touches another tenant's
+scope without saying so is worse.
+
+Two things this is **not**, on purpose. It does not crawl programme
+scope files, and it does not send requests, execute exploits, or submit
+disclosures — those require explicit authorisation, which no registry
+can grant by being filled in.
+
+Proved live: a grant was created in a throwaway workspace, read back,
+and the three answers came out distinct — `in_scope` for the declared
+contract, `out_of_scope` for another, `unknown` for a workspace with no
+declaration. The administrative key without a workspace was refused with
+`403`. A scan of a real verified contract was queued and recorded
+`in_scope`; the PDF carried the scope statement; the page rendered
+"Authorised scope" and "In scope". The proof workspace and its grant
+were removed afterwards.

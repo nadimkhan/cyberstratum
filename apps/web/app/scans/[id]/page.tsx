@@ -8,6 +8,7 @@ import { CorrespondenceRunButton } from "@/components/CorrespondenceRunButton";
 import { RiskScoreGauge } from "@/components/RiskScoreGauge";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ScopePanel } from "@/components/ScopePanel";
 import { SourcePanel } from "@/components/SourcePanel";
 import { StageTimeline } from "@/components/StageTimeline";
 import {
@@ -107,6 +108,8 @@ export default async function ScanDetailPage({
           </span>
         </div>
       </header>
+
+      <ScopePanel status={scan.scopeStatus} />
 
       {scan.error ? (
         <p

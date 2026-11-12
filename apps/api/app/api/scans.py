@@ -895,8 +895,20 @@ def download_report(
 
     model_manifest_reference = _model_manifest_reference()
 
+    # The report carries the authorisation it was produced under. A
+    # report about a target that was never in scope must not read like
+    # a report about something the workspace was welcome to examine.
+    scope_statement = ""
+    try:
+        from app.services.scope import SCOPE_STATEMENT
+
+        scope_statement = SCOPE_STATEMENT.get(scan.scope_status, SCOPE_STATEMENT["unknown"])
+    except Exception:  # pragma: no cover - the statement must never break a report
+        scope_statement = ""
+
     data = build_report_data(
         limitations=scan.limitations,
+        scope_statement=scope_statement,
         coverage=scan.coverage,
         model_scores=scan.model_scores,
         scan_id=str(scan.id),

@@ -158,6 +158,14 @@ export interface SeverityCounts {
   info: number;
 }
 
+/**
+ * The authorisation a scan was made under.
+ *
+ * "unknown" is a real answer, not a missing one: it says the workspace
+ * has not declared a scope, so nothing is known either way.
+ */
+export type ScopeStatus = "in_scope" | "out_of_scope" | "unknown";
+
 export interface ScanSummary {
   id: string;
   contractAddress: string;
@@ -180,6 +188,14 @@ export interface ScanSummary {
   parserVersion: string | null;
   rulesetVersion: string | null;
   modelVersion: string | null;
+  /**
+   * Whether the target was covered by an authorised scope grant when the
+   * scan was queued: "in_scope", "out_of_scope" or "unknown".
+   *
+   * "unknown" is never "out of scope" and never "in scope" - a workspace
+   * that has declared no scope has claimed nothing either way.
+   */
+  scopeStatus: ScopeStatus;
   /** Whether the source engine audited this contract's verified source. */
   sourceAudited: boolean;
   /** Why the source engine did not run, when it did not. */

@@ -65,6 +65,19 @@ class Scan(Base):
             "keep watching it."
         ),
     )
+    scope_status: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="unknown",
+        server_default="unknown",
+        index=True,
+        doc=(
+            "Whether the target was covered by an authorised scope grant "
+            "when the scan was queued: 'in_scope', 'out_of_scope' or "
+            "'unknown'. Recorded at the time so the authorisation a "
+            "report was produced under cannot be changed afterwards."
+        ),
+    )
     status: Mapped[ScanStatus] = mapped_column(
         enum_column(ScanStatus, "scan_status"),
         nullable=False,

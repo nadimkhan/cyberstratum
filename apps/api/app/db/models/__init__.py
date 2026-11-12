@@ -32,6 +32,7 @@ from app.db.models.scans import (
     ScanArtifact,
     ScanJob,
 )
+from app.db.models.scope import ScopeGrant
 
 __all__ = [
     "ApiKey",
@@ -50,6 +51,7 @@ __all__ = [
     "Scan",
     "ScanArtifact",
     "ScanJob",
+    "ScopeGrant",
     "TrackedAsset",
     "User",
     "Workspace",

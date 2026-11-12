@@ -563,6 +563,7 @@ def build_report_data(
     disclosure_reference: str = "",
     finding_base_url: str = "",
     limitations: Mapping[str, Any] | None = None,
+    scope_statement: str = "",
     coverage: Mapping[str, Any] | None = None,
     model_scores: Mapping[str, Any] | None = None,
 ) -> ReportData:
@@ -632,7 +633,9 @@ def build_report_data(
         findings=built_findings,
         artifacts=built_artifacts,
         engines=built_engines,
-        limitations=_limitation_lines(limitations),
+        limitations=(
+            _limitation_lines(limitations) + ((scope_statement,) if scope_statement else ())
+        ),
         coverage=_coverage_lines(coverage),
         model_scores=_model_lines(model_scores),
         tool_versions=dict(tool_versions or {}),

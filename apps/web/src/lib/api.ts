@@ -8,6 +8,7 @@ import { toReviewStatus, toScanStatus, toStageStatus } from "./status";
 import { bulkVerdictProblem } from "./bulk-review";
 import { CORRESPONDENCE_STATUSES } from "./types";
 import type {
+  ScopeStatus,
   LearningStatus,
   Artifact,
   CorrespondenceProof,
@@ -1204,6 +1205,19 @@ function normaliseModelScores(record: Record<string, unknown>) {
   return Object.keys(scores).length > 0 ? scores : null;
 }
 
+/**
+ * Read the authorisation a scan was made under.
+ *
+ * An unrecognised value is "unknown", never "in_scope": a scope that
+ * cannot be read must not be read as permission.
+ */
+export function toScopeStatus(value: unknown): ScopeStatus {
+  const text = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (text === "in_scope") return "in_scope";
+  if (text === "out_of_scope") return "out_of_scope";
+  return "unknown";
+}
+
 function normaliseScanSummary(value: unknown): ScanSummary {
   const record = asRecord(value);
   const counts = normaliseCounts(record);
@@ -1255,6 +1269,7 @@ function normaliseScanSummary(value: unknown): ScanSummary {
     parserVersion: pickString(record, ["parser_version", "parserVersion"]),
     rulesetVersion: pickString(record, ["ruleset_version", "rulesetVersion"]),
     modelVersion: pickString(record, ["model_version", "modelVersion"]),
+    scopeStatus: toScopeStatus(record["scope_status"] ?? record["scopeStatus"]),
     sourceAudited: pickBoolean(record, ["source_audited", "sourceAudited"]),
     sourceAuditSkipped: pickString(record, [
       "source_audit_skipped",
@@ -1983,6 +1998,7 @@ function normaliseCreatedScan(value: unknown): CreatedScan {
 export { bulkVerdictProblem };
 
 export const __testing = {
+  toScopeStatus,
   normaliseLearningStatus,
   normaliseFinding,
   normaliseFindingsSummary,
