@@ -1633,6 +1633,8 @@ were removed afterwards.
 
 ### 31 The scope, declared in the product
 
+Commit `7310134`.
+
 The registry landed as an API first, which made it true but not usable:
 there was nowhere in the product to declare a scope, and nowhere to read
 one back. A declaration that can only be made with `curl` is a
