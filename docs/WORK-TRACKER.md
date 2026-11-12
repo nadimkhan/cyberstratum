@@ -1719,6 +1719,8 @@ and an expired declaration is `unknown` rather than a judgement.
 `apps/web/app/api/scope/grants/[id]/route.ts`,
 `apps/web/src/lib/scope.test.ts`.
 
+**Commit:** `74886d9`.
+
 **Tests:** 13 focused scope tests, including the stored expiry, the
 unreadable expiry, the successful withdrawal, and the cross-workspace
 withdrawal refusal.
