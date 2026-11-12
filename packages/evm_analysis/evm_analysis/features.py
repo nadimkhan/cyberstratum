@@ -165,7 +165,9 @@ def extract_features(
     features.unreachable_byte_size = cfg.unreachable_byte_size
     features.edge_count = cfg.edge_count
     features.branch_count = sum(
-        1 for e in cfg.edges if e.edge_type.value.startswith("conditional")
+        1
+        for e in cfg.edges
+        if e.edge_type.value.startswith("conditional")
         or e.edge_type.value == "unconditional_jump"
         or e.edge_type.value == "unresolved"
     )

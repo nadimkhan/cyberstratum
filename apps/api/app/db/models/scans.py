@@ -414,9 +414,7 @@ class Finding(Base):
     reviewed_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    reviewed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     evidence_json: Mapped[dict[str, object] | None] = mapped_column(JSONB)
     limitations: Mapped[str | None] = mapped_column(Text)

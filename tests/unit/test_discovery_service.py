@@ -111,9 +111,7 @@ def test_contracts_land_in_the_discovery_workspace(db_session: Session) -> None:
     db_session.add(run)
     db_session.flush()
 
-    new, updated = persist_contracts(
-        db_session, space, chain_row, run, [make_contract()]
-    )
+    new, updated = persist_contracts(db_session, space, chain_row, run, [make_contract()])
 
     assert (new, updated) == (1, 0)
     rows = db_session.execute(select(ContractTarget)).scalars().all()
@@ -295,6 +293,8 @@ def test_an_empty_chain_list_selects_nothing(db_session: Session) -> None:
     """An empty candidate list produces an empty batch."""
     space = get_or_create_discovery_workspace(db_session)
     assert select_batch(db_session, space.id, [], batch_size=10) == []
+
+
 async def test_the_walk_continues_where_the_cursor_left_off(
     db_session: Session,
 ) -> None:
@@ -363,9 +363,7 @@ async def test_a_contract_the_cap_left_alone_is_offered_again(
     run = DiscoveryRun(workspace_id=space.id, status="running")
     db_session.add(run)
     db_session.flush()
-    persist_contracts(
-        db_session, space, chain_row, run, [make_contract(chain_id=1)]
-    )
+    persist_contracts(db_session, space, chain_row, run, [make_contract(chain_id=1)])
 
     # The feed returns nothing this cycle: the contract was found
     # earlier and never scanned, and must still be offered.
@@ -376,6 +374,8 @@ async def test_a_contract_the_cap_left_alone_is_offered_again(
 
     scans = db_session.execute(select(Scan)).scalars().all()
     assert len(scans) == 1
+
+
 async def _a_target_with_a_failed_scan(
     db_session: Session, error_code: str
 ) -> tuple[object, object, object]:
@@ -420,9 +420,7 @@ async def test_a_contract_that_failed_for_a_real_reason_is_left_alone(
     db_session: Session,
 ) -> None:
     """A contract with no deployed code will not have one next time."""
-    space, chain_row, target = await _a_target_with_a_failed_scan(
-        db_session, "bytecode_empty"
-    )
+    space, chain_row, target = await _a_target_with_a_failed_scan(db_session, "bytecode_empty")
 
     outcome = promote_contracts(db_session, space, chain_row, [target], enqueue=False)
 
@@ -434,9 +432,7 @@ async def test_a_contract_that_keeps_failing_is_not_tried_for_ever(
     db_session: Session,
 ) -> None:
     """The retries are bounded, so a broken endpoint is not hammered."""
-    space, chain_row, target = await _a_target_with_a_failed_scan(
-        db_session, "rpc_unreachable"
-    )
+    space, chain_row, target = await _a_target_with_a_failed_scan(db_session, "rpc_unreachable")
     for _ in range(2):
         db_session.add(
             Scan(
@@ -454,6 +450,8 @@ async def test_a_contract_that_keeps_failing_is_not_tried_for_ever(
     outcome = promote_contracts(db_session, space, chain_row, [target], enqueue=False)
 
     assert outcome.queued == 0
+
+
 async def test_a_contract_that_failed_transiently_is_offered_again(
     db_session: Session,
 ) -> None:

@@ -38,9 +38,7 @@ __all__ = [
 ]
 
 #: Opcode names that carry an immediate operand.
-_PUSH_OPCODES: Final[frozenset[str]] = frozenset(
-    [f"PUSH{n}" for n in range(1, 33)] + ["PUSH0"]
-)
+_PUSH_OPCODES: Final[frozenset[str]] = frozenset([f"PUSH{n}" for n in range(1, 33)] + ["PUSH0"])
 
 #: A PUSH whose immediate is exactly this wide is treated as an address.
 _ADDRESS_WIDTH: Final[int] = 20
@@ -93,9 +91,7 @@ def address_like(value: bytes) -> bool:
     return len(value) == _ADDRESS_WIDTH
 
 
-def normalize_instruction(
-    instruction: Instruction, options: Normalization
-) -> str:
+def normalize_instruction(instruction: Instruction, options: Normalization) -> str:
     """Return the normalised token for a single instruction."""
     name = instruction.name
 

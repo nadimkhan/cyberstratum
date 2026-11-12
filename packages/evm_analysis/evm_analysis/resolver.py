@@ -37,9 +37,7 @@ from .stack import Slot, Stack, simulate_block
 _MAX_ROUNDS = 16
 
 
-def resolve_jump_targets(
-    disassembly: Disassembly, cfg: ControlFlowGraph
-) -> dict[int, int]:
+def resolve_jump_targets(disassembly: Disassembly, cfg: ControlFlowGraph) -> dict[int, int]:
     """Resolve as many jump targets as the abstract interpreter can.
 
     Returns a mapping from the offset of the jump instruction to its
@@ -156,9 +154,7 @@ def _merge(current: Stack, incoming: Stack) -> tuple[Stack, bool]:
     return merged, changed
 
 
-def resolved_targets_by_offset(
-    disassembly: Disassembly, cfg: ControlFlowGraph
-) -> dict[int, int]:
+def resolved_targets_by_offset(disassembly: Disassembly, cfg: ControlFlowGraph) -> dict[int, int]:
     """Public alias kept for readability at the call site."""
     return resolve_jump_targets(disassembly, cfg)
 

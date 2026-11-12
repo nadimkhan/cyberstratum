@@ -147,16 +147,12 @@ def test_another_tenants_scan_is_not_found(
     scan = _scan(db_session, other, chain)
     raw = _tenant_key(db_session, workspace)
 
-    response = client.get(
-        f"/api/v1/scans/{scan.id}/source", headers={"X-API-Key": raw}
-    )
+    response = client.get(f"/api/v1/scans/{scan.id}/source", headers={"X-API-Key": raw})
 
     assert response.status_code == 404
 
 
-def test_an_unknown_scan_is_not_found(
-    client: TestClient, api_headers: dict[str, str]
-) -> None:
+def test_an_unknown_scan_is_not_found(client: TestClient, api_headers: dict[str, str]) -> None:
     response = client.get(f"/api/v1/scans/{uuid.uuid4()}/source", headers=api_headers)
 
     assert response.status_code == 404

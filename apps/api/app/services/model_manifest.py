@@ -104,9 +104,7 @@ def read_model_manifest(settings: Settings | None = None) -> ModelManifest | Non
         ) from exc
 
     if not isinstance(payload, dict):
-        raise ModelManifestError(
-            f"The model manifest at {manifest_path} is not a JSON object."
-        )
+        raise ModelManifestError(f"The model manifest at {manifest_path} is not a JSON object.")
 
     digest = hashlib.sha256(raw).hexdigest()
     manifest_id = str(

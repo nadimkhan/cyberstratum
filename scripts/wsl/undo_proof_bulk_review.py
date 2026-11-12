@@ -54,9 +54,7 @@ with session_scope() as session:
     print("--- the status of every finding, after the undo ---")
     counts = Counter(row.status.value for row in session.scalars(select(Finding)).all())
     print(counts)
-    reviewed = session.scalars(
-        select(Finding).where(Finding.review_note.is_not(None))
-    ).all()
+    reviewed = session.scalars(select(Finding).where(Finding.review_note.is_not(None))).all()
     print("findings that still carry a review:", len(reviewed))
     for finding in reviewed:
         print("  ", finding.detector_id, finding.status.value, repr(finding.review_note))

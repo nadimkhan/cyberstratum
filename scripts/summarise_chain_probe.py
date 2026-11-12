@@ -31,6 +31,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 PROBE_DIR = REPO_ROOT / "var" / "chain-probe"
 SURVEY_PATH = REPO_ROOT / "docs" / "chain-probe" / "survey.json"
 
+
 @dataclass(frozen=True, slots=True)
 class Probed:
     """One host the survey asked."""
@@ -227,10 +228,7 @@ def main() -> int:
         print(f"  - {item['chain_id']} {item['host']} ({item['chain_name']})")
     print(f"alternate live hosts: {len(check['alternate_hosts'])}")
     for item in check["alternate_hosts"]:
-        print(
-            f"  - {item['chain_id']} {item['host']} "
-            f"(registry uses {item['registry_host']})"
-        )
+        print(f"  - {item['chain_id']} {item['host']} (registry uses {item['registry_host']})")
 
     if args.check and (check["unsupported"] or check["live_but_not_registered"]):
         return 1

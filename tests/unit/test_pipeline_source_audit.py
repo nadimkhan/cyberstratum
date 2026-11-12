@@ -30,9 +30,7 @@ def _no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(pipeline_service, "fetch_verified_source", lambda *a, **k: None)
 
 
-def _make_scan(
-    session: Session, workspace: Workspace, chain: Chain, address: str
-) -> Scan:
+def _make_scan(session: Session, workspace: Workspace, chain: Chain, address: str) -> Scan:
     """Create a target and a queued scan for it."""
     target = ContractTarget(
         workspace_id=workspace.id,

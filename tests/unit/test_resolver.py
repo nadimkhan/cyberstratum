@@ -195,9 +195,7 @@ def test_a_jumpi_reads_the_destination_and_not_the_condition() -> None:
     resolved = resolve_jump_targets(disassembly, cfg)
     assert resolved.get(4) == 7
 
-    targets = {
-        e.target for e in cfg.edges if e.edge_type is EdgeType.CONDITIONAL_JUMP
-    }
+    targets = {e.target for e in cfg.edges if e.edge_type is EdgeType.CONDITIONAL_JUMP}
     # 1 is the condition, not a destination: it must not be a target.
     assert 1 not in targets
     assert targets == {7}

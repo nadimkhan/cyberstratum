@@ -16,11 +16,7 @@ from evm_analysis.features import extract_features
 from evm_analysis.opcodes import load_fork
 
 #: PUSH20 of a beneficiary address, then SELFDESTRUCT.
-SELFDESTRUCT_CODE = bytes.fromhex(
-    "73"
-    "0123456789abcdef0123456789abcdef01234567"
-    "ff"
-)
+SELFDESTRUCT_CODE = bytes.fromhex("730123456789abcdef0123456789abcdef01234567ff")
 
 
 def _finding(code: bytes, fork: str):
@@ -28,10 +24,7 @@ def _finding(code: bytes, fork: str):
     disassembly = disassemble(code, table)
     cfg = build_cfg(disassembly)
     features = extract_features(disassembly, cfg)
-    findings = {
-        finding.detector_id: finding
-        for finding in run_rules(disassembly, cfg, features)
-    }
+    findings = {finding.detector_id: finding for finding in run_rules(disassembly, cfg, features)}
     return findings.get("baseline.selfdestruct")
 
 

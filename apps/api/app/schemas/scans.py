@@ -120,9 +120,7 @@ class ScanCreateRequest(BaseModel):
         if not value.strip():
             raise ValueError("source_code must not be empty")
         if len(value.encode("utf-8")) > MAX_SOURCE_BYTES:
-            raise ValueError(
-                f"source_code is over the {MAX_SOURCE_BYTES} byte limit"
-            )
+            raise ValueError(f"source_code is over the {MAX_SOURCE_BYTES} byte limit")
         return value
 
     @field_validator("bytecode_hex")

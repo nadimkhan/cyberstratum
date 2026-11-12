@@ -734,4 +734,3 @@ def test_a_stored_key_without_membership_cannot_use_discovery(
     )
 
     assert response.status_code == 403
-

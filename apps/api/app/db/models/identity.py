@@ -208,9 +208,7 @@ class ContractTarget(Base):
     source_uri: Mapped[str | None] = mapped_column(String(512))
     abi_object_key: Mapped[str | None] = mapped_column(String(512))
     provenance: Mapped[str | None] = mapped_column(Text)
-    authorization_status: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="unknown"
-    )
+    authorization_status: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
     discovery_run_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("discovery_runs.id", ondelete="SET NULL"),
         nullable=True,
@@ -228,10 +226,7 @@ class ContractTarget(Base):
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     source_object_key: Mapped[str | None] = mapped_column(
         String(512),
-        doc=(
-            "The verified source, stored in the artifact store rather than "
-            "in a database column."
-        ),
+        doc=("The verified source, stored in the artifact store rather than in a database column."),
     )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
@@ -239,9 +234,7 @@ class ContractTarget(Base):
     created_at: Mapped[datetime] = created_at_column()
 
     chain: Mapped[Chain] = relationship(back_populates="targets")
-    scans: Mapped[list[Scan]] = relationship(
-        back_populates="target", cascade="all, delete-orphan"
-    )
+    scans: Mapped[list[Scan]] = relationship(back_populates="target", cascade="all, delete-orphan")
     discovery_run: Mapped[DiscoveryRun] = relationship(back_populates="targets")
 
 

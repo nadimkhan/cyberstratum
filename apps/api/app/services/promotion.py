@@ -128,9 +128,7 @@ def _pending_scan_count(session: Session) -> int:
     """How many scans are waiting for, or working through, the pipeline."""
     return int(
         session.execute(
-            select(func.count())
-            .select_from(Scan)
-            .where(Scan.status.in_(IN_FLIGHT_STATUSES))
+            select(func.count()).select_from(Scan).where(Scan.status.in_(IN_FLIGHT_STATUSES))
         ).scalar_one()
     )
 
@@ -180,9 +178,7 @@ def _discovery_asset(
         normalised = normalise_address(address)
     except InvalidAddressError:
         return None
-    return upsert_asset(
-        session, workspace, chain_row, normalised, kind=AssetKind.DISCOVERED
-    )
+    return upsert_asset(session, workspace, chain_row, normalised, kind=AssetKind.DISCOVERED)
 
 
 def promote_contracts(

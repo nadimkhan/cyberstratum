@@ -212,9 +212,7 @@ def queue_discovery_cycle(
     session.commit()
 
     try:
-        rq_job_id = enqueue_discovery(
-            batch_size=payload.batch_size, chain_ids=payload.chain_ids
-        )
+        rq_job_id = enqueue_discovery(batch_size=payload.batch_size, chain_ids=payload.chain_ids)
     except Exception as exc:  # noqa: BLE001 - queue failure must be reported
         log.error("discovery_enqueue_failed", error=str(exc))
         raise HTTPException(
@@ -246,8 +244,10 @@ def list_discovery_runs(
         .where(DiscoveryRun.workspace_id == workspace.id)
         .order_by(DiscoveryRun.started_at.desc())
     )
-    count_stmt = select(func.count()).select_from(DiscoveryRun).where(
-        DiscoveryRun.workspace_id == workspace.id
+    count_stmt = (
+        select(func.count())
+        .select_from(DiscoveryRun)
+        .where(DiscoveryRun.workspace_id == workspace.id)
     )
 
     total = session.scalar(count_stmt) or 0
@@ -287,8 +287,10 @@ def list_discovered_contracts(
         .where(ContractTarget.workspace_id == workspace.id)
         .order_by(ContractTarget.created_at.desc())
     )
-    count_stmt = select(func.count()).select_from(ContractTarget).where(
-        ContractTarget.workspace_id == workspace.id
+    count_stmt = (
+        select(func.count())
+        .select_from(ContractTarget)
+        .where(ContractTarget.workspace_id == workspace.id)
     )
 
     if chain_id is not None:
@@ -317,9 +319,7 @@ def list_discovered_contracts(
         )
         for target, eip155, chain_name in rows
     ]
-    return DiscoveredContractListResponse(
-        items=items, total=total, limit=limit, offset=offset
-    )
+    return DiscoveredContractListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get(

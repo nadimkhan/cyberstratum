@@ -139,16 +139,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
 
     try:
-        rq_job_id = enqueue_discovery(
-            batch_size=batch_size, chain_ids=args.chain_ids, pages=pages
-        )
+        rq_job_id = enqueue_discovery(batch_size=batch_size, chain_ids=args.chain_ids, pages=pages)
     except Exception as exc:  # noqa: BLE001 - a queue failure must be reported
         print(f"could not queue a discovery cycle: {exc}", file=sys.stderr)
         return 1
 
     print(
-        f"queued discovery cycle {rq_job_id} "
-        f"(batch size {batch_size}, {pages} page(s) per chain)"
+        f"queued discovery cycle {rq_job_id} (batch size {batch_size}, {pages} page(s) per chain)"
     )
     return 0
 

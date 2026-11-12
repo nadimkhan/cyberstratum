@@ -95,9 +95,11 @@ def two_tenants(db_session: Session, chain: Chain) -> dict[str, str]:
         )
     )
     db_session.flush()
-    early = db_session.query(WorkspaceMember).filter_by(
-        user_id=owner_b.id, workspace_id=space_a.id
-    ).one()
+    early = (
+        db_session.query(WorkspaceMember)
+        .filter_by(user_id=owner_b.id, workspace_id=space_a.id)
+        .one()
+    )
     early.created_at = datetime.now(UTC) - timedelta(days=1)
     db_session.flush()
 

@@ -210,9 +210,7 @@ def analyse_block(instructions: Iterable[Instruction]) -> BlockFacts:
             # available are not the call's arguments: they are whatever
             # happened to be lying around, and reading an address out of
             # them would turn an underflow into a false all-clear.
-            address = (
-                consumed[-2] if len(consumed) >= 7 else ("unknown", None)
-            )
+            address = consumed[-2] if len(consumed) >= 7 else ("unknown", None)
             if name == "DELEGATECALL":
                 kind = TARGET_UNKNOWN
                 target_value: int | None = None
@@ -222,32 +220,24 @@ def analyse_block(instructions: Iterable[Instruction]) -> BlockFacts:
                 elif address[0] == "external":
                     kind = TARGET_EXTERNAL
                 facts.delegatecall_targets.append(
-                    DelegatecallTarget(
-                        offset=instruction.offset, kind=kind, value=target_value
-                    )
+                    DelegatecallTarget(offset=instruction.offset, kind=kind, value=target_value)
                 )
             elif address[0] == "origin":
-                facts.origin_uses.append(
-                    OriginUse(offset=instruction.offset, kind=USE_CALL_TARGET)
-                )
+                facts.origin_uses.append(OriginUse(offset=instruction.offset, kind=USE_CALL_TARGET))
             _push_unknown(stack, instruction.stack_out)
             continue
 
         if name == _EQUALITY:
             consumed = _pop(stack, 2)
             if any(slot[0] == "origin" for slot in consumed):
-                facts.origin_uses.append(
-                    OriginUse(offset=instruction.offset, kind=USE_COMPARED)
-                )
+                facts.origin_uses.append(OriginUse(offset=instruction.offset, kind=USE_COMPARED))
             _push_unknown(stack, instruction.stack_out)
             continue
 
         if name in ("SSTORE", "MSTORE"):
             consumed = _pop(stack, instruction.stack_in)
             if any(slot[0] == "origin" for slot in consumed):
-                facts.origin_uses.append(
-                    OriginUse(offset=instruction.offset, kind=USE_STORED)
-                )
+                facts.origin_uses.append(OriginUse(offset=instruction.offset, kind=USE_STORED))
             _push_unknown(stack, instruction.stack_out)
             continue
 
@@ -276,9 +266,7 @@ def analyse_block(instructions: Iterable[Instruction]) -> BlockFacts:
                 # The origin value was consumed by something this
                 # analysis does not model. Its use is unknown, and the
                 # finding stays.
-                facts.origin_uses.append(
-                    OriginUse(offset=instruction.offset, kind=USE_OTHER)
-                )
+                facts.origin_uses.append(OriginUse(offset=instruction.offset, kind=USE_OTHER))
 
     return facts
 

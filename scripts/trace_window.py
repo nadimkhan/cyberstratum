@@ -40,10 +40,7 @@ def main() -> int:
         print(f"  block {start:>5} window={states[start]}")
         print(f"          {body}")
         for e in out_edges.get(start, ()):
-            print(
-                f"          -> {e.edge_type.value} target={e.target} "
-                f"@off {e.instruction_offset}"
-            )
+            print(f"          -> {e.edge_type.value} target={e.target} @off {e.instruction_offset}")
     print(f"  resolved jumps: {len(resolved)}")
     return 0
 

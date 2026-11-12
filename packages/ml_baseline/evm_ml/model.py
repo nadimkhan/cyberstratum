@@ -72,9 +72,7 @@ class SklearnTfidfAdapter:
         probabilities = self.classifier.predict_proba(matrix)
         results: list[dict[str, float]] = []
         for row in probabilities:
-            results.append(
-                {label: float(row[index]) for index, label in enumerate(self.labels)}
-            )
+            results.append({label: float(row[index]) for index, label in enumerate(self.labels)})
         return results
 
     def predict_proba_matrix(self, samples: list[Sample]) -> np.ndarray:
@@ -126,9 +124,7 @@ def train_adapter(
     )
 
 
-def save_adapter(
-    directory: str | Path, adapter: SklearnTfidfAdapter
-) -> dict[str, str]:
+def save_adapter(directory: str | Path, adapter: SklearnTfidfAdapter) -> dict[str, str]:
     """Write the model artifact and its manifest to a directory.
 
     The artifact holds the fitted vectorizers, the classifier and the

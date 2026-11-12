@@ -147,9 +147,7 @@ def _version_of(path: Path) -> tuple[tuple[int, ...], str]:
     return tuple(parts), raw
 
 
-def resolve_solc(
-    version: str | None = None, artifacts_dir: str | None = None
-) -> tuple[Path, str]:
+def resolve_solc(version: str | None = None, artifacts_dir: str | None = None) -> tuple[Path, str]:
     """Find the compiler to use.
 
     Args:
@@ -250,9 +248,7 @@ def _compiler_warnings(output: dict[str, Any]) -> tuple[str, ...]:
     return tuple(messages)
 
 
-def _select_contract(
-    output: dict[str, Any], source_name: str
-) -> tuple[str, dict[str, Any]]:
+def _select_contract(output: dict[str, Any], source_name: str) -> tuple[str, dict[str, Any]]:
     """Pick the contract to analyse out of the compiler's output.
 
     A file can hold several contracts. The one with the largest runtime
@@ -311,8 +307,7 @@ def compile_source(
     encoded = source_code.encode("utf-8")
     if len(encoded) > MAX_SOURCE_BYTES:
         raise CompilationError(
-            f"The source is {len(encoded)} bytes, which is over the "
-            f"{MAX_SOURCE_BYTES} byte limit."
+            f"The source is {len(encoded)} bytes, which is over the {MAX_SOURCE_BYTES} byte limit."
         )
 
     solc, version = resolve_solc(solc_version, artifacts_dir)
@@ -340,9 +335,7 @@ def compile_source(
     creation = evm.get("bytecode", {}) if isinstance(evm, dict) else {}
     runtime_hex = deployed.get("object") if isinstance(deployed, dict) else ""
     if not isinstance(runtime_hex, str) or not runtime_hex:
-        raise CompilationError(
-            f"The contract {contract_name} produced no runtime bytecode."
-        )
+        raise CompilationError(f"The contract {contract_name} produced no runtime bytecode.")
     runtime_hex = runtime_hex.removeprefix("0x")
     try:
         runtime = bytes.fromhex(runtime_hex)

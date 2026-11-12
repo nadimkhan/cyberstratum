@@ -150,9 +150,7 @@ class Disassembly:
         return [tuple(names[i : i + n]) for i in range(len(names) - n + 1)]
 
 
-def disassemble(
-    code: bytes, table: ForkTable, *, detect_metadata: bool = True
-) -> Disassembly:
+def disassemble(code: bytes, table: ForkTable, *, detect_metadata: bool = True) -> Disassembly:
     """Disassemble ``code`` using the opcode set of ``table``.
 
     The disassembly always runs to the end of the *executable* code. When a
@@ -282,10 +280,7 @@ def disassemble(
     # runtime with a guard byte immediately before the metadata trailer,
     # so an invalid opcode exactly there is the guard, not a mistake.
     for invalid_offset in pending_invalid:
-        if (
-            result.metadata is not None
-            and invalid_offset == result.metadata.start_offset - 1
-        ):
+        if result.metadata is not None and invalid_offset == result.metadata.start_offset - 1:
             result.notes.append(
                 f"solidity guard byte (INVALID) at offset {invalid_offset}, "
                 "immediately before the metadata trailer"

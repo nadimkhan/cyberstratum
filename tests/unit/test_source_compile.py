@@ -144,9 +144,7 @@ def test_a_source_that_does_not_compile_says_what_the_compiler_said() -> None:
 @needs_solc
 def test_an_interface_is_refused_rather_than_analysed_as_empty() -> None:
     """An interface has no runtime to analyse."""
-    with pytest.raises(
-        CompilationError, match="no runtime bytecode|no contract with deployable"
-    ):
+    with pytest.raises(CompilationError, match="no runtime bytecode|no contract with deployable"):
         compile_source(INTERFACE_ONLY)
 
 

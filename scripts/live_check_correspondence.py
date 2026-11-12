@@ -92,9 +92,7 @@ INTERESTING = frozenset(
 )
 
 #: The output selection this proof needs, injected when Sourcify omits it.
-OUTPUT_SELECTION = {
-    "*": {"*": ["evm.deployedBytecode.object", "evm.deployedBytecode.sourceMap"]}
-}
+OUTPUT_SELECTION = {"*": {"*": ["evm.deployedBytecode.object", "evm.deployedBytecode.sourceMap"]}}
 
 
 def _http_json(url: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -248,9 +246,7 @@ def _find_solc(version: str) -> Path | None:
     Returns:
         The path to the compiler, or ``None`` when it is not installed.
     """
-    artifacts = Path(
-        os.environ.get("SOLC_ARTIFACTS_DIR", "~/.solc-select/artifacts")
-    ).expanduser()
+    artifacts = Path(os.environ.get("SOLC_ARTIFACTS_DIR", "~/.solc-select/artifacts")).expanduser()
     for directory in (f"solc-{version}", version):
         for name in (f"solc-{version}", f"solc-{version}.exe"):
             candidate = artifacts / directory / name
@@ -296,9 +292,7 @@ def _recompile(
             check=False,
         )
     except subprocess.TimeoutExpired as exc:
-        raise RecompileError(
-            f"solc did not finish within {timeout:g}s"
-        ) from exc
+        raise RecompileError(f"solc did not finish within {timeout:g}s") from exc
     except OSError as exc:
         raise RecompileError(f"solc could not be run: {exc}") from exc
 

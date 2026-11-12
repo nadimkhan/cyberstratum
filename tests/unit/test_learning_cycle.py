@@ -64,9 +64,7 @@ def test_a_model_that_fails_the_gate_is_not_installed(monkeypatch, tmp_path) -> 
         "app.services.model_manifest.model_directory", lambda settings=None: model_dir
     )
 
-    outcome = learning_cycle.run_learning_cycle(
-        workdir=tmp_path / "work", trainer=_trainer(False)
-    )
+    outcome = learning_cycle.run_learning_cycle(workdir=tmp_path / "work", trainer=_trainer(False))
 
     assert outcome.promotable is False
     assert outcome.installed is False
@@ -83,9 +81,7 @@ def test_a_model_that_passes_the_gate_is_installed(monkeypatch, tmp_path) -> Non
         "app.services.model_manifest.model_directory", lambda settings=None: model_dir
     )
 
-    outcome = learning_cycle.run_learning_cycle(
-        workdir=tmp_path / "work", trainer=_trainer(True)
-    )
+    outcome = learning_cycle.run_learning_cycle(workdir=tmp_path / "work", trainer=_trainer(True))
 
     assert outcome.promotable is True
     assert outcome.installed is True
@@ -104,9 +100,7 @@ def test_the_cycle_writes_the_dataset_it_trained_on(monkeypatch, tmp_path) -> No
         lambda settings=None: tmp_path / "model",
     )
 
-    outcome = learning_cycle.run_learning_cycle(
-        workdir=tmp_path / "work", trainer=_trainer(False)
-    )
+    outcome = learning_cycle.run_learning_cycle(workdir=tmp_path / "work", trainer=_trainer(False))
 
     dataset = Path(outcome.dataset_path)
     assert dataset.exists()

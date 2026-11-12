@@ -39,9 +39,8 @@ def _no_network_source_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     from app.services import pipeline as pipeline_service
 
-    monkeypatch.setattr(
-        pipeline_service, "fetch_verified_source", lambda *a, **k: None
-    )
+    monkeypatch.setattr(pipeline_service, "fetch_verified_source", lambda *a, **k: None)
+
 
 #: A runtime that reads TX.ORIGIN, stores it, then performs a DELEGATECALL.
 #: It exercises the DELEGATECALL and TX.ORIGIN rules and contains no branch,

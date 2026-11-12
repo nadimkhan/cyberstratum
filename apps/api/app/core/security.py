@@ -259,10 +259,7 @@ def authenticate(
     if x_api_key and authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=(
-                "Present either an X-API-Key header or an Authorization header, "
-                "not both."
-            ),
+            detail=("Present either an X-API-Key header or an Authorization header, not both."),
         )
 
     if authorization:

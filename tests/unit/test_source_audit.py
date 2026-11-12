@@ -101,9 +101,7 @@ def test_confidence_is_a_score(word: str, score: float) -> None:
 
 def test_a_known_detector_gets_a_readable_title() -> None:
     """The common detectors get a title a human can read."""
-    assert detector_title("reentrancy_eth") == (
-        "Reentrancy — state updated after an external call"
-    )
+    assert detector_title("reentrancy_eth") == ("Reentrancy — state updated after an external call")
     assert detector_title("tx_origin") == "tx.origin used for authorisation"
 
 
@@ -155,19 +153,13 @@ def test_the_audit_returns_findings_in_the_shared_shape(tmp_path) -> None:
         }
     )
     script = tmp_path / "fake_slither.py"
-    script.write_text(
-        "import sys\nsys.stdout.write(" + repr(payload) + ")\n", encoding="utf-8"
-    )
+    script.write_text("import sys\nsys.stdout.write(" + repr(payload) + ")\n", encoding="utf-8")
     if os.name == "nt":
         fake = tmp_path / "slither.cmd"
-        fake.write_text(
-            f'@echo off\r\n"{sys.executable}" "{script}" %*\r\n', encoding="utf-8"
-        )
+        fake.write_text(f'@echo off\r\n"{sys.executable}" "{script}" %*\r\n', encoding="utf-8")
     else:
         fake = tmp_path / "slither"
-        fake.write_text(
-            f'#!/bin/sh\nexec "{sys.executable}" "{script}" "$@"\n', encoding="utf-8"
-        )
+        fake.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{script}" "$@"\n', encoding="utf-8")
         fake.chmod(0o755)
     solc_dir = tmp_path / "0.8.26"
     solc_dir.mkdir()

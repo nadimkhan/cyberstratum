@@ -57,11 +57,7 @@ def live_by_host(survey: dict) -> dict[str, dict]:
     *discovered*; a host that was already in the registry was recorded
     without one, which is why the comparison is by host.
     """
-    return {
-        entry["host"]: entry
-        for entry in survey["chains"]
-        if entry["status"] == "live"
-    }
+    return {entry["host"]: entry for entry in survey["chains"] if entry["status"] == "live"}
 
 
 def test_the_survey_totals_add_up(survey: dict) -> None:
@@ -69,18 +65,14 @@ def test_the_survey_totals_add_up(survey: dict) -> None:
     assert sum(totals["by_status"].values()) == totals["probed"]
 
 
-def test_every_registry_instance_was_seen_live(
-    live_by_host: dict[str, dict]
-) -> None:
+def test_every_registry_instance_was_seen_live(live_by_host: dict[str, dict]) -> None:
     """The registry must not claim an instance the survey never saw."""
     missing = [
         f"{chain_id} ({host})"
         for chain_id, host in sorted(INSTANCE_HOSTS.items())
         if host not in live_by_host
     ]
-    assert missing == [], (
-        f"chains in the registry with no live survey entry: {missing}"
-    )
+    assert missing == [], f"chains in the registry with no live survey entry: {missing}"
 
 
 def test_every_discovered_chain_is_in_the_registry(survey: dict) -> None:
@@ -92,20 +84,14 @@ def test_every_discovered_chain_is_in_the_registry(survey: dict) -> None:
         and entry.get("chain_id") is not None
         and entry["chain_id"] not in INSTANCE_HOSTS
     ]
-    assert missing == [], (
-        f"chains the survey saw live but the registry does not carry: {missing}"
-    )
+    assert missing == [], f"chains the survey saw live but the registry does not carry: {missing}"
 
 
-def test_a_blocked_chain_was_not_also_seen_live(
-    live_by_host: dict[str, dict]
-) -> None:
+def test_a_blocked_chain_was_not_also_seen_live(live_by_host: dict[str, dict]) -> None:
     """The blocked list must not quietly become a claim of working."""
     wrong = [
         f"{chain_id} ({host})"
         for chain_id, host in sorted(BLOCKED_INSTANCE_HOSTS.items())
         if host in live_by_host
     ]
-    assert wrong == [], (
-        f"chains marked blocked that the survey saw live: {wrong}"
-    )
+    assert wrong == [], f"chains marked blocked that the survey saw live: {wrong}"

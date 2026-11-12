@@ -118,6 +118,8 @@ def test_the_guidance_is_carried_on_the_finding() -> None:
     )
     assert finding.guidance is not None
     assert finding.guidance["how_to_fix"]
+
+
 #: The detectors the Slither and Mythril integrations emit, as they
 #: appear in the live corpus.
 ENGINE_DETECTORS = (

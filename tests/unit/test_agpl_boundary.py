@@ -95,8 +95,7 @@ def test_no_vendored_agpl_source() -> None:
             if EXCLUDED_PARTS & set(path.parts):
                 continue
             assert path.name.lower() not in forbidden_names, (
-                f"{path.relative_to(REPO_ROOT)} looks like vendored AGPL source. "
-                "See ADR-0013."
+                f"{path.relative_to(REPO_ROOT)} looks like vendored AGPL source. See ADR-0013."
             )
 
 

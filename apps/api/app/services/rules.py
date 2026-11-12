@@ -98,9 +98,7 @@ def _delegatecall(
         # proxy pattern. Nothing to report.
         return None
 
-    kinds = {
-        target.offset: target.kind for target in facts.delegatecall_targets
-    }
+    kinds = {target.offset: target.kind for target in facts.delegatecall_targets}
     return RuleFinding(
         detector_id="baseline.delegatecall",
         category="delegatecall_usage",

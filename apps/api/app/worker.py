@@ -334,9 +334,7 @@ def process_mythril_job(scan_id: str, job_id: str | None = None) -> dict[str, ob
 
         scan = session.get(Scan, parsed_scan_id)
         if scan is None:
-            return _missing_scan(
-                session, job, scan_id, "mythril_scan_not_found"
-            )
+            return _missing_scan(session, job, scan_id, "mythril_scan_not_found")
 
         if job is not None:
             job.status = ScanJobStatus.STARTED
@@ -521,9 +519,7 @@ def process_correspondence_job(scan_id: str, job_id: str | None = None) -> dict[
 
         scan = session.get(Scan, parsed_scan_id)
         if scan is None:
-            return _missing_scan(
-                session, job, scan_id, "correspondence_scan_not_found"
-            )
+            return _missing_scan(session, job, scan_id, "correspondence_scan_not_found")
 
         if job is not None:
             job.status = ScanJobStatus.STARTED

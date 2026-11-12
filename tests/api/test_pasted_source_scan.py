@@ -134,9 +134,7 @@ def _no_network_source_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     from app.services import pipeline as pipeline_service
 
-    monkeypatch.setattr(
-        pipeline_service, "fetch_verified_source", lambda *a, **k: None
-    )
+    monkeypatch.setattr(pipeline_service, "fetch_verified_source", lambda *a, **k: None)
 
 
 @pytest.fixture()
@@ -215,9 +213,7 @@ def test_source_and_bytecode_cannot_both_be_supplied(
     client: TestClient, tenant: Tenant, captured_enqueue
 ) -> None:
     """Two answers to one question is a mistake, not a choice."""
-    response = _submit(
-        client, tenant, source_code=SOURCE, bytecode_hex="60006000f3"
-    )
+    response = _submit(client, tenant, source_code=SOURCE, bytecode_hex="60006000f3")
 
     assert response.status_code == 422, response.text
     assert not captured_enqueue
@@ -249,9 +245,7 @@ def test_the_pasted_contract_is_analysed_by_the_same_engine(
     # "partial" is the honest outcome here; what matters is that the
     # engine ran on the compiled bytes and said what it found.
     assert outcome.status in {ScanStatus.COMPLETED, ScanStatus.PARTIAL}
-    findings = db_session.scalars(
-        select(Finding).where(Finding.scan_id == scan.id)
-    ).all()
+    findings = db_session.scalars(select(Finding).where(Finding.scan_id == scan.id)).all()
     assert findings
     assert any("origin" in finding.detector_id.lower() for finding in findings)
 
@@ -280,9 +274,7 @@ def test_a_finding_points_at_the_line_the_developer_wrote(
     run_scan(db_session, scan)
     db_session.commit()
 
-    findings = db_session.scalars(
-        select(Finding).where(Finding.scan_id == scan.id)
-    ).all()
+    findings = db_session.scalars(select(Finding).where(Finding.scan_id == scan.id)).all()
     origin = next(
         finding
         for finding in findings
@@ -361,12 +353,8 @@ def test_the_model_ranks_the_findings_without_changing_them(
         labels=("tx_origin",),
     )
 
-    monkeypatch.setattr(
-        pipeline_service, "load_installed_model", lambda settings=None: model
-    )
-    settings = pipeline_service.get_settings().model_copy(
-        update={"enable_experimental_ml": True}
-    )
+    monkeypatch.setattr(pipeline_service, "load_installed_model", lambda settings=None: model)
+    settings = pipeline_service.get_settings().model_copy(update={"enable_experimental_ml": True})
     monkeypatch.setattr(pipeline_service, "get_settings", lambda: settings)
 
     response = _submit(client, tenant, source_code=SOURCE)

@@ -212,5 +212,7 @@ def test_the_exit_codes_separate_a_mismatch_from_an_error():
     assert module.EXIT_CORRESPONDENCE == 0
     assert module.EXIT_NO_CORRESPONDENCE == 1
     assert module.EXIT_COMPILER_ERROR == 2
-    assert len({module.EXIT_CORRESPONDENCE, module.EXIT_NO_CORRESPONDENCE,
-                module.EXIT_COMPILER_ERROR}) == 3
+    assert (
+        len({module.EXIT_CORRESPONDENCE, module.EXIT_NO_CORRESPONDENCE, module.EXIT_COMPILER_ERROR})
+        == 3
+    )

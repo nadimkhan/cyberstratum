@@ -159,8 +159,7 @@ class FindingReviewRequest(BaseModel):
 
     status: FindingStatus = Field(
         description=(
-            "The verdict: 'confirmed', 'false_positive', "
-            "'needs_more_evidence' or 'triage'."
+            "The verdict: 'confirmed', 'false_positive', 'needs_more_evidence' or 'triage'."
         )
     )
     note: str | None = Field(
@@ -184,8 +183,7 @@ class BulkFindingReviewRequest(BaseModel):
     detector_id: str = Field(min_length=1, max_length=120)
     status: FindingStatus = Field(
         description=(
-            "The verdict: 'confirmed', 'false_positive', "
-            "'needs_more_evidence' or 'triage'."
+            "The verdict: 'confirmed', 'false_positive', 'needs_more_evidence' or 'triage'."
         )
     )
     note: str | None = Field(

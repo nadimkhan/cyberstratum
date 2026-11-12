@@ -145,9 +145,7 @@ def test_a_chain_without_an_instance_goes_straight_to_sourcify(
     routes: dict[str, FakeResponse],
 ) -> None:
     """A chain with no instance still gets its source from Sourcify."""
-    routes["sourcify.dev"] = FakeResponse(
-        200, {"sources": {"A.sol": {"content": "contract A {}"}}}
-    )
+    routes["sourcify.dev"] = FakeResponse(200, {"sources": {"A.sol": {"content": "contract A {}"}}})
 
     artifact = fetch_verified_source(999999, "0x" + "66" * 20)
 

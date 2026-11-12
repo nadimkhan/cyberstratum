@@ -159,9 +159,7 @@ def run_learning_cycle(
     if promotable and install:
         target = model_directory(settings)
         if target is None:
-            raise RuntimeError(
-                "ML_MODEL_DIR is not set, so there is nowhere to install the model."
-            )
+            raise RuntimeError("ML_MODEL_DIR is not set, so there is nowhere to install the model.")
         install_model(Path(candidate_dir), target)
         installed = True
         model_dir = str(target)

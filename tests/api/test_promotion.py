@@ -95,13 +95,10 @@ def test_the_per_cycle_cap_is_respected(
     db_session: Session, workspace: Workspace, chain: Chain
 ) -> None:
     targets = [
-        _target(db_session, workspace, chain, "0x" + f"{index:02x}" * 20)
-        for index in range(5)
+        _target(db_session, workspace, chain, "0x" + f"{index:02x}" * 20) for index in range(5)
     ]
 
-    outcome = promote_contracts(
-        db_session, workspace, chain, targets, limit=2, enqueue=False
-    )
+    outcome = promote_contracts(db_session, workspace, chain, targets, limit=2, enqueue=False)
 
     assert outcome.queued == 2
     assert outcome.skipped_capped == 3
@@ -111,16 +108,13 @@ def test_a_full_queue_stops_promotion(
     db_session: Session, workspace: Workspace, chain: Chain
 ) -> None:
     targets = [
-        _target(db_session, workspace, chain, "0x" + f"{index:02x}" * 20)
-        for index in range(4)
+        _target(db_session, workspace, chain, "0x" + f"{index:02x}" * 20) for index in range(4)
     ]
     # One scan is already waiting, and the queue is allowed to hold one.
     existing = _target(db_session, workspace, chain, "0x" + "ee" * 20)
     promote_contracts(db_session, workspace, chain, [existing], enqueue=False)
 
-    outcome = promote_contracts(
-        db_session, workspace, chain, targets, max_pending=1, enqueue=False
-    )
+    outcome = promote_contracts(db_session, workspace, chain, targets, max_pending=1, enqueue=False)
 
     assert outcome.queued == 0
     assert outcome.skipped_pending == 4

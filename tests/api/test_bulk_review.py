@@ -156,8 +156,11 @@ def test_one_verdict_settles_every_open_finding_of_the_detector(
     response = client.post(
         "/api/v1/findings/review-bulk",
         headers=tenant.headers,
-        json={"detector_id": "slither.naming_convention", "status": "false_positive",
-              "note": "a style question, not a defect"},
+        json={
+            "detector_id": "slither.naming_convention",
+            "status": "false_positive",
+            "note": "a style question, not a defect",
+        },
     )
 
     assert response.status_code == 200, response.text
@@ -172,16 +175,20 @@ def test_a_settled_finding_is_not_overwritten(
     client: TestClient, tenant: Tenant, db_session: Session, scan: Scan
 ) -> None:
     """A reviewed label is not something to refresh without a reason."""
-    settled = _add_finding(db_session, scan, "slither.naming_convention",
-                           status=FindingStatus.CONFIRMED)
+    settled = _add_finding(
+        db_session, scan, "slither.naming_convention", status=FindingStatus.CONFIRMED
+    )
     settled.review_note = "decided by hand"
     db_session.flush()
 
     response = client.post(
         "/api/v1/findings/review-bulk",
         headers=tenant.headers,
-        json={"detector_id": "slither.naming_convention", "status": "false_positive",
-              "note": "a style question"},
+        json={
+            "detector_id": "slither.naming_convention",
+            "status": "false_positive",
+            "note": "a style question",
+        },
     )
 
     assert response.status_code == 200, response.text
@@ -260,16 +267,15 @@ def test_the_verdicts_are_written_to_the_audit_trail(
     client.post(
         "/api/v1/findings/review-bulk",
         headers=tenant.headers,
-        json={"detector_id": "slither.naming_convention", "status": "confirmed",
-              "note": "read the code"},
+        json={
+            "detector_id": "slither.naming_convention",
+            "status": "confirmed",
+            "note": "read the code",
+        },
     )
     db_session.flush()
 
-    events = (
-        db_session.query(AuditEvent)
-        .filter(AuditEvent.resource_id == str(finding.id))
-        .all()
-    )
+    events = db_session.query(AuditEvent).filter(AuditEvent.resource_id == str(finding.id)).all()
     assert len(events) == 1
     assert events[0].action == "finding.reviewed"
     assert events[0].metadata_redacted["bulk"] is True

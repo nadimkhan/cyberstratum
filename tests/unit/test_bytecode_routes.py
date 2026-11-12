@@ -148,6 +148,8 @@ def test_the_rpc_is_still_the_first_route(monkeypatch: pytest.MonkeyPatch) -> No
 
     assert artifact.source == "rpc"
     assert calls == ["rpc"]
+
+
 def test_a_rate_limited_endpoint_is_tried_again(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -175,9 +177,7 @@ def test_a_json_rpc_error_is_a_failed_endpoint(
     """A 200 that carries a JSON-RPC error is not an answer about the contract."""
 
     def fake_post(url: str, json: object, timeout: float) -> _Response:
-        return _Response(
-            {"jsonrpc": "2.0", "error": {"code": -32603, "message": "Internal error"}}
-        )
+        return _Response({"jsonrpc": "2.0", "error": {"code": -32603, "message": "Internal error"}})
 
     monkeypatch.setattr(bytecode_module.httpx, "post", fake_post)
 

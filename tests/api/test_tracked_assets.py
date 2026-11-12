@@ -158,9 +158,7 @@ def test_registering_the_same_address_twice_is_idempotent(
     assert len(rows) == 1
 
 
-def test_an_address_that_is_not_an_address_is_refused(
-    client: TestClient, tenant: Tenant
-) -> None:
+def test_an_address_that_is_not_an_address_is_refused(client: TestClient, tenant: Tenant) -> None:
     """A malformed address is a client error, not a stored asset."""
     response = _register(client, tenant, address="not-an-address")
     assert response.status_code == 422

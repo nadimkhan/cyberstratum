@@ -106,9 +106,7 @@ def _safe(value: float) -> float:
     return float(round(float(value), 6))
 
 
-def _recall_at_budget(
-    scores: np.ndarray, truth: np.ndarray, budget: int
-) -> float:
+def _recall_at_budget(scores: np.ndarray, truth: np.ndarray, budget: int) -> float:
     """Recall when only the top ``budget`` scored contracts are reviewed."""
     positives = int(truth.sum())
     if positives == 0:
@@ -151,9 +149,7 @@ def _breakdown(
             "contracts": len(indices),
             "positives": positives,
             "recall": _safe(found / positives),
-            "precision": _safe(
-                found / predictions.sum() if predictions.sum() else 0.0
-            ),
+            "precision": _safe(found / predictions.sum() if predictions.sum() else 0.0),
         }
     return result
 
@@ -166,9 +162,7 @@ def _size_breakdown(
     result: dict[str, Any] = {}
     for low, high in buckets:
         indices = [
-            index
-            for index, sample in enumerate(samples)
-            if low <= len(sample.bytecode) < high
+            index for index, sample in enumerate(samples) if low <= len(sample.bytecode) < high
         ]
         if not indices:
             continue
@@ -193,9 +187,7 @@ def _size_breakdown(
     return result
 
 
-def latency_profile(
-    predict: Any, samples: Sequence[Sample], repeats: int = 3
-) -> dict[str, float]:
+def latency_profile(predict: Any, samples: Sequence[Sample], repeats: int = 3) -> dict[str, float]:
     """Measure inference latency and peak memory for the prediction path."""
     import tracemalloc
 
@@ -293,9 +285,7 @@ def evaluate(
 
         contract_count = max(1, len(samples))
         report.false_positives_per_100_contracts[label] = _safe(fp * 100.0 / contract_count)
-        report.recall_at_review_budget[label] = _safe(
-            _recall_at_budget(scores, truth, budget)
-        )
+        report.recall_at_review_budget[label] = _safe(_recall_at_budget(scores, truth, budget))
         report.positive_rate[label] = _safe(truth.sum() / contract_count)
 
         report.breakdown.setdefault("by_chain", {}).update(

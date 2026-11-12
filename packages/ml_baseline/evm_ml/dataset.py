@@ -107,9 +107,7 @@ class Dataset:
             "family_count": len(families),
             "families": families,
             "chains": sorted({sample.chain for sample in self.samples}),
-            "compilers": sorted(
-                {s.compiler for s in self.samples if s.compiler is not None}
-            ),
+            "compilers": sorted({s.compiler for s in self.samples if s.compiler is not None}),
             "sources": sorted({sample.source for sample in self.samples}),
             "licenses": sorted({sample.license for sample in self.samples}),
             "label_sources": sorted({sample.label_source for sample in self.samples}),
@@ -218,9 +216,7 @@ def load_dataset(path: str | Path) -> Dataset:
             try:
                 bytecode = bytes.fromhex(bytecode_hex)
             except ValueError as exc:
-                raise ValueError(
-                    f"{path}:{line_number}: bytecode is not valid hex: {exc}"
-                ) from exc
+                raise ValueError(f"{path}:{line_number}: bytecode is not valid hex: {exc}") from exc
 
             samples.append(
                 Sample(

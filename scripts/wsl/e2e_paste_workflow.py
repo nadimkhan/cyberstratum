@@ -162,11 +162,7 @@ check("the workspace tracks contracts", len(asset_items) > 0, f"{len(asset_items
 # paginated, so it is looked up by that address rather than by hoping
 # it happens to be on the first page.
 pasted_address = str((final or {}).get("contract_address") or "").lower()
-matching = [
-    item
-    for item in asset_items
-    if item["asset"]["address"].lower() == pasted_address
-]
+matching = [item for item in asset_items if item["asset"]["address"].lower() == pasted_address]
 if pasted_address and not matching:
     for offset in range(200, 1400, 200):
         status, page = call("GET", f"{API}/assets?limit=200&offset={offset}")
@@ -176,9 +172,7 @@ if pasted_address and not matching:
         if not page_items:
             break
         matching = [
-            item
-            for item in page_items
-            if item["asset"]["address"].lower() == pasted_address
+            item for item in page_items if item["asset"]["address"].lower() == pasted_address
         ]
         if matching:
             break

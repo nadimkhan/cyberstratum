@@ -300,9 +300,7 @@ def audit_source(
         source_code, contract_name, compiler_version, extra_files=extra_files
     )
     if not result.ran:
-        log.info(
-            "source audit skipped for %s: %s", contract_name or "<unnamed>", result.skipped
-        )
+        log.info("source audit skipped for %s: %s", contract_name or "<unnamed>", result.skipped)
         return SourceAudit(findings=(), skipped=result.skipped)
 
     findings = tuple(to_rule_finding(f) for f in result.findings)

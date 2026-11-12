@@ -293,9 +293,7 @@ def normalize_contract(
 PRO_UNVERIFIED_ABI: Final[str] = "Contract source code not verified"
 
 
-def _verification_state(
-    raw: Mapping[str, Any], nested: Mapping[str, Any]
-) -> bool | None:
+def _verification_state(raw: Mapping[str, Any], nested: Mapping[str, Any]) -> bool | None:
     """Return the verification state of a record, when the route reports one.
 
     The per-chain instance reports it explicitly as ``is_verified``. The PRO
@@ -571,9 +569,7 @@ class BlockscoutClient:
         url = self._instance_url(chain_id, "/api/v2/smart-contracts")
         # Measured: an instance answers 422 for items_count above 50, and
         # several ignore the parameter entirely and always return 50.
-        params: dict[str, Any] = {
-            "items_count": min(page_size, INSTANCE_MAX_ITEMS_PER_PAGE)
-        }
+        params: dict[str, Any] = {"items_count": min(page_size, INSTANCE_MAX_ITEMS_PER_PAGE)}
         items: list[Any] = []
         host = explorer_host_for(chain_id)
         for _ in range(page):
@@ -673,9 +669,7 @@ class BlockscoutClient:
             BlockscoutBudgetExceededError: If the daily budget is exhausted.
         """
         if not self._api_key:
-            raise BlockscoutUnavailableError(
-                chain_id, f"{BLOCKSCOUT_API_KEY_ENV} is not set"
-            )
+            raise BlockscoutUnavailableError(chain_id, f"{BLOCKSCOUT_API_KEY_ENV} is not set")
         await self.rate_limiter.acquire()
         try:
             self.credits.charge(chain_id=chain_id)
@@ -760,9 +754,7 @@ class BlockscoutClient:
             raise BlockscoutUnavailableError(chain_id, "the PRO response is not an object")
         result = payload.get("result")
         if not isinstance(result, list):
-            raise BlockscoutUnavailableError(
-                chain_id, "the PRO response has no 'result' list"
-            )
+            raise BlockscoutUnavailableError(chain_id, "the PRO response has no 'result' list")
         contracts: list[DiscoveredContract] = []
         for raw in result:
             if not isinstance(raw, Mapping):

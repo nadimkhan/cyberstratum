@@ -55,9 +55,7 @@ def test_queueing_requires_authentication(client: TestClient) -> None:
     assert response.status_code in (401, 403)
 
 
-def test_listing_runs_is_empty_at_first(
-    client: TestClient, api_headers: dict[str, str]
-) -> None:
+def test_listing_runs_is_empty_at_first(client: TestClient, api_headers: dict[str, str]) -> None:
     """A fresh installation has no discovery cycles."""
     response = client.get("/api/v1/discovery/runs", headers=api_headers)
 

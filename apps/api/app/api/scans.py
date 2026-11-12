@@ -164,9 +164,7 @@ def _track_asset(
         normalised = normalise_address(address)
     except InvalidAddressError:
         return None
-    return upsert_asset(
-        session, workspace, chain, normalised, label=label, kind=AssetKind.OWNED
-    )
+    return upsert_asset(session, workspace, chain, normalised, label=label, kind=AssetKind.OWNED)
 
 
 def _upsert_target(
@@ -454,8 +452,7 @@ def get_scan_source(
         return ScanSourceRead(
             available=False,
             reason=(
-                "This scan was analysed from runtime bytecode alone, so there is no "
-                "source to show."
+                "This scan was analysed from runtime bytecode alone, so there is no source to show."
             ),
         )
 
@@ -463,9 +460,7 @@ def get_scan_source(
         raw = storage.get_bytes(artifact.object_key)
         payload = json.loads(raw.decode("utf-8"))
     except (storage.ObjectStorageError, UnicodeDecodeError, ValueError) as exc:
-        log.warning(
-            "scan_source_unreadable", scan_id=str(scan.id), error=str(exc)
-        )
+        log.warning("scan_source_unreadable", scan_id=str(scan.id), error=str(exc))
         return ScanSourceRead(
             available=False,
             reason="The stored source could not be read back.",

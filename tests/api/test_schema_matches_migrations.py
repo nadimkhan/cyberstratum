@@ -106,9 +106,7 @@ def _migrate(scratch_url: str) -> None:
         config = Config(str(repo_root / "alembic.ini"))
         # The ini file uses paths relative to the repository root; make them
         # absolute so the test does not depend on the working directory.
-        config.set_main_option(
-            "script_location", str(repo_root / "apps" / "api" / "alembic")
-        )
+        config.set_main_option("script_location", str(repo_root / "apps" / "api" / "alembic"))
         config.set_main_option("prepend_sys_path", str(repo_root / "apps" / "api"))
         command.upgrade(config, "head")
     finally:
@@ -268,9 +266,7 @@ def _compare(
                     f"database but {model_default!r} in the models"
                 )
 
-        model_pk = tuple(
-            sorted(column.name for column in model_table.primary_key.columns)
-        )
+        model_pk = tuple(sorted(column.name for column in model_table.primary_key.columns))
         live_pk = tuple(
             sorted((inspector.get_pk_constraint(name) or {}).get("constrained_columns") or [])
         )
@@ -309,9 +305,7 @@ def _compare(
         }
         # A column declared ``unique=True`` is a uniqueness promise too.
         model_uniques |= {
-            frozenset({column.name})
-            for column in model_table.columns
-            if column.unique
+            frozenset({column.name}) for column in model_table.columns if column.unique
         }
         live_indexes_by_name = {
             index["name"]: (
@@ -328,9 +322,7 @@ def _compare(
         # PostgreSQL may enforce uniqueness with a constraint or with a
         # unique index. Both are the same promise, so both count.
         live_uniques |= {
-            frozenset(columns)
-            for columns, unique in live_indexes_by_name.values()
-            if unique
+            frozenset(columns) for columns, unique in live_indexes_by_name.values() if unique
         }
         for missing in sorted(model_uniques - live_uniques, key=sorted):
             differences.append(
@@ -357,9 +349,7 @@ def _compare(
 
         model_indexes = _metadata_indexes(model_table)
         for missing in sorted(set(model_indexes) - set(live_indexes_by_name)):
-            differences.append(
-                f"table {name}: index {missing} is declared but not created"
-            )
+            differences.append(f"table {name}: index {missing} is declared but not created")
         for shared in sorted(set(model_indexes) & set(live_indexes_by_name)):
             live_columns, _ = live_indexes_by_name[shared]
             if model_indexes[shared] != live_columns:
@@ -372,9 +362,7 @@ def _compare(
             for name, (_, unique) in live_indexes_by_name.items()
             if name not in model_indexes and not unique
         ):
-            differences.append(
-                f"table {name}: index {extra} exists but is not declared"
-            )
+            differences.append(f"table {name}: index {extra} exists but is not declared")
 
     return differences
 
@@ -401,9 +389,7 @@ def test_the_migrated_schema_matches_the_models(scratch_schema: tuple[str, str])
     finally:
         engine.dispose()
 
-    summary = "The migrated schema and the ORM models disagree:\n  - " + "\n  - ".join(
-        differences
-    )
+    summary = "The migrated schema and the ORM models disagree:\n  - " + "\n  - ".join(differences)
     assert not differences, summary
 
 

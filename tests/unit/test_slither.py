@@ -55,8 +55,7 @@ SLITHER_OUTPUT = {
                 "impact": "High",
                 "confidence": "Medium",
                 "description": (
-                    "Reentrancy in Vault.withdraw(uint256):\n"
-                    "  - State updated after external call"
+                    "Reentrancy in Vault.withdraw(uint256):\n  - State updated after external call"
                 ),
                 "contract_path": "Vault.sol",
             },
@@ -90,9 +89,7 @@ def _fake_executable(tmp_path: Path, python_body: str) -> Path:
 
     if os.name == "nt":
         launcher = tmp_path / "slither.cmd"
-        launcher.write_text(
-            f'@echo off\r\n"{sys.executable}" "{script}" %*\r\n', encoding="utf-8"
-        )
+        launcher.write_text(f'@echo off\r\n"{sys.executable}" "{script}" %*\r\n', encoding="utf-8")
     else:
         launcher = tmp_path / "slither"
         launcher.write_text(
@@ -161,9 +158,7 @@ def test_the_detector_map_covers_the_shared_vocabulary() -> None:
         ("garbage", "0.8.26"),
     ],
 )
-def test_a_compiler_version_is_reduced_to_three_parts(
-    given: str, expected: str
-) -> None:
+def test_a_compiler_version_is_reduced_to_three_parts(given: str, expected: str) -> None:
     """The version string is normalised the way solc-select names it."""
     assert solc_version_from_string(given) == expected
 
@@ -256,9 +251,7 @@ def test_the_runner_turns_an_engine_failure_into_a_skip(tmp_path: Path) -> None:
     _make_solc(tmp_path)
     fake = _fake_executable(
         tmp_path,
-        "import sys\n"
-        "sys.stdout.write('{\"success\": false, \"error\": \"boom\", "
-        "\"results\": {}}')\n",
+        'import sys\nsys.stdout.write(\'{"success": false, "error": "boom", "results": {}}\')\n',
     )
 
     runner = SlitherRunner(executable=str(fake), solc_artifacts=str(tmp_path))
@@ -275,8 +268,8 @@ def test_the_runner_keeps_a_clean_run_a_verdict(tmp_path: Path) -> None:
     fake = _fake_executable(
         tmp_path,
         "import sys\n"
-        "sys.stdout.write('{\"success\": true, \"error\": null, "
-        "\"results\": {\"detectors\": []}}')\n",
+        'sys.stdout.write(\'{"success": true, "error": null, '
+        '"results": {"detectors": []}}\')\n',
     )
 
     runner = SlitherRunner(executable=str(fake), solc_artifacts=str(tmp_path))
@@ -290,11 +283,7 @@ def test_the_runner_keeps_a_clean_run_a_verdict(tmp_path: Path) -> None:
 def test_a_description_is_truncated() -> None:
     """A pathological description cannot blow up the findings table."""
     payload = {
-        "results": {
-            "detectors": [
-                {"check": "x", "impact": "High", "description": "y" * 5000}
-            ]
-        }
+        "results": {"detectors": [{"check": "x", "impact": "High", "description": "y" * 5000}]}
     }
     findings = parse_slither_json(json.dumps(payload))
     assert len(findings[0].description) == 500
@@ -388,8 +377,7 @@ def test_a_run_parses_the_executables_json(tmp_path: Path) -> None:
     """A fake executable stands in for Slither and its JSON is read."""
     fake = _fake_executable(
         tmp_path,
-        "import sys\n"
-        "sys.stdout.write(" + repr(json.dumps(SLITHER_OUTPUT)) + ")\n",
+        "import sys\nsys.stdout.write(" + repr(json.dumps(SLITHER_OUTPUT)) + ")\n",
     )
     _make_solc(tmp_path)
 
@@ -406,9 +394,7 @@ def test_a_timeout_is_reported_as_a_skip(tmp_path: Path) -> None:
     fake = _fake_executable(tmp_path, "import time\ntime.sleep(30)\n")
     _make_solc(tmp_path)
 
-    runner = SlitherRunner(
-        executable=str(fake), solc_artifacts=str(tmp_path), timeout=1
-    )
+    runner = SlitherRunner(executable=str(fake), solc_artifacts=str(tmp_path), timeout=1)
     result = runner.run(SAMPLE_SOURCE, "Vault", "0.8.26")
 
     assert result.ran is False
@@ -434,7 +420,7 @@ def test_the_source_is_written_to_a_temporary_file(tmp_path: Path) -> None:
         tmp_path,
         "import shutil, sys\n"
         f"shutil.copyfile(sys.argv[1], r'{marker}')\n"
-        "sys.stdout.write('{\"results\": {\"detectors\": []}}')\n",
+        'sys.stdout.write(\'{"results": {"detectors": []}}\')\n',
     )
     _make_solc(tmp_path)
 
@@ -449,8 +435,7 @@ def test_the_running_is_a_real_subprocess(tmp_path: Path) -> None:
     """The runner really does fork a process, not call into Python."""
     fake = _fake_executable(
         tmp_path,
-        "import sys\n"
-        "sys.stdout.write('{\"results\": {\"detectors\": []}}')\n",
+        'import sys\nsys.stdout.write(\'{"results": {"detectors": []}}\')\n',
     )
     _make_solc(tmp_path)
 
@@ -597,9 +582,7 @@ def test_the_map_covers_slither_0_11_detectors() -> None:
         "write_after_write",
     }
 
-    uncovered = sorted(
-        d for d in slither_0_11_detectors if d not in DETECTOR_TO_VECTOR
-    )
+    uncovered = sorted(d for d in slither_0_11_detectors if d not in DETECTOR_TO_VECTOR)
     assert not uncovered, f"these detectors have no risk vector: {uncovered}"
 
 
@@ -614,12 +597,8 @@ def test_the_legacy_detector_names_are_still_mapped() -> None:
 
 def test_the_modern_names_map_onto_the_same_vectors() -> None:
     """Slither renamed several detectors; the vectors did not change."""
-    assert DETECTOR_TO_VECTOR["low_level_calls"] == (
-        DETECTOR_TO_VECTOR["unchecked_lowlevel"]
-    )
-    assert DETECTOR_TO_VECTOR["reentrancy_balance"] == (
-        DETECTOR_TO_VECTOR["reentrancy_eth"]
-    )
+    assert DETECTOR_TO_VECTOR["low_level_calls"] == (DETECTOR_TO_VECTOR["unchecked_lowlevel"])
+    assert DETECTOR_TO_VECTOR["reentrancy_balance"] == (DETECTOR_TO_VECTOR["reentrancy_eth"])
 
 
 # -- a source that does not compile --------------------------------------

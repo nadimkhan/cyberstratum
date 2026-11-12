@@ -322,9 +322,7 @@ class SlitherRunner:
     ) -> None:
         self._executable = executable or os.environ.get(SLITHER_BIN_ENV) or ""
         self._solc_artifacts = Path(
-            solc_artifacts
-            or os.environ.get(SOLC_ARTIFACTS_ENV)
-            or DEFAULT_SOLC_ARTIFACTS
+            solc_artifacts or os.environ.get(SOLC_ARTIFACTS_ENV) or DEFAULT_SOLC_ARTIFACTS
         ).expanduser()
         self._timeout = timeout
 
@@ -376,9 +374,7 @@ class SlitherRunner:
 
     # -- running ---------------------------------------------------------
 
-    def build_command(
-        self, source_path: str, solc_binary: str | None
-    ) -> list[str]:
+    def build_command(self, source_path: str, solc_binary: str | None) -> list[str]:
         """The argv used to run Slither.
 
         Kept separate so a test can assert the boundary holds: the command

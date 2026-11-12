@@ -137,9 +137,7 @@ def get_or_create_discovery_workspace(session: Session) -> Workspace:
 
 def _chain_row(session: Session, chain_id: int) -> Chain | None:
     """The database row for a chain, if it is registered."""
-    return session.execute(
-        select(Chain).where(Chain.chain_id == chain_id)
-    ).scalar_one_or_none()
+    return session.execute(select(Chain).where(Chain.chain_id == chain_id)).scalar_one_or_none()
 
 
 def _ensure_chain(session: Session, chain_id: int, name: str) -> Chain:
@@ -206,9 +204,7 @@ def select_batch(
     return ordered[:batch_size]
 
 
-def _cursor_for(
-    session: Session, chain_row: Chain, workspace_id: uuid.UUID
-) -> FeedCursor:
+def _cursor_for(session: Session, chain_row: Chain, workspace_id: uuid.UUID) -> FeedCursor:
     """The cursor for one chain, created if it does not exist."""
     cursor = session.execute(
         select(FeedCursor).where(
@@ -275,9 +271,7 @@ def _transiently_failed_targets(
     for target, error_code in rows:
         latest.setdefault(target.id, (target, error_code))
     return [
-        target
-        for target, error_code in latest.values()
-        if error_code in TRANSIENT_SCAN_ERRORS
+        target for target, error_code in latest.values() if error_code in TRANSIENT_SCAN_ERRORS
     ][:limit]
 
 
@@ -358,10 +352,7 @@ def persist_contracts(
                     address=address,
                     label=_label_for(contract),
                     source_uri=contract.source_uri,
-                    provenance=(
-                        f"Discovered via the {contract.route} route "
-                        f"in run {run.id}."
-                    ),
+                    provenance=(f"Discovered via the {contract.route} route in run {run.id}."),
                     authorization_status="unknown",
                     discovery_run_id=run.id,
                     discovery_route=contract.route,
@@ -427,9 +418,7 @@ class DiscoveryService:
             if chain_ids is not None
             else [chain.chain_id for chain in SUPPORTED_CHAINS]
         )
-        batch = select_batch(
-            self.session, target_workspace.id, candidates, batch_size
-        )
+        batch = select_batch(self.session, target_workspace.id, candidates, batch_size)
 
         run = DiscoveryRun(workspace_id=target_workspace.id, status="running")
         self.session.add(run)
@@ -441,9 +430,7 @@ class DiscoveryService:
         budget = DEFAULT_MAX_SCANS_PER_CYCLE
 
         for chain_id in batch:
-            chain = next(
-                (c for c in SUPPORTED_CHAINS if c.chain_id == chain_id), None
-            )
+            chain = next((c for c in SUPPORTED_CHAINS if c.chain_id == chain_id), None)
             name = chain.name if chain is not None else f"chain-{chain_id}"
             try:
                 found, new, updated, queued = await self._sweep_chain(
@@ -552,9 +539,7 @@ class DiscoveryService:
             page += 1
             self.session.flush()
 
-            new, updated = persist_contracts(
-                self.session, workspace, chain_row, run, contracts
-            )
+            new, updated = persist_contracts(self.session, workspace, chain_row, run, contracts)
             found += len(contracts)
             new_count += new
             updated_count += updated

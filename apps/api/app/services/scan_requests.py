@@ -149,9 +149,7 @@ def create_scan(
         requested_by=requested_by,
         fork=fork,
         bytecode_source=(
-            (inline_bytecode_source or "upload")
-            if inline_bytecode is not None
-            else "rpc"
+            (inline_bytecode_source or "upload") if inline_bytecode is not None else "rpc"
         ),
         queued_at=datetime.now(UTC),
     )

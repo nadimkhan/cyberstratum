@@ -57,7 +57,7 @@ INSTANCE_ITEM: dict[str, Any] = {
 
 #: The same contract in the flattened PRO shape.
 PRO_ITEM: dict[str, Any] = {
-    "ABI": "[{\"inputs\":[]}]",
+    "ABI": '[{"inputs":[]}]',
     "Address": "0x8C7A91135499C40467BEF2Da7bEc3A4dC78deCD3",
     "CompilerVersion": "0.8.23+commit.f704f362",
     "ContractName": "Assist",
@@ -106,9 +106,7 @@ async def test_route_a_returns_a_normalised_contract() -> None:
         source_uri="https://eth.blockscout.com/address/0x8C7A91135499C40467BEF2Da7bEc3A4dC78deCD3",
         route=ROUTE_INSTANCE,
     )
-    assert str(seen[0].url) == (
-        "https://eth.blockscout.com/api/v2/smart-contracts?items_count=50"
-    )
+    assert str(seen[0].url) == ("https://eth.blockscout.com/api/v2/smart-contracts?items_count=50")
 
 
 async def test_route_a_is_preferred_over_the_paid_route() -> None:
@@ -163,9 +161,7 @@ async def test_route_a_failure_falls_back_to_the_pro_route() -> None:
         calls.append(request.url.host)
         if request.url.host == "eth.blockscout.com":
             return httpx.Response(403, text="forbidden")
-        return httpx.Response(
-            200, json={"message": "OK", "status": "1", "result": [PRO_ITEM]}
-        )
+        return httpx.Response(200, json={"message": "OK", "status": "1", "result": [PRO_ITEM]})
 
     async with _client(handler) as client:
         contracts = await client.list_contracts(INSTANCE_CHAIN_ID)
@@ -235,9 +231,7 @@ async def test_a_failing_chain_does_not_abort_a_multi_chain_sweep() -> None:
         if request.url.host == "api.blockscout.com":
             if request.url.params.get("chainid") == str(PRO_ONLY_CHAIN_ID):
                 return httpx.Response(402, json={"error": "no credits"})
-            return httpx.Response(
-                200, json={"message": "OK", "status": "1", "result": [PRO_ITEM]}
-            )
+            return httpx.Response(200, json={"message": "OK", "status": "1", "result": [PRO_ITEM]})
         return httpx.Response(403, text="forbidden")
 
     async with _client(handler) as client:
@@ -511,9 +505,7 @@ async def test_sorting_is_only_sent_for_listings() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
-        return httpx.Response(
-            200, json={"message": "OK", "result": [PRO_ITEM]}
-        )
+        return httpx.Response(200, json={"message": "OK", "result": [PRO_ITEM]})
 
     async with _client(handler) as client:
         await client.get_contract(PRO_ONLY_CHAIN_ID, "0xabc")
@@ -574,10 +566,9 @@ async def test_a_rate_limited_call_is_not_billed() -> None:
 
 async def test_a_chain_the_pro_api_does_not_support_says_so() -> None:
     """PRO answers 404 for an unsupported chain; that is not a transient error."""
+
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            404, json={"error": "Network not supported", "source": "internal"}
-        )
+        return httpx.Response(404, json={"error": "Network not supported", "source": "internal"})
 
     async with _client(handler) as client:
         with pytest.raises(BlockscoutUnavailableError) as excinfo:
@@ -588,10 +579,9 @@ async def test_a_chain_the_pro_api_does_not_support_says_so() -> None:
 
 async def test_an_unreachable_chain_reports_why() -> None:
     """A chain with no route fails with an explanation, not an empty list."""
+
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            402, json={"error": "Featured chain 8453 requires a paid plan"}
-        )
+        return httpx.Response(402, json={"error": "Featured chain 8453 requires a paid plan"})
 
     async with _client(handler) as client:
         with pytest.raises(BlockscoutUnavailableError) as excinfo:
@@ -603,6 +593,7 @@ async def test_an_unreachable_chain_reports_why() -> None:
 
 async def test_the_sweep_reports_a_failing_chain_without_aborting() -> None:
     """One broken chain does not lose the others' results."""
+
     def handler(request: httpx.Request) -> httpx.Response:
         chainid = request.url.params.get("chainid")
         if chainid == str(UNREACHABLE_CHAIN_ID):
@@ -610,13 +601,12 @@ async def test_the_sweep_reports_a_failing_chain_without_aborting() -> None:
         return httpx.Response(200, json={"items": [INSTANCE_ITEM]})
 
     async with _client(handler) as client:
-        result = await client.discover(
-            [INSTANCE_CHAIN_ID, UNREACHABLE_CHAIN_ID, PRO_ONLY_CHAIN_ID]
-        )
+        result = await client.discover([INSTANCE_CHAIN_ID, UNREACHABLE_CHAIN_ID, PRO_ONLY_CHAIN_ID])
 
     assert INSTANCE_CHAIN_ID in result.contracts
     assert UNREACHABLE_CHAIN_ID in result.failures
     assert UNREACHABLE_CHAIN_ID not in result.contracts
+
 
 # --- normalisation ------------------------------------------------------
 
@@ -665,9 +655,7 @@ def test_pro_verification_state_comes_from_the_abi_field() -> None:
     assert unverified.is_verified is False
 
     # A payload with no ABI at all reports nothing rather than guessing.
-    unknown = normalize_contract(
-        PRO_ONLY_CHAIN_ID, {"Address": "0xabc"}, route=ROUTE_PRO
-    )
+    unknown = normalize_contract(PRO_ONLY_CHAIN_ID, {"Address": "0xabc"}, route=ROUTE_PRO)
     assert unknown.is_verified is None
 
 

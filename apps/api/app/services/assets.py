@@ -153,9 +153,7 @@ def scan_summaries(
         .group_by(Scan.asset_id)
     ).all()
     return {
-        cast(uuid.UUID, row[0]): AssetScanSummary(
-            scan_count=int(row[1]), last_scanned_at=row[2]
-        )
+        cast(uuid.UUID, row[0]): AssetScanSummary(scan_count=int(row[1]), last_scanned_at=row[2])
         for row in rows
     }
 

@@ -101,9 +101,7 @@ def _provision_user(
     Raises:
         HTTPException: 409 when the email belongs to another account.
     """
-    user = session.scalars(
-        select(User).where(User.auth_provider_id == identity.sub)
-    ).one_or_none()
+    user = session.scalars(select(User).where(User.auth_provider_id == identity.sub)).one_or_none()
 
     if user is None:
         by_email = session.scalars(select(User).where(User.email == identity.email)).one_or_none()
@@ -210,10 +208,7 @@ def _require_session_claims(
     if x_api_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=(
-                "Present either an X-API-Key header or an Authorization header, "
-                "not both."
-            ),
+            detail=("Present either an X-API-Key header or an Authorization header, not both."),
         )
     if not authorization:
         raise HTTPException(

@@ -78,9 +78,7 @@ def issue_key(
 
     user: User | None = None
     if user_email:
-        user = session.scalars(
-            select(User).where(User.email == user_email)
-        ).one_or_none()
+        user = session.scalars(select(User).where(User.email == user_email)).one_or_none()
         if user is None:
             raise KeyIssuanceError(f"no user with the email {user_email!r}")
         membership = session.scalars(
@@ -103,9 +101,7 @@ def issue_key(
         key_hash=hash_api_key(raw_key),
         key_prefix=raw_key[:12],
         expires_at=(
-            datetime.now(UTC) + timedelta(days=expires_days)
-            if expires_days is not None
-            else None
+            datetime.now(UTC) + timedelta(days=expires_days) if expires_days is not None else None
         ),
     )
     session.add(row)
@@ -115,12 +111,8 @@ def issue_key(
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Issue a key and print it once."""
-    parser = argparse.ArgumentParser(
-        description="Issue an API key for one workspace."
-    )
-    parser.add_argument(
-        "--workspace", required=True, help="The workspace slug the key acts in."
-    )
+    parser = argparse.ArgumentParser(description="Issue an API key for one workspace.")
+    parser.add_argument("--workspace", required=True, help="The workspace slug the key acts in.")
     parser.add_argument("--name", default="api key", help="A label for the key.")
     parser.add_argument(
         "--user",
@@ -151,10 +143,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"key        : {raw_key}")
     print(f"prefix     : {row.key_prefix}")
     print(f"workspace  : {args.workspace}")
-    print(
-        "expires at : "
-        + (row.expires_at.isoformat() if row.expires_at else "never")
-    )
+    print("expires at : " + (row.expires_at.isoformat() if row.expires_at else "never"))
     print("The key is shown once. Only its digest is stored.")
     logger.info("api_key_issued", workspace=args.workspace, prefix=row.key_prefix)
     return 0

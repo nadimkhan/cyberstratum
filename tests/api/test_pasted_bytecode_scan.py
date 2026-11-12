@@ -97,9 +97,7 @@ def _no_network_source_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep the suite off the network."""
     from app.services import pipeline as pipeline_service
 
-    monkeypatch.setattr(
-        pipeline_service, "fetch_verified_source", lambda *a, **k: None
-    )
+    monkeypatch.setattr(pipeline_service, "fetch_verified_source", lambda *a, **k: None)
 
 
 @pytest.fixture()

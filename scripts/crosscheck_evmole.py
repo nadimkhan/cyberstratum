@@ -129,11 +129,7 @@ def our_jump_targets(cfg) -> set[int]:
     from evm_analysis.cfg import EdgeType
 
     jump_types = {EdgeType.UNCONDITIONAL_JUMP, EdgeType.CONDITIONAL_JUMP}
-    return {
-        e.target
-        for e in cfg.edges
-        if e.target is not None and e.edge_type in jump_types
-    }
+    return {e.target for e in cfg.edges if e.target is not None and e.edge_type in jump_types}
 
 
 def evmole_static_jumps(blocks, disassembly) -> dict[int, int]:
@@ -255,9 +251,7 @@ def main() -> int:
                 f"wrong destination={len(disagreements):>3}"
             )
         for offset, (ours_, theirs_) in sorted(disagreements.items())[:5]:
-            print(
-                f"    jump at {offset}: ours={ours_} evmole={theirs_}"
-            )
+            print(f"    jump at {offset}: ours={ours_} evmole={theirs_}")
         if metadata is not None:
             print(
                 f"    metadata: {metadata.length} bytes at offset {metadata.start_offset}, "

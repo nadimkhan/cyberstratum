@@ -94,12 +94,12 @@ def test_a_key_without_a_workspace_falls_back_to_the_earliest_membership(
     late = _workspace(db_session, "late", user)
 
     now = datetime.now(UTC)
-    early_member = db_session.query(WorkspaceMember).filter_by(
-        user_id=user.id, workspace_id=early.id
-    ).one()
-    late_member = db_session.query(WorkspaceMember).filter_by(
-        user_id=user.id, workspace_id=late.id
-    ).one()
+    early_member = (
+        db_session.query(WorkspaceMember).filter_by(user_id=user.id, workspace_id=early.id).one()
+    )
+    late_member = (
+        db_session.query(WorkspaceMember).filter_by(user_id=user.id, workspace_id=late.id).one()
+    )
     early_member.created_at = now - timedelta(days=1)
     late_member.created_at = now
     db_session.flush()

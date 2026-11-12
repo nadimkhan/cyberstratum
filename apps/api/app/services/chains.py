@@ -233,9 +233,7 @@ BLOCKED_INSTANCE_HOSTS: Final[dict[int, str]] = {
 PRO_PLAN_REQUIRED_CHAINS: Final[frozenset[int]] = frozenset({137, 324, 8453})
 
 #: Chains PRO does not support at all. PRO answers HTTP 404.
-PRO_UNSUPPORTED_CHAINS: Final[frozenset[int]] = frozenset(
-    {1088, 101010, 1313161554}
-)
+PRO_UNSUPPORTED_CHAINS: Final[frozenset[int]] = frozenset({1088, 101010, 1313161554})
 
 
 def _chain(

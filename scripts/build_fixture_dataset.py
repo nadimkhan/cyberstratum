@@ -50,9 +50,7 @@ EXTRA: tuple[dict[str, str], ...] = (
     {"address": "0x6b175474e89094c44da98b954eedeac495271d0f", "family": "DAI"},
 )
 
-SOURCE_URL = (
-    "https://sourcify.dev/server/v2/contract/1/{address}?fields=all"
-)
+SOURCE_URL = "https://sourcify.dev/server/v2/contract/1/{address}?fields=all"
 
 
 def fetch_bytecode(address: str) -> bytes | None:

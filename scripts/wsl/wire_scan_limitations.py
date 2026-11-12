@@ -44,33 +44,33 @@ HELPER = '''def _limitation_lines(limitations: Mapping[str, Any] | None) -> tupl
 '''
 
 RENDER = (
-    '    if data.limitations:\n'
+    "    if data.limitations:\n"
     '        blocks.append(_Line("Coverage limitations", "heading"))\n'
     '        blocks.extend(_Line(f"  {line}", "evidence") for line in data.limitations)\n'
-    '        blocks.append(\n'
-    '            _Line(\n'
+    "        blocks.append(\n"
+    "            _Line(\n"
     '                "These are the parts of the contract this scan could not "\n'
     '                "analyse. The findings below are what the engines that did "\n'
     '                "run were able to see.",\n'
     '                "body",\n'
-    '            )\n'
-    '        )\n'
+    "            )\n"
+    "        )\n"
     '        blocks.append(_Line("Findings", "heading"))'
 )
 
 FIELD = (
     '    finding_base_url: str = ""\n'
     '    """The base URL a finding is linked back to on the platform.\n'
-    '\n'
-    '    When set, every finding carries a link to its machine-readable form.\n'
+    "\n"
+    "    When set, every finding carries a link to its machine-readable form.\n"
     '    """\n'
-    '\n'
-    '    limitations: tuple[str, ...] = ()\n'
+    "\n"
+    "    limitations: tuple[str, ...] = ()\n"
     '    """What the analysis could not cover, in plain sentences.\n'
-    '\n'
-    '    A partial scan is not a clean scan with fewer findings. These\n'
-    '    lines say what was left out, so a reader can judge the result\n'
-    '    instead of having to trust it.\n'
+    "\n"
+    "    A partial scan is not a clean scan with fewer findings. These\n"
+    "    lines say what was left out, so a reader can judge the result\n"
+    "    instead of having to trust it.\n"
     '    """\n'
 )
 
@@ -83,8 +83,8 @@ def main() -> None:
         s = s.replace(
             '    finding_base_url: str = ""\n'
             '    """The base URL a finding is linked back to on the platform.\n'
-            '\n'
-            '    When set, every finding carries a link to its machine-readable form.\n'
+            "\n"
+            "    When set, every finding carries a link to its machine-readable form.\n"
             '    """\n',
             FIELD,
             1,
@@ -105,8 +105,7 @@ def main() -> None:
     if "limitations=_limitation_lines(limitations)," not in s:
         s = s.replace(
             "        engines=built_engines,\n",
-            "        engines=built_engines,\n"
-            "        limitations=_limitation_lines(limitations),\n",
+            "        engines=built_engines,\n        limitations=_limitation_lines(limitations),\n",
             1,
         )
 

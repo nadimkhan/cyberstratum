@@ -52,9 +52,7 @@ class FeedCursor(Base):
     """
 
     __tablename__ = "feed_cursors"
-    __table_args__ = (
-        UniqueConstraint("chain_id", "workspace_id", name="uq_feed_cursor_scope"),
-    )
+    __table_args__ = (UniqueConstraint("chain_id", "workspace_id", name="uq_feed_cursor_scope"),)
 
     id: Mapped[uuid.UUID] = uuid_pk()
     chain_id: Mapped[uuid.UUID] = mapped_column(
@@ -156,9 +154,7 @@ class ProxyTemplateAllowlist(Base):
     """
 
     __tablename__ = "proxy_template_allowlist"
-    __table_args__ = (
-        UniqueConstraint("pattern", name="uq_proxy_template_pattern"),
-    )
+    __table_args__ = (UniqueConstraint("pattern", name="uq_proxy_template_pattern"),)
 
     id: Mapped[uuid.UUID] = uuid_pk()
     pattern: Mapped[str] = mapped_column(String(120), nullable=False)

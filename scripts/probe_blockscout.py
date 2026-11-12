@@ -37,9 +37,7 @@ from typing import Any
 
 import httpx
 
-REGISTRY_URL = (
-    "https://raw.githubusercontent.com/blockscout/chainscout/main/data/chains.json"
-)
+REGISTRY_URL = "https://raw.githubusercontent.com/blockscout/chainscout/main/data/chains.json"
 
 #: An honest, descriptive user agent. Edge blocking on these hosts was measured
 #: to be independent of the user agent, so there is nothing to gain from
@@ -49,11 +47,66 @@ USER_AGENT = "cyberstratum/0.1 (+https://github.com/HeroInt) blockscout-probe"
 #: The chains we support. Kept here as the single source of truth for the probe;
 #: the registry module imports the result.
 TARGET_CHAIN_IDS = (
-    1, 10, 30, 61, 100, 122, 130, 137, 177, 239, 291, 314, 324, 360, 42220, 4326,
-    480, 488, 592, 698, 714, 747, 869, 957, 102030, 1135, 1729, 1829, 1868, 1890,
-    2020, 2288, 2366, 34443, 42161, 42170, 42793, 4663, 5042, 529375, 57073, 6497,
-    6498, 7000, 8021, 8453, 97741, 98866, 13371, 1514, 190415, 245022934, 612055,
-    685689, 97477, 101010, 32769, 1088, 1313161554, 534352,
+    1,
+    10,
+    30,
+    61,
+    100,
+    122,
+    130,
+    137,
+    177,
+    239,
+    291,
+    314,
+    324,
+    360,
+    42220,
+    4326,
+    480,
+    488,
+    592,
+    698,
+    714,
+    747,
+    869,
+    957,
+    102030,
+    1135,
+    1729,
+    1829,
+    1868,
+    1890,
+    2020,
+    2288,
+    2366,
+    34443,
+    42161,
+    42170,
+    42793,
+    4663,
+    5042,
+    529375,
+    57073,
+    6497,
+    6498,
+    7000,
+    8021,
+    8453,
+    97741,
+    98866,
+    13371,
+    1514,
+    190415,
+    245022934,
+    612055,
+    685689,
+    97477,
+    101010,
+    32769,
+    1088,
+    1313161554,
+    534352,
 )
 
 #: Hosts known to serve something other than the Blockscout v2 API. These are
@@ -282,17 +335,13 @@ async def probe_all(
             return chain_id, await rpc_chain_id(client, entry)
 
         wanted = [c for c in TARGET_CHAIN_IDS if str(c) in registry]
-        for chain_id, observed in await asyncio.gather(
-            *(read_chain_id(c) for c in wanted)
-        ):
+        for chain_id, observed in await asyncio.gather(*(read_chain_id(c) for c in wanted)):
             chain_ids[chain_id] = observed
 
         async def read_pro(chain_id: int) -> tuple[int, dict[str, Any]]:
             return chain_id, await probe_pro(client, chain_id, api_key)
 
-        for chain_id, outcome in await asyncio.gather(
-            *(read_pro(c) for c in TARGET_CHAIN_IDS)
-        ):
+        for chain_id, outcome in await asyncio.gather(*(read_pro(c) for c in TARGET_CHAIN_IDS)):
             pro_results[chain_id] = outcome
 
     return results, chain_ids, pro_results
@@ -307,8 +356,7 @@ def print_report(
     """Print a human-readable table of what responded."""
     print()
     print(
-        f"{'chain':>10}  {'name':<26} {'instance':>9} {'items':>5}  "
-        f"{'time':>5}  {'PRO':>9}  host"
+        f"{'chain':>10}  {'name':<26} {'instance':>9} {'items':>5}  {'time':>5}  {'PRO':>9}  host"
     )
     print("-" * 106)
 
@@ -389,9 +437,7 @@ def read_api_key() -> str | None:
         if not candidate.exists():
             continue
         text = candidate.read_text(encoding="utf-8", errors="ignore")
-        match = re.search(
-            r"BLOCKSCOUT[A-Z_]*KEY\s*=\s*(\S+)", text
-        )
+        match = re.search(r"BLOCKSCOUT[A-Z_]*KEY\s*=\s*(\S+)", text)
         if match:
             return match.group(1).strip().strip('"').strip("'")
     return None
@@ -421,9 +467,7 @@ def main(argv: list[str] | None = None) -> int:
     api_key = read_api_key()
     print(f"  PRO api key: {'present' if api_key else 'absent'}")
 
-    results, chain_ids, pro_results = asyncio.run(
-        probe_all(registry, api_key=api_key)
-    )
+    results, chain_ids, pro_results = asyncio.run(probe_all(registry, api_key=api_key))
     print_report(registry, results, chain_ids, pro_results)
 
     if args.emit:

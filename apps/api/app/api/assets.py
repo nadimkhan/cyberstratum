@@ -94,9 +94,7 @@ def _write_workspace(
     return workspace
 
 
-def _progress(
-    scans: AssetScanSummary, findings: AssetFindingSummary
-) -> AssetProgress:
+def _progress(scans: AssetScanSummary, findings: AssetFindingSummary) -> AssetProgress:
     """Build the progress block from the computed summaries."""
     return AssetProgress(
         scan_count=scans.scan_count,

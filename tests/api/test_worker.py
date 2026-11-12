@@ -135,7 +135,10 @@ def test_worker_runs_pipeline_and_records_findings(
 
 
 def test_worker_records_failure_when_bytecode_unavailable(
-    monkeypatch: pytest.MonkeyPatch, db_session: Session, workspace: Any, target: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    db_session: Session,
+    workspace: Any,
+    target: Any,
     worker_session: Session,
 ) -> None:
     """A missing bytecode source is recorded as a failed scan, not a crash."""

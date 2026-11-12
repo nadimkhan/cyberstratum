@@ -64,9 +64,7 @@ FETCH_ATTEMPTS = 3
 FETCH_BACKOFF_SECONDS = 1.5
 
 #: Sourcify serves verified contracts for these chains.
-SOURCIFY_CHAIN_IDS: frozenset[int] = frozenset(
-    {1, 10, 56, 100, 137, 250, 42161, 43114, 11155111}
-)
+SOURCIFY_CHAIN_IDS: frozenset[int] = frozenset({1, 10, 56, 100, 137, 250, 42161, 43114, 11155111})
 
 #: Base URL of the Sourcify server API.
 SOURCIFY_BASE_URL = "https://sourcify.dev/server/v2"

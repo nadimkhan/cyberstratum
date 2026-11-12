@@ -56,8 +56,9 @@ async def run() -> int:
 
             print("=== cursors ===")
             cursors = session.execute(
-                select(Chain.chain_id, Chain.name, FeedCursor.contracts_seen,
-                       FeedCursor.last_address)
+                select(
+                    Chain.chain_id, Chain.name, FeedCursor.contracts_seen, FeedCursor.last_address
+                )
                 .join(Chain, Chain.id == FeedCursor.chain_id)
                 .where(FeedCursor.workspace_id == workspace.id)
                 .order_by(Chain.chain_id)
@@ -69,9 +70,14 @@ async def run() -> int:
 
             print("=== discovered contracts (this workspace) ===")
             rows = session.execute(
-                select(Chain.chain_id, Chain.name, ContractTarget.address,
-                       ContractTarget.label, ContractTarget.verification_state,
-                       ContractTarget.discovery_route)
+                select(
+                    Chain.chain_id,
+                    Chain.name,
+                    ContractTarget.address,
+                    ContractTarget.label,
+                    ContractTarget.verification_state,
+                    ContractTarget.discovery_route,
+                )
                 .join(Chain, Chain.id == ContractTarget.chain_id)
                 .where(ContractTarget.workspace_id == workspace.id)
                 .order_by(Chain.chain_id, ContractTarget.address)

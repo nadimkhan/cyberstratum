@@ -89,10 +89,7 @@ async def _probe(client: BlockscoutClient, chain_id: int, label: str) -> bool:
     print(f"  route taken   : {routes_used}")
     print(f"  verified      : {verified}/{len(contracts)}")
     for contract in contracts[:3]:
-        print(
-            f"    {contract.address}  verified={contract.is_verified}  "
-            f"route={contract.route}"
-        )
+        print(f"    {contract.address}  verified={contract.is_verified}  route={contract.route}")
     return True
 
 
@@ -114,9 +111,7 @@ async def main() -> int:
     async with BlockscoutClient(api_key=key) as client:
         instance_ok = await _probe(client, 1, "Route A - instance-backed")
         pro_ok = await _probe(client, pro_only_chain_id, "Route B - PRO fallback")
-        unreachable_ok = await _probe(
-            client, unreachable_chain_id, "No route"
-        )
+        unreachable_ok = await _probe(client, unreachable_chain_id, "No route")
 
     print("\n=== verdict ===")
     print(f"  instance route works        : {instance_ok}")

@@ -28,9 +28,7 @@ def test_single_origin_is_used_when_no_extras_are_configured() -> None:
 
 
 def test_extra_origins_are_appended() -> None:
-    settings = _settings(
-        CORS_EXTRA_ORIGINS="https://app.example.com,https://staging.example.com"
-    )
+    settings = _settings(CORS_EXTRA_ORIGINS="https://app.example.com,https://staging.example.com")
     assert settings.cors_origins == [
         "https://cyberstratum.netlify.app",
         "https://app.example.com",

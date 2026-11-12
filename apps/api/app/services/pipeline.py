@@ -196,9 +196,7 @@ def persist_findings(
     for finding in findings:
         evidence = finding.evidence
         if source_lines:
-            evidence = annotate_evidence(
-                evidence, source_lines, source_file=source_file
-            )
+            evidence = annotate_evidence(evidence, source_lines, source_file=source_file)
         session.add(
             Finding(
                 workspace_id=scan.workspace_id,
@@ -365,6 +363,7 @@ def _pasted_source_artifact(target: ContractTarget) -> SourceArtifact | None:
 #: whose source could not be fetched, or whose source engine was not
 #: available, is a gap in the scan and is reported as one.
 BENIGN_SOURCE_SKIPS = frozenset({"no_address", "no_source"})
+
 
 def _audit_verified_source(
     session: Session,
@@ -672,9 +671,7 @@ def run_scan(session: Session, scan: Scan) -> ScanOutcome:
     # dispatcher is built out of them -- and no static analysis can
     # follow it. Those are counted as coverage below, not counted as a
     # hole in the analysis.
-    source_incomplete = (
-        source_skipped is not None and source_skipped not in BENIGN_SOURCE_SKIPS
-    )
+    source_incomplete = source_skipped is not None and source_skipped not in BENIGN_SOURCE_SKIPS
     partial = bool(disassembly.warnings) or bool(cfg.warnings) or source_incomplete
     scan.status = ScanStatus.PARTIAL if partial else ScanStatus.COMPLETED
 
@@ -683,13 +680,9 @@ def run_scan(session: Session, scan: Scan) -> ScanOutcome:
     # of the contract was actually analysed.
     limitations: dict[str, Any] = {}
     if disassembly.warnings:
-        limitations["disassembly_warnings"] = [
-            str(warning) for warning in disassembly.warnings
-        ]
+        limitations["disassembly_warnings"] = [str(warning) for warning in disassembly.warnings]
     if cfg.warnings:
-        limitations["control_flow_warnings"] = [
-            str(warning) for warning in cfg.warnings
-        ]
+        limitations["control_flow_warnings"] = [str(warning) for warning in cfg.warnings]
     if source_incomplete:
         limitations["source_audit_skipped"] = source_skipped
     if model_skipped:
@@ -712,8 +705,7 @@ def run_scan(session: Session, scan: Scan) -> ScanOutcome:
             4,
         ),
         "unreachable_blocks": len(cfg.unreachable_blocks),
-        "notes": [str(note) for note in disassembly.notes]
-        + [str(note) for note in cfg.notes],
+        "notes": [str(note) for note in disassembly.notes] + [str(note) for note in cfg.notes],
     }
 
     scan.completed_at = _now()

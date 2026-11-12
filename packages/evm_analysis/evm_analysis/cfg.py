@@ -294,9 +294,7 @@ def build_cfg(disassembly: Disassembly) -> ControlFlowGraph:
             leaders.add(instr.offset)
 
         # The instruction after a terminator/branch starts a new block.
-        if (
-            instr.name in _TERMINATORS or instr.name in _BRANCHES
-        ) and i + 1 < len(instructions):
+        if (instr.name in _TERMINATORS or instr.name in _BRANCHES) and i + 1 < len(instructions):
             leaders.add(instructions[i + 1].offset)
 
     # A block that ends in a terminator must not also contain the instructions
@@ -356,9 +354,7 @@ def build_cfg(disassembly: Disassembly) -> ControlFlowGraph:
     for edge in cfg.edges:
         if edge.resolution is Resolution.UNRESOLVED:
             kind = "conditional" if edge.edge_type is EdgeType.CONDITIONAL_JUMP else "unconditional"
-            cfg.notes.append(
-                f"unresolved {kind} jump at offset {edge.instruction_offset}"
-            )
+            cfg.notes.append(f"unresolved {kind} jump at offset {edge.instruction_offset}")
 
     _mark_reachable(cfg)
     return cfg

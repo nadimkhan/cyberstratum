@@ -29,9 +29,7 @@ def list_guidance(principal: CurrentPrincipal) -> GuidanceListResponse:
     )
 
 
-@router.get(
-    "/{detector_id}", response_model=GuidanceRead, summary="The guidance for a detector"
-)
+@router.get("/{detector_id}", response_model=GuidanceRead, summary="The guidance for a detector")
 def get_guidance(detector_id: str, principal: CurrentPrincipal) -> GuidanceRead:
     """The guidance for one detector.
 

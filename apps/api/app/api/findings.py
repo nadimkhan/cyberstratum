@@ -162,9 +162,7 @@ def review_finding(
         stmt = stmt.where(Finding.workspace_id == scope)
     finding = session.execute(stmt).scalar_one_or_none()
     if finding is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="finding not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="finding not found")
 
     finding.status = payload.status
     finding.reviewed_by = principal.user_id

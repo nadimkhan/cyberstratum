@@ -49,9 +49,7 @@ def table():
     return load_fork("cancun")
 
 
-def test_the_metadata_trailer_is_a_note_not_a_warning(
-    runtime_bytecode: bytes, table
-) -> None:
+def test_the_metadata_trailer_is_a_note_not_a_warning(runtime_bytecode: bytes, table) -> None:
     """The trailer is data. Excluding it from the code is correct."""
     disassembly = disassemble(runtime_bytecode, table)
 
@@ -60,9 +58,7 @@ def test_the_metadata_trailer_is_a_note_not_a_warning(
     assert any("metadata" in note for note in disassembly.notes)
 
 
-def test_the_guard_byte_before_the_trailer_is_a_note(
-    runtime_bytecode: bytes, table
-) -> None:
+def test_the_guard_byte_before_the_trailer_is_a_note(runtime_bytecode: bytes, table) -> None:
     """Solidity puts an invalid opcode in front of the trailer on purpose."""
     disassembly = disassemble(runtime_bytecode, table)
 
@@ -79,9 +75,7 @@ def test_an_invalid_opcode_in_the_code_is_still_a_warning(table) -> None:
     assert any("invalid opcode" in warning for warning in disassembly.warnings)
 
 
-def test_a_dynamic_jump_is_a_note_not_a_warning(
-    runtime_bytecode: bytes, table
-) -> None:
+def test_a_dynamic_jump_is_a_note_not_a_warning(runtime_bytecode: bytes, table) -> None:
     """The function dispatcher is built out of jumps nobody can follow."""
     disassembly = disassemble(runtime_bytecode, table)
 

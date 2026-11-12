@@ -157,9 +157,7 @@ def candidate_hosts(chain: dict[str, Any]) -> list[str]:
 
 def fetch_chain_registry(timeout: float) -> list[dict[str, Any]]:
     """Read the public chain registry."""
-    request = urllib.request.Request(
-        CHAIN_REGISTRY_URL, headers={"User-Agent": USER_AGENT}
-    )
+    request = urllib.request.Request(CHAIN_REGISTRY_URL, headers={"User-Agent": USER_AGENT})
     # The URL is a hard-coded https constant; nothing user-supplied ever
     # reaches this call, which is what S310 is guarding against.
     with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310

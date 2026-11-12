@@ -259,9 +259,7 @@ def test_get_returns_none_for_unknown_chain() -> None:
 def test_all_is_sorted_by_chain_id() -> None:
     """The chain list is ordered by chain id."""
     chains = all_chains()
-    assert [chain.chain_id for chain in chains] == sorted(
-        chain.chain_id for chain in chains
-    )
+    assert [chain.chain_id for chain in chains] == sorted(chain.chain_id for chain in chains)
 
 
 def test_the_three_route_categories_partition_the_registry() -> None:
@@ -270,9 +268,7 @@ def test_the_three_route_categories_partition_the_registry() -> None:
     pro_only = pro_only_chains()
     unreachable = unreachable_chains()
 
-    assert len(instance_backed) + len(pro_only) + len(unreachable) == len(
-        SUPPORTED_CHAINS
-    )
+    assert len(instance_backed) + len(pro_only) + len(unreachable) == len(SUPPORTED_CHAINS)
     assert {chain.chain_id for chain in instance_backed}.isdisjoint(
         {chain.chain_id for chain in pro_only}
     )

@@ -67,9 +67,7 @@ def upgrade() -> None:
         ),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("first_seen_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column(
-            "active", sa.Boolean(), nullable=False, server_default=sa.text("true")
-        ),
+        sa.Column("active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -82,9 +80,7 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("now()"),
         ),
-        sa.UniqueConstraint(
-            "workspace_id", "chain_id", "address", name="uq_tracked_asset_scope"
-        ),
+        sa.UniqueConstraint("workspace_id", "chain_id", "address", name="uq_tracked_asset_scope"),
     )
     op.create_index("ix_tracked_assets_workspace_id", "tracked_assets", ["workspace_id"])
     op.create_index("ix_tracked_assets_chain_id", "tracked_assets", ["chain_id"])

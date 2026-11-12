@@ -15,9 +15,7 @@ class AssetCreateRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    address: str = Field(
-        description="Contract or wallet address to track (0x-prefixed, 20 bytes)."
-    )
+    address: str = Field(description="Contract or wallet address to track (0x-prefixed, 20 bytes).")
     chain_id: int = Field(default=1, ge=1, description="EVM chain id.")
     label: str | None = Field(default=None, max_length=200)
     kind: AssetKind = Field(
