@@ -78,6 +78,17 @@ ROUTE_PRO: Final[str] = "pro"
 #: Environment variable holding the Blockscout PRO API key.
 BLOCKSCOUT_API_KEY_ENV: Final[str] = "BLOCKSCOUT_API_KEY"
 
+#: The agent this client identifies as.
+#:
+#: httpx sends ``python-httpx/<version>`` by default, which is how a
+#: scraper looks to the operator of a public explorer. Saying what this
+#: is and why it is asking is both politer and more useful to whoever
+#: wants to block us.
+USER_AGENT: Final[str] = (
+    "CyberStratum/0.1 (smart-contract analysis; one request per host; "
+    "contact: security@cyberstratum.local)"
+)
+
 #: Default request timeout, in seconds.
 DEFAULT_TIMEOUT: Final[float] = 30.0
 
@@ -505,7 +516,10 @@ class BlockscoutClient:
         # (optimism, gnosis, scroll) answer 301 towards the explorer that
         # hosts them, and that host serves the same v2 API.
         self._client = httpx.AsyncClient(
-            timeout=timeout, transport=transport, follow_redirects=True
+            timeout=timeout,
+            transport=transport,
+            follow_redirects=True,
+            headers={"User-Agent": USER_AGENT},
         )
         self.credits = credit_meter if credit_meter is not None else CreditMeter()
         self.rate_limiter = rate_limiter if rate_limiter is not None else RateLimiter()

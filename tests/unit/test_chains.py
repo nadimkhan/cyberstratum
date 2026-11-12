@@ -32,7 +32,7 @@ from app.services.chains import (
     unreachable_chains,
 )
 
-#: The 59 chain ids CyberStratum is scoped to.
+#: The chain ids CyberStratum is scoped to.
 EXPECTED_CHAIN_IDS = frozenset(
     {
         1,
@@ -46,9 +46,12 @@ EXPECTED_CHAIN_IDS = frozenset(
         177,
         239,
         291,
+        300,
         314,
         324,
+        338,
         360,
+        411,
         42220,
         4326,
         480,
@@ -65,6 +68,7 @@ EXPECTED_CHAIN_IDS = frozenset(
         1829,
         1868,
         1890,
+        1946,
         2020,
         2288,
         2366,
@@ -100,22 +104,26 @@ EXPECTED_CHAIN_IDS = frozenset(
 
 #: The per-chain instances that were verified to answer a real request.
 #:
-#: Measured on 2026-10-28 against the Blockscout registry. Every one of
-#: these hosts returned HTTP 200 with a well-formed Blockscout v2 payload.
+#: Measured on 2026-10-28 against the Blockscout registry, and again on
+#: 2026-11-12 by the host survey (``scripts/probe_blockscout_hosts.py``).
+#: Every one of these hosts returned HTTP 200 with a well-formed Blockscout
+#: v2 payload.
 EXPECTED_INSTANCE_HOSTS = {
     1: "eth.blockscout.com",
     10: "explorer.optimism.io",
     30: "rootstock.blockscout.com",
     61: "etc.blockscout.com",
-    100: "gnosisscan.io",
     122: "explorer.fuse.io",
     130: "unichain.blockscout.com",
     177: "hsk.blockscout.com",
     239: "explorer.tac.build",
     291: "explorer.orderly.network",
+    300: "zksync-sepolia.blockscout.com",
     314: "filecoin.blockscout.com",
     324: "zksync.blockscout.com",
+    338: "cronos-testnet.blockscout.com",
     360: "shapescan.xyz",
+    411: "pepe.blockscout.com",
     42220: "celo.blockscout.com",
     4326: "megaeth.blockscout.com",
     480: "worldchain-mainnet.explorer.alchemy.com",
@@ -131,6 +139,7 @@ EXPECTED_INSTANCE_HOSTS = {
     1829: "explorer.playblock.io",
     1868: "soneium.blockscout.com",
     1890: "phoenix.lightlink.io",
+    1946: "soneium-minato.blockscout.com",
     2020: "explorer.roninchain.com",
     2288: "scan.mocachain.org",
     2366: "kitescan.ai",
@@ -145,7 +154,6 @@ EXPECTED_INSTANCE_HOSTS = {
     8021: "numine.blockscout.com",
     97741: "pepuscan.com",
     98866: "explorer.plume.org",
-    13371: "explorer.immutable.com",
     1514: "www.datanetscan.io",
     190415: "explorer.hpp.io",
     245022934: "neon.blockscout.com",
@@ -161,6 +169,8 @@ EXPECTED_INSTANCE_HOSTS = {
 
 #: Chains whose instance is blocked by Cloudflare (403) or down (503).
 EXPECTED_BLOCKED_HOSTS = {
+    100: "gnosisscan.io",
+    13371: "explorer.immutable.com",
     137: "polygon.blockscout.com",
     42161: "arbitrum.blockscout.com",
     4663: "robinhoodchain.blockscout.com",
@@ -171,8 +181,8 @@ EXPECTED_BLOCKED_HOSTS = {
 
 
 def test_registry_covers_the_full_chain_scope() -> None:
-    """The registry covers Watchdog's 59 chains plus Scroll."""
-    assert len(SUPPORTED_CHAINS) == 60
+    """The registry covers the chains the surveys found."""
+    assert len(SUPPORTED_CHAINS) == 64
     assert {chain.chain_id for chain in SUPPORTED_CHAINS} == EXPECTED_CHAIN_IDS
 
 
@@ -215,7 +225,7 @@ def test_explorer_host_is_set_for_the_verified_instances_only() -> None:
         if chain.explorer_host is not None
     }
     assert hosted == EXPECTED_INSTANCE_HOSTS
-    assert len(hosted) == 54
+    assert len(hosted) == 56
     # A blocked instance is recorded as blocked, not as a working host.
     for chain_id in BLOCKED_INSTANCE_HOSTS:
         assert chain_id not in hosted

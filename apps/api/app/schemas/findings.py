@@ -28,6 +28,9 @@ class _FindingRow(Protocol):
     status: FindingStatus
     evidence_json: dict[str, Any] | None
     limitations: str | None
+    reviewed_by: uuid.UUID | None
+    reviewed_at: datetime | None
+    review_note: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -51,6 +54,9 @@ class FindingRead(BaseModel):
     status: FindingStatus
     evidence: dict[str, object] | None = None
     limitations: str | None = None
+    reviewed_by: uuid.UUID | None = None
+    reviewed_at: datetime | None = None
+    review_note: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -76,6 +82,9 @@ class FindingRead(BaseModel):
             "status": row.status,
             "evidence": row.evidence_json,
             "limitations": row.limitations,
+            "reviewed_by": row.reviewed_by,
+            "reviewed_at": row.reviewed_at,
+            "review_note": row.review_note,
             "created_at": row.created_at,
             "updated_at": row.updated_at,
         }
@@ -113,9 +122,35 @@ class FindingListResponse(BaseModel):
     offset: int
 
 
+class FindingReviewRequest(BaseModel):
+    """A human verdict on a finding.
+
+    The verdict is the label the machine learning pipeline learns from,
+    so it is not a free-form field: it is one of the statuses the
+    product already defines, and a false-positive verdict must carry a
+    reason. A false positive without a reason cannot be told apart from
+    a mistaken one, and neither is usable as ground truth.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: FindingStatus = Field(
+        description=(
+            "The verdict: 'confirmed', 'false_positive', "
+            "'needs_more_evidence' or 'triage'."
+        )
+    )
+    note: str | None = Field(
+        default=None,
+        max_length=2000,
+        description="Why. Required for a false-positive verdict.",
+    )
+
+
 __all__ = [
     "FindingListResponse",
     "FindingRead",
+    "FindingReviewRequest",
     "SeverityBreakdown",
     "SeverityCount",
     "StatusCount",

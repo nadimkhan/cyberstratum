@@ -144,15 +144,17 @@ INSTANCE_HOSTS: Final[dict[int, str]] = {
     10: "explorer.optimism.io",
     30: "rootstock.blockscout.com",
     61: "etc.blockscout.com",
-    100: "gnosisscan.io",
     122: "explorer.fuse.io",
     130: "unichain.blockscout.com",
     177: "hsk.blockscout.com",
     239: "explorer.tac.build",
     291: "explorer.orderly.network",
+    300: "zksync-sepolia.blockscout.com",
     314: "filecoin.blockscout.com",
     324: "zksync.blockscout.com",
+    338: "cronos-testnet.blockscout.com",
     360: "shapescan.xyz",
+    411: "pepe.blockscout.com",
     42220: "celo.blockscout.com",
     4326: "megaeth.blockscout.com",
     480: "worldchain-mainnet.explorer.alchemy.com",
@@ -168,6 +170,7 @@ INSTANCE_HOSTS: Final[dict[int, str]] = {
     1829: "explorer.playblock.io",
     1868: "soneium.blockscout.com",
     1890: "phoenix.lightlink.io",
+    1946: "soneium-minato.blockscout.com",
     2020: "explorer.roninchain.com",
     2288: "scan.mocachain.org",
     2366: "kitescan.ai",
@@ -182,7 +185,6 @@ INSTANCE_HOSTS: Final[dict[int, str]] = {
     8021: "numine.blockscout.com",
     97741: "pepuscan.com",
     98866: "explorer.plume.org",
-    13371: "explorer.immutable.com",
     1514: "www.datanetscan.io",
     190415: "explorer.hpp.io",
     245022934: "neon.blockscout.com",
@@ -198,11 +200,16 @@ INSTANCE_HOSTS: Final[dict[int, str]] = {
 
 #: Chains whose per-chain instance is blocked or down.
 #:
-#: Cloudflare answers 403 for the first five; Matchain's instance answers 503.
-#: None of these blocks is a user-agent problem -- three different user agents
-#: were tried and all three returned 403 -- so there is nothing to gain by
-#: pretending to be a browser.
+#: Cloudflare answers 403 for most of these; Matchain's instance answers
+#: 503. None of these blocks is a user-agent problem: the survey of 2026-11-12
+#: asked each host with the library's default agent and with a descriptive
+#: one, and every host answered the same way, so there is nothing to gain by
+#: pretending to be a browser. Gnosis and Immutable were measured this way
+#: too: both answer 403 for both agents, so they sit here rather than in
+#: the working list above.
 BLOCKED_INSTANCE_HOSTS: Final[dict[int, str]] = {
+    100: "gnosisscan.io",
+    13371: "explorer.immutable.com",
     137: "polygon.blockscout.com",
     42161: "arbitrum.blockscout.com",
     4663: "robinhoodchain.blockscout.com",
@@ -257,9 +264,12 @@ SUPPORTED_CHAINS: Final[tuple[Chain, ...]] = (
     _chain(177, "HashKey", "hashkey", "Ethereum"),
     _chain(239, "TAC Mainnet", "tac_mainnet", "Ethereum"),
     _chain(291, "Orderly", "orderly", "Ethereum"),
+    _chain(300, "zkSync Sepolia Testnet", "zksync_sepolia", "zkSync"),
     _chain(314, "Filecoin Virtual Machine", "filecoin", "Filecoin"),
     _chain(324, "ZKsync Era", "zksync", "zkSync"),
+    _chain(338, "Cronos Testnet", "cronos_testnet", "Ethereum"),
     _chain(360, "Shape", "shape", "Ethereum"),
+    _chain(411, "Pepe Chain", "pepe", "Ethereum"),
     _chain(42220, "Celo", "celo", "Ethereum"),
     _chain(4326, "MegaETH", "megaeth", "Ethereum"),
     _chain(480, "World Chain", "world_chain", "Ethereum"),
@@ -276,6 +286,7 @@ SUPPORTED_CHAINS: Final[tuple[Chain, ...]] = (
     _chain(1829, "Playnance Playblock", "playnance", "Ethereum"),
     _chain(1868, "Soneium", "soneium", "Ethereum"),
     _chain(1890, "LightLink Phoenix Mainnet", "lightlink", "Ethereum"),
+    _chain(1946, "Soneium Testnet Minato", "soneium_minato", "Ethereum"),
     _chain(2020, "Ronin Mainnet", "ronin", "Ethereum"),
     _chain(2288, "Moca Chain", "moca", "Ethereum"),
     _chain(2366, "KiteAI Mainnet", "kiteai", "Ethereum"),

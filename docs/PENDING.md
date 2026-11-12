@@ -339,11 +339,11 @@ recorded on the scan.
 
 What is still open, in the order it blocks the next:
 
-1. **A review surface.** Human triage is where the labels come from, so
-   the product needs a way to say *confirmed*, *false positive* or
-   *needs more evidence*, attributed to a person, with a reason and a
-   timestamp. `findings.status` exists; the reviewer, the reason and the
-   audit trail do not.
+1. **A review surface.** Human triage is where the labels come from. The
+   API half is done: a verdict is recorded with its reviewer, its time
+   and its reason, and a false positive without a reason is refused.
+   What is missing is the *screen* -- a human needs a queue of findings
+   to work through, and the Next.js front end has no triage view yet.
 2. **A knowledge base.** A classifier stores weights, not fixes. The
    "error, its details and its solution" is a table: detector, what it
    means, why it matters, how to fix it, and the patterns that are known

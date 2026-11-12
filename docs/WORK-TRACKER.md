@@ -272,6 +272,33 @@ now covered by a test that fails without the fix.
       scans may be waiting. The scans are filed in the product's own
       discovery workspace; promoting a contract into a tenant's workspace
       stays a human decision.
+- [x] **The chain list grew by measurement, and two of its entries were
+      wrong.** The probe ran 2,460 hosts across two batches at one
+      request a second. It found six live Blockscout deployments we did
+      not have, and it proved that two we *did* have -- Gnosis and
+      Immutable -- answer 403 to every user agent tried, which is the
+      same condition as the six chains already documented as blocked.
+      Those two were moved to the blocked list rather than left to fail
+      quietly at discovery time. The registry now holds 64 chains: 56
+      with a working instance, 6 reachable only through PRO, and 2 with
+      no route at all. The client also stopped sending
+      `python-httpx/0.28.1` as its agent: it now says what it is and
+      why it is asking, which changes nothing for the blocked hosts
+      (they answer the same either way) and is the right thing to do
+      for the ones that do answer.
+- [x] **The review surface exists, which is where the labels come
+      from.** `POST /api/v1/findings/{id}/review` records the verdict,
+      the reviewer, the time and the reason. A false-positive verdict
+      without a reason is refused: it cannot be told apart from a
+      mistaken verdict, and neither is usable as ground truth. `new` is
+      refused too, because it is not a verdict. The reviewer is the
+      person behind the key -- the administrative service key has no
+      user behind it, so a review made with it records no reviewer
+      rather than inventing one. Another tenant's finding is answered
+      with 404, so the endpoint never confirms that it exists. Revision
+      `c4e6a8b0d392` carries the attribution, with `ON DELETE SET NULL`
+      on the reviewer so that deleting a user does not delete the
+      record of a judgement they made.
 - [x] **The working copy is WSL only.** The Windows copy at
       `E:/projects/cyberstratum` is frozen as a fallback and is no longer
       edited: two copies of a live database and two test environments

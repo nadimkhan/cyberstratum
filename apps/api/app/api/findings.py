@@ -20,16 +20,19 @@ the conventions defined in :mod:`app.core.security`:
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
 
 from app.core.security import CurrentPrincipal, SessionDep, read_scope
 from app.db.enums import FindingStatus, Severity
+from app.db.models.identity import AuditEvent
 from app.db.models.scans import Finding
 from app.schemas.findings import (
     FindingListResponse,
     FindingRead,
+    FindingReviewRequest,
     SeverityBreakdown,
     SeverityCount,
     StatusCount,
@@ -84,6 +87,76 @@ def list_findings(
         limit=limit,
         offset=offset,
     )
+
+
+@router.post(
+    "/{finding_id}/review",
+    response_model=FindingRead,
+    summary="Record a review verdict",
+)
+def review_finding(
+    finding_id: uuid.UUID,
+    payload: FindingReviewRequest,
+    session: SessionDep,
+    principal: CurrentPrincipal,
+    workspace_id: uuid.UUID | None = Query(default=None),
+) -> FindingRead:
+    """Record a human verdict on a finding.
+
+    This is where the labels come from. The verdict, the reviewer, the
+    time and the reason are all stored, because a label that cannot be
+    attributed cannot be checked and a label without a reason cannot be
+    learned from.
+
+    A finding belonging to another tenant is answered with ``404``, not
+    ``403``: the existence of another tenant's finding is not something
+    this endpoint confirms.
+    """
+    if payload.status is FindingStatus.NEW:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="'new' is not a review verdict; use 'triage' for an untouched finding",
+        )
+    note = (payload.note or "").strip()
+    if payload.status is FindingStatus.FALSE_POSITIVE and not note:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "a false-positive verdict needs a reason: without one it "
+                "cannot be told apart from a mistaken verdict"
+            ),
+        )
+
+    scope = read_scope(principal, workspace_id)
+    stmt = select(Finding).where(Finding.id == finding_id)
+    if scope is not None:
+        stmt = stmt.where(Finding.workspace_id == scope)
+    finding = session.execute(stmt).scalar_one_or_none()
+    if finding is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="finding not found"
+        )
+
+    finding.status = payload.status
+    finding.reviewed_by = principal.user_id
+    finding.reviewed_at = datetime.now(UTC)
+    finding.review_note = note or None
+
+    session.add(
+        AuditEvent(
+            workspace_id=finding.workspace_id,
+            actor_user_id=principal.user_id,
+            action="finding.reviewed",
+            resource_type="finding",
+            resource_id=str(finding.id),
+            metadata_redacted={
+                "status": payload.status.value,
+                "hasNote": bool(note),
+            },
+        )
+    )
+    session.flush()
+    return FindingRead.model_validate(finding)
 
 
 @router.get("/summary", response_model=SeverityBreakdown, summary="Severity breakdown")
