@@ -269,6 +269,39 @@ export interface Finding {
   reviewedAt: string | null;
   /** Why the verdict was made. A false-positive verdict always has one. */
   reviewNote: string | null;
+  /**
+   * The line of the developer's source this finding points at.
+   *
+   * It is set only when the correspondence between the analysed bytes
+   * and the source has been proven; a finding that cannot be placed
+   * keeps no line, because a wrong line is worse than none.
+   */
+  sourceLine: number | null;
+  /** The source file that line belongs to, when the scan had several. */
+  sourceFile: string | null;
+}
+
+/** One file of the source that was analysed. */
+export interface ScanSourceFile {
+  path: string | null;
+  content: string;
+}
+
+/**
+ * The source that was analysed, when the scan stored one.
+ *
+ * A scan made from runtime bytecode alone has no source to show. That
+ * is said in words, so an empty file list is never read as "there was
+ * nothing there".
+ */
+export interface ScanSource {
+  available: boolean;
+  reason: string | null;
+  language: string | null;
+  compilerVersion: string | null;
+  verified: boolean | null;
+  sourceUri: string | null;
+  files: ScanSourceFile[];
 }
 
 export interface CreateScanInput {

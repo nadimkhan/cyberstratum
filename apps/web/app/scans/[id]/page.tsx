@@ -8,6 +8,7 @@ import { CorrespondenceRunButton } from "@/components/CorrespondenceRunButton";
 import { RiskScoreGauge } from "@/components/RiskScoreGauge";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { SourcePanel } from "@/components/SourcePanel";
 import { StageTimeline } from "@/components/StageTimeline";
 import {
   API_BASE_URL,
@@ -15,6 +16,7 @@ import {
   getGuidanceMap,
   getScan,
   getScanFindings,
+  getScanSource,
   scanReportUrl,
 } from "@/lib/api";
 import {
@@ -46,11 +48,13 @@ export default async function ScanDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [scanResult, findingsResult, guidanceResult] = await Promise.all([
-    getScan(id),
-    getScanFindings(id),
-    getGuidanceMap(),
-  ]);
+  const [scanResult, findingsResult, guidanceResult, sourceResult] =
+    await Promise.all([
+      getScan(id),
+      getScanFindings(id),
+      getGuidanceMap(),
+      getScanSource(id),
+    ]);
 
   if (!scanResult.ok) {
     if (scanResult.error.kind === "not_found") notFound();
@@ -78,6 +82,9 @@ export default async function ScanDetailPage({
   // The guidance is fetched on the server and handed to the table, so the
   // explanation of a finding arrives with the finding.
   const guidance = guidanceResult.ok ? guidanceResult.data : {};
+  // The source is fetched on the server with the scan, so the code a
+  // finding points at can be shown beside the finding.
+  const source = sourceResult.ok ? sourceResult.data : null;
   const riskScore = scan.riskScore ?? estimateRiskScore(scan.findingCounts);
   const riskEstimated = scan.riskScore === null;
 
@@ -233,6 +240,8 @@ cannot be followed statically.
           />
         )}
       </section>
+
+      <SourcePanel source={source} findings={findings} />
 
       <section aria-labelledby="repro-heading" className="space-y-3">
         <h2 id="repro-heading" className="text-lg font-semibold text-[var(--cs-fg)]">

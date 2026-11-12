@@ -60,7 +60,9 @@ from app.schemas.scans import (
     ScanCreateRequest,
     ScanDetail,
     ScanListResponse,
+    ScanSourceRead,
     ScanSummary,
+    SourceFileRead,
 )
 from app.services import storage
 from app.services.assets import InvalidAddressError, normalise_address, upsert_asset
@@ -418,6 +420,96 @@ def get_scan(
     if proof is not None:
         detail.correspondence = CorrespondenceProofRead.model_validate(proof)
     return detail
+
+
+@router.get(
+    "/{scan_id}/source",
+    response_model=ScanSourceRead,
+    summary="Get the source that was analysed",
+)
+def get_scan_source(
+    scan_id: uuid.UUID,
+    session: SessionDep,
+    principal: CurrentPrincipal,
+) -> ScanSourceRead:
+    """Return the source that was analysed, when the scan stored one.
+
+    A scan made from runtime bytecode alone has no source to show, and
+    this says so in words rather than returning an empty file list that
+    reads like "there was nothing there". The findings of such a scan
+    still stand: they are properties of the deployed code.
+    """
+    scan = session.scalars(select(Scan).where(Scan.id == scan_id)).one_or_none()
+    if scan is None or not may_read_workspace(principal, scan.workspace_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Scan {scan_id} not found."
+        )
+
+    artifact = session.scalars(
+        select(ScanArtifact)
+        .where(ScanArtifact.scan_id == scan.id, ScanArtifact.kind == "source")
+        .order_by(ScanArtifact.created_at.desc())
+    ).first()
+    if artifact is None:
+        return ScanSourceRead(
+            available=False,
+            reason=(
+                "This scan was analysed from runtime bytecode alone, so there is no "
+                "source to show."
+            ),
+        )
+
+    try:
+        raw = storage.get_bytes(artifact.object_key)
+        payload = json.loads(raw.decode("utf-8"))
+    except (storage.ObjectStorageError, UnicodeDecodeError, ValueError) as exc:
+        log.warning(
+            "scan_source_unreadable", scan_id=str(scan.id), error=str(exc)
+        )
+        return ScanSourceRead(
+            available=False,
+            reason="The stored source could not be read back.",
+        )
+
+    if not isinstance(payload, dict):
+        return ScanSourceRead(
+            available=False,
+            reason="The stored source was not in the expected shape.",
+        )
+
+    files: list[SourceFileRead] = []
+    for entry in payload.get("files") or []:
+        if not isinstance(entry, dict):
+            continue
+        content = entry.get("content")
+        if not isinstance(content, str):
+            continue
+        path = entry.get("path") or entry.get("name") or entry.get("file")
+        files.append(
+            SourceFileRead(
+                path=path if isinstance(path, str) else None,
+                content=content,
+            )
+        )
+
+    if not files:
+        return ScanSourceRead(
+            available=False,
+            reason="The stored source carried no file content.",
+        )
+
+    def _text(value: object) -> str | None:
+        return value if isinstance(value, str) else None
+
+    verified = payload.get("verified")
+    return ScanSourceRead(
+        available=True,
+        language=_text(payload.get("language")),
+        compiler_version=_text(payload.get("compilerVersion")),
+        verified=verified if isinstance(verified, bool) else None,
+        source_uri=_text(payload.get("sourceUri")),
+        files=files,
+    )
 
 
 @router.get(

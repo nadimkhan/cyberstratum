@@ -19,6 +19,8 @@ import type {
   Reproducibility,
   ScanDetail,
   ScanJobInfo,
+  ScanSource,
+  ScanSourceFile,
   ScanStage,
   ScanSummary,
   Severity,
@@ -350,6 +352,48 @@ export async function getScan(id: string): Promise<ApiResult<ScanDetail>> {
  * Findings for one scan. The backend exposes them through the shared findings
  * collection filtered by `scan_id`; the scan detail response also embeds them.
  */
+/**
+ * The source that was analysed, read back from the scan's artifacts.
+ *
+ * The source is what a finding's line belongs to, so it is fetched
+ * with the scan and shown beside the findings rather than behind a
+ * link. A scan with no stored source says so in words.
+ */
+export async function getScanSource(id: string): Promise<ApiResult<ScanSource>> {
+  const result = await request<unknown>(`/scans/${encodeURIComponent(id)}/source`);
+  if (!result.ok) return result;
+  return { ok: true, data: normaliseScanSource(result.data) };
+}
+
+/**
+ * Normalises the source of a scan.
+ *
+ * A malformed file entry is dropped rather than shown as empty code:
+ * an empty file reads like a file with nothing in it.
+ */
+export function normaliseScanSource(value: unknown): ScanSource {
+  const record = asRecord(value);
+  const files = toArray(record.files)
+    .map((item): ScanSourceFile => {
+      const file = asRecord(item);
+      return {
+        path: pickString(file, ["path", "name", "file"]),
+        content: typeof file.content === "string" ? file.content : "",
+      };
+    })
+    .filter((file) => file.content.length > 0);
+  const verified = record.verified;
+  return {
+    available: record.available === true,
+    reason: pickString(record, ["reason"]),
+    language: pickString(record, ["language"]),
+    compilerVersion: pickString(record, ["compiler_version", "compilerVersion"]),
+    verified: typeof verified === "boolean" ? verified : null,
+    sourceUri: pickString(record, ["source_uri", "sourceUri"]),
+    files,
+  };
+}
+
 export async function getScanFindings(id: string): Promise<ApiResult<Finding[]>> {
   const result = await request<unknown>(
     `/findings?scan_id=${encodeURIComponent(id)}`,
@@ -1779,6 +1823,10 @@ function normaliseFinding(value: unknown): Finding {
       "first_seen_at",
       "detected_at",
     ]),
+    sourceLine: pickNumber(evidenceRecord, ["source_line", "sourceLine"]),
+    sourceFile:
+      pickString(record, ["source_file", "sourceFile"]) ??
+      pickString(evidenceRecord, ["source_file", "sourceFile"]),
     evidence: signals,
     edgeCounts,
     limitations: pickString(record, ["limitations", "caveats"]),
@@ -1812,6 +1860,7 @@ export { bulkVerdictProblem };
 
 export const __testing = {
   normaliseFinding,
+  normaliseScanSource,
   normaliseWorkspaces,
   bulkVerdictProblem,
   normaliseGuidance,

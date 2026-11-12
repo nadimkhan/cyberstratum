@@ -184,6 +184,32 @@ class ScanArtifactRead(BaseModel):
     created_at: datetime
 
 
+class SourceFileRead(BaseModel):
+    """One file of the source that was analysed."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    path: str | None = None
+    content: str
+
+
+class ScanSourceRead(BaseModel):
+    """The source that was analysed, when the scan stored one.
+
+    A scan made from runtime bytecode alone has no source to show. That
+    is reported in words, with ``available`` false and a reason, so an
+    empty file list is never mistaken for "there was nothing there".
+    """
+
+    available: bool
+    reason: str | None = None
+    language: str | None = None
+    compiler_version: str | None = None
+    verified: bool | None = None
+    source_uri: str | None = None
+    files: list[SourceFileRead] = Field(default_factory=list)
+
+
 class ScanSummary(BaseModel):
     """Scan summary used in list responses."""
 
@@ -316,5 +342,7 @@ __all__ = [
     "ScanDetail",
     "ScanJobRead",
     "ScanListResponse",
+    "SourceFileRead",
+    "ScanSourceRead",
     "ScanSummary",
 ]

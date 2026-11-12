@@ -156,20 +156,35 @@ print("\n== 4. the contract is tracked and its history accumulates ==")
 status, assets = call("GET", f"{API}/assets?limit=200")
 check("the assets are readable", status == 200, f"HTTP {status}")
 asset_items = assets.get("items", [])
-check("the pasted contract is tracked", len(asset_items) > 0, f"{len(asset_items)} assets")
+check("the workspace tracks contracts", len(asset_items) > 0, f"{len(asset_items)} assets")
+
+# The pasted contract has a deterministic address, and the list is
+# paginated, so it is looked up by that address rather than by hoping
+# it happens to be on the first page.
+pasted_address = str((final or {}).get("contract_address") or "").lower()
 matching = [
     item
     for item in asset_items
-    if item["asset"]["address"].lower().startswith("0x")
-    and item["asset"]["kind"] == "owned"
+    if item["asset"]["address"].lower() == pasted_address
 ]
-check("the pasted contract is one of them", len(matching) >= 1)
+if pasted_address and not matching:
+    for offset in range(200, 1400, 200):
+        status, page = call("GET", f"{API}/assets?limit=200&offset={offset}")
+        if status != 200:
+            break
+        page_items = page.get("items", [])
+        if not page_items:
+            break
+        matching = [
+            item
+            for item in page_items
+            if item["asset"]["address"].lower() == pasted_address
+        ]
+        if matching:
+            break
+check("the pasted contract is one of them", len(matching) >= 1, pasted_address or "no address")
 
-target = None
-for item in asset_items:
-    if item["asset"]["kind"] == "owned" and item["progress"]["scan_count"] >= 1:
-        target = item
-        break
+target = matching[0] if matching else None
 if check("the pasted contract has a scan attached", target is not None):
     status, history = call("GET", f"{API}/assets/{target['asset']['id']}/history")
     check("its history is readable", status == 200, f"HTTP {status}")

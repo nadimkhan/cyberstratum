@@ -21,6 +21,11 @@ leaving it to rot in the main list.
 | `[!]` | Blocked — the reason is stated inline and it is also listed in §4 |
 
 **Last updated:** 2026-11-13
+**The developer's code is shown beside the findings.** A scan of pasted
+Solidity now reads its source back from the stored artifact
+(`GET /api/v1/scans/{scan_id}/source`) and the scan page shows it with
+the lines the findings name marked. A scan with no source says why.
+
 **One command proves the whole product:** `.venv/bin/python scripts/wsl/e2e_full_workflow.py`
 walks the running stack end to end -- the corpus, the advice, a review in a throwaway
 workspace, the tenant refusal, and the model's refusal to promote itself. Ten steps,

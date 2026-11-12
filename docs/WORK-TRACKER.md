@@ -1366,3 +1366,38 @@ Step 10 is the important one. The corpus has two reviewed findings
 from one settled contract, and the learning cycle says so and stops:
 there is no validation split, so no category can be judged. That
 refusal is the product working, not failing.
+
+### 24 The line, and the code it points at
+
+A finding that says "`tx.origin` at line 17" is half a finding until the
+reader can see line 17. The product knew the line -- the source map
+proved it -- but the code was nowhere on the screen: the source was
+stored as a scan artifact, and there was no way to read an artifact
+back. The developer who pasted a contract was told where the problem
+was and then had to go and find their own file.
+
+* **`GET /api/v1/scans/{scan_id}/source`** returns the source that was
+  analysed, file by file, with the compiler version, the language, the
+  verification state and the address it came from. It is scoped to the
+  tenant like every other read, and a scan of deployed bytecode with no
+  source says so in words -- `available: false` and a reason -- rather
+  than returning an empty list that reads like "there was nothing
+  there".
+* **The scan page now shows the source**, with line numbers, and the
+  lines the findings name are marked. The panel sits under the findings
+  table, so the reader's eye goes from the finding to the code without
+  leaving the page.
+* **The finding carries its line into the browser.** `source_line` and
+  `source_file` were in the evidence all along and were being flattened
+  into a list of signal names on the way out; they are now fields of
+  their own.
+
+The live proof is the developer's own workflow: paste the contract,
+and the page shows the `tx.origin` finding pointing at line 17 of the
+contract that was pasted, with line 17 marked in the source underneath.
+
+| The proof | Before | After |
+|---|---|---|
+| The source of a scan | stored, unreachable | `available: true`, the file, the compiler that made it |
+| The line of a finding | in the evidence, flattened away | a field, and a marked line in the source |
+| A scan with no source | -- | `available: false`, and the reason in words |
