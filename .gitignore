@@ -44,3 +44,8 @@ Thumbs.db
 # available on a fresh checkout; the extraction cache is not, because it
 # is a rebuildable cache of the source files.
 graphify-out/cache/
+
+# The learning cycle writes the exported dataset and the candidate model here.
+# They are derived from the live database and belong to the deployment, not the
+# repository.
+.learning/

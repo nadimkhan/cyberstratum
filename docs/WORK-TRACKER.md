@@ -1000,3 +1000,42 @@ came from) and a pipeline-level test in
 `tests/api/test_pasted_source_scan.py` that runs a real scan with a model
 attached and asserts the score reached the finding while the review status
 stayed `new`.
+
+### 13.5 The live run
+
+The stack was restarted through the canonical launcher and a contract was
+compiled from pasted Solidity and scanned for real:
+
+| Field | Value |
+|---|---|
+| Status | `completed` (it was `partial` before the change) |
+| Limitations | `None` |
+| Coverage | 294 instructions, 449 executable bytes, 53 metadata bytes, 46 edges, 6 dynamic jumps (13.04 %), 1 unreachable block |
+| Notes | the metadata trailer, the guard byte in front of it, and each dynamic jump, by offset |
+| Findings | 5 |
+
+The scan before the change is still in the database with its old, honest-
+but-wrong record: `partial`, `invalid opcode at offset 448`, six unresolved
+edges.
+
+### 14.5 The live run
+
+The learning cycle was run against the live database:
+
+```
+$ python -m app.cli.learning_cycle --dry-run
+GATE: the model may not be installed: there is no validation split, so no
+category could be judged; a model needs at least a few distinct families
+{"records": 1, "promotable": false, "installed": false, ...}
+```
+
+That is the correct outcome, and it is the outcome the safety invariant
+demands. The live database holds 114 scans and 417 findings, of which
+**two** have been reviewed — one confirmed and one false positive — so
+exactly one contract has a settled category. One contract cannot be
+split into a training set, a validation set and a test set, so no
+category can be judged, so no model may be installed.
+
+The machinery is therefore complete and the corpus is not. The gate is
+what turns a thin corpus into a refusal rather than into a confident
+model, which is the whole point of having it.
