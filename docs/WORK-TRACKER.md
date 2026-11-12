@@ -299,6 +299,26 @@ now covered by a test that fails without the fix.
       `c4e6a8b0d392` carries the attribution, with `ON DELETE SET NULL`
       on the reviewer so that deleting a user does not delete the
       record of a judgement they made.
+- [x] **The labels now have a screen to be recorded on.** The `/triage`
+      queue shows the findings nobody has settled -- new, in triage, or
+      waiting for more evidence -- and a confirmed or false-positive
+      finding leaves it, because both are finished work. The verdict
+      controls say what each verdict means, and the false-positive
+      verdict says that a reason is required. The page is server-rendered
+      and the controls are a client component, so the service key stays
+      on the server and the session cookie stays in the browser.
+- [x] **A review that was only flushed was not a review.** The API's
+      request-scoped session is *closed*, not committed, when a request
+      ends, so the review endpoint's flush was thrown away: the response
+      said "confirmed" and the database still said "new". The test suite
+      could not see it, because the test session is bound to a
+      transaction that is rolled back afterwards, so an
+      unflushed-but-visible state looks exactly like a committed one. The
+      endpoint now commits, and the new test watches the commit itself --
+      it was checked against a deliberate break, failing without the
+      commit and passing with it. The end-to-end path is proven against
+      the running stack: scan queued, rules report a DELEGATECALL,
+      verdict posted through the Next.js proxy, database holding it.
 - [x] **The working copy is WSL only.** The Windows copy at
       `E:/projects/cyberstratum` is frozen as a fallback and is no longer
       edited: two copies of a live database and two test environments

@@ -339,11 +339,12 @@ recorded on the scan.
 
 What is still open, in the order it blocks the next:
 
-1. **A review surface.** Human triage is where the labels come from. The
-   API half is done: a verdict is recorded with its reviewer, its time
-   and its reason, and a false positive without a reason is refused.
-   What is missing is the *screen* -- a human needs a queue of findings
-   to work through, and the Next.js front end has no triage view yet.
+1. **A review surface.** Human triage is where the labels come from, and
+   both halves are now done: the API records a verdict with its reviewer,
+   its time and its reason, and `/triage` is the queue a human works
+   through. What is still missing is the loop that closes: reviewed
+   findings do not yet flow into a dataset manifest, so the labels exist
+   but no model has seen them.
 2. **A knowledge base.** A classifier stores weights, not fixes. The
    "error, its details and its solution" is a table: detector, what it
    means, why it matters, how to fix it, and the patterns that are known
