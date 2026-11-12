@@ -34,10 +34,20 @@ def _facts(code: bytes):
 
 #: A delegatecall whose target is a compile-time constant: the expected
 #: shape of an upgradeable proxy whose implementation is immutable.
+#:
+#: DELEGATECALL takes seven values from the top of the stack: gas,
+#: address, value, argsOffset, argsLength, retOffset, retLength. So the
+#: address is the second from the top, and the frame has to be complete
+#: for the analysis to know what the address is.
 DELEGATECALL_CONSTANT_TARGET = bytes.fromhex(
-    "73"  # PUSH20
+    "6000"  # PUSH1 00   (retLength)
+    "6000"  # PUSH1 00   (retOffset)
+    "6000"  # PUSH1 00   (argsLength)
+    "6000"  # PUSH1 00   (argsOffset)
+    "6000"  # PUSH1 00   (value)
+    "73"  # PUSH20       (address)
     "0123456789abcdef0123456789abcdef01234567"
-    "5a"  # GAS
+    "5a"  # GAS          (gas)
     "f4"  # DELEGATECALL
     "00"  # STOP
 )
@@ -45,9 +55,14 @@ DELEGATECALL_CONSTANT_TARGET = bytes.fromhex(
 #: A delegatecall whose target comes from calldata: the attacker can
 #: choose the implementation.
 DELEGATECALL_CALLDATA_TARGET = bytes.fromhex(
-    "6000"  # PUSH1 00
-    "35"  # CALLDATALOAD
-    "5a"  # GAS
+    "6000"  # PUSH1 00   (retLength)
+    "6000"  # PUSH1 00   (retOffset)
+    "6000"  # PUSH1 00   (argsLength)
+    "6000"  # PUSH1 00   (argsOffset)
+    "6000"  # PUSH1 00   (value)
+    "6000"  # PUSH1 00   (the offset calldata is read from)
+    "35"  # CALLDATALOAD (address)
+    "5a"  # GAS          (gas)
     "f4"  # DELEGATECALL
     "00"  # STOP
 )
@@ -55,9 +70,14 @@ DELEGATECALL_CALLDATA_TARGET = bytes.fromhex(
 #: A delegatecall whose target comes from storage: the administrator,
 #: or an attacker who compromised it, can choose the implementation.
 DELEGATECALL_STORAGE_TARGET = bytes.fromhex(
-    "6000"  # PUSH1 00
-    "54"  # SLOAD
-    "5a"  # GAS
+    "6000"  # PUSH1 00   (retLength)
+    "6000"  # PUSH1 00   (retOffset)
+    "6000"  # PUSH1 00   (argsLength)
+    "6000"  # PUSH1 00   (argsOffset)
+    "6000"  # PUSH1 00   (value)
+    "6000"  # PUSH1 00   (the slot storage is read from)
+    "54"  # SLOAD        (address)
+    "5a"  # GAS          (gas)
     "f4"  # DELEGATECALL
     "00"  # STOP
 )
@@ -155,6 +175,26 @@ def test_a_delegatecall_with_an_unreadable_target_is_unknown():
         "f1"  # CALL -> leaves an unknown value
         "5a"  # GAS
         "f4"  # DELEGATECALL
+        "00"  # STOP
+    )
+    facts = _facts(code)
+    assert len(facts.delegatecall_targets) == 1
+    assert facts.delegatecall_targets[0].kind == TARGET_UNKNOWN
+    assert not facts.delegatecall_targets[0].is_fixed
+
+
+def test_a_delegatecall_with_an_underflowed_stack_is_unknown() -> None:
+    """An underflow is not a constant target.
+
+    The call's argument frame was never pushed, so the slots that happen
+    to be on the stack are not its arguments. Reading an address out of
+    them would turn a stack underflow into a false all-clear, and a
+    false all-clear is the worst thing this analysis can do.
+    """
+    code = bytes.fromhex(
+        "6000"  # PUSH1 00
+        "6000"  # PUSH1 00
+        "f4"  # DELEGATECALL -- the frame is not there
         "00"  # STOP
     )
     facts = _facts(code)

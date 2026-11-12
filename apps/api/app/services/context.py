@@ -204,7 +204,15 @@ def analyse_block(instructions: Iterable[Instruction]) -> BlockFacts:
             # The popped slots come back deepest-first, so the top of the
             # stack is the last element and the address -- the second
             # from the top -- is the one before it.
-            address = consumed[-2] if len(consumed) >= 2 else ("unknown", None)
+            #
+            # The whole frame has to be there for that to mean
+            # anything. If the stack underflowed, the slots that were
+            # available are not the call's arguments: they are whatever
+            # happened to be lying around, and reading an address out of
+            # them would turn an underflow into a false all-clear.
+            address = (
+                consumed[-2] if len(consumed) >= 7 else ("unknown", None)
+            )
             if name == "DELEGATECALL":
                 kind = TARGET_UNKNOWN
                 target_value: int | None = None

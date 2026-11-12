@@ -27,19 +27,32 @@ def _findings(code: bytes):
 
 
 #: DELEGATECALL to a compile-time constant: the expected proxy pattern.
+#:
+#: The seven values the call takes from the stack are all pushed, so the
+#: analysis sees a complete frame and can tell the address is fixed.
 DELEGATECALL_CONSTANT = bytes.fromhex(
-    "73"  # PUSH20
+    "6000"  # PUSH1 00   (retLength)
+    "6000"  # PUSH1 00   (retOffset)
+    "6000"  # PUSH1 00   (argsLength)
+    "6000"  # PUSH1 00   (argsOffset)
+    "6000"  # PUSH1 00   (value)
+    "73"  # PUSH20       (address)
     "0123456789abcdef0123456789abcdef01234567"
-    "5a"  # GAS
+    "5a"  # GAS          (gas)
     "f4"  # DELEGATECALL
     "00"  # STOP
 )
 
 #: DELEGATECALL to a calldata-supplied address: an attacker chooses.
 DELEGATECALL_CALLDATA = bytes.fromhex(
-    "6000"  # PUSH1 00
-    "35"  # CALLDATALOAD
-    "5a"  # GAS
+    "6000"  # PUSH1 00   (retLength)
+    "6000"  # PUSH1 00   (retOffset)
+    "6000"  # PUSH1 00   (argsLength)
+    "6000"  # PUSH1 00   (argsOffset)
+    "6000"  # PUSH1 00   (value)
+    "6000"  # PUSH1 00   (the offset calldata is read from)
+    "35"  # CALLDATALOAD (address)
+    "5a"  # GAS          (gas)
     "f4"  # DELEGATECALL
     "00"  # STOP
 )
