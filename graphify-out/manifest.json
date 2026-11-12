@@ -2725,8 +2725,8 @@
     "semantic_hash": ""
   },
   "/home/nadim/projects/cyberstratum/docs/PENDING.md": {
-    "mtime": 1793922927.6161783,
-    "ast_hash": "374e39cc7f340b1975b99231175b1297",
+    "mtime": 1793924319.4550595,
+    "ast_hash": "4cb81923bb66a88a13cbdc2b1ece2522",
     "semantic_hash": ""
   },
   "/home/nadim/projects/cyberstratum/docs/architecture.md": {
@@ -2770,8 +2770,8 @@
     "semantic_hash": ""
   },
   "/home/nadim/projects/cyberstratum/docs/WORK-TRACKER.md": {
-    "mtime": 1793922927.6161783,
-    "ast_hash": "ecb123ccec8880c299d89a39ff8b5091",
+    "mtime": 1793925157.0007222,
+    "ast_hash": "f7a1b6ea95c2847ddc0ec859d8cefc76",
     "semantic_hash": ""
   },
   "/home/nadim/projects/cyberstratum/docs/INTEGRATION-PLAN.md": {
@@ -2780,8 +2780,8 @@
     "semantic_hash": ""
   },
   "/home/nadim/projects/cyberstratum/docs/runbook.md": {
-    "mtime": 1793244786.6337776,
-    "ast_hash": "ec7b64865a117614333404586ae91229",
+    "mtime": 1793925000.374853,
+    "ast_hash": "6a7e39dff3d396d42988c137129234c9",
     "semantic_hash": ""
   },
   "/home/nadim/projects/cyberstratum/docs/DEPLOYMENT.md": {
@@ -2917,6 +2917,21 @@
   "/home/nadim/projects/cyberstratum/apps/api/app/api/models.py": {
     "mtime": 1793922927.6161783,
     "ast_hash": "370671548246887a462431fd3e2d0029",
+    "semantic_hash": ""
+  },
+  "/home/nadim/projects/cyberstratum/.dev-session.json": {
+    "mtime": 1794489552.7975147,
+    "ast_hash": "2233c94f5e2fb1b3f74bf1c3a34478e5",
+    "semantic_hash": ""
+  },
+  "/home/nadim/projects/cyberstratum/scripts/wsl/gate.sh": {
+    "mtime": 1793924732.9705622,
+    "ast_hash": "84cd0d536e4e4cfcbed03c621f072cdb",
+    "semantic_hash": ""
+  },
+  "/home/nadim/projects/cyberstratum/scripts/wsl/grant_test_privileges.sh": {
+    "mtime": 1793923787.5413465,
+    "ast_hash": "329db4906fe484229a7fc77d635c2db8",
     "semantic_hash": ""
   }
 }

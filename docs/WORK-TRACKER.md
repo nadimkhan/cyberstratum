@@ -207,10 +207,27 @@ now covered by a test that fails without the fix.
       store. Before this, the suite passed with Redis up and failed with
       Redis down, which is a test of the environment, not of the code.
 - [x] Repository knowledge graph (Graphify, AST-only, no LLM key needed):
-      8,351 nodes, 14,171 edges and 549 communities over the tracked
-      source, with `.graphifyignore` keeping virtualenvs, caches, build
-      output and runtime data out of the index. The report and the raw
-      graph are committed; the extraction cache is not.
+      4,593 nodes, 23,150 edges over 240 source files, with
+      `.graphifyignore` keeping virtualenvs, caches, build output and
+      runtime data out of the index. The report and the raw graph are
+      committed; the extraction cache is not.
+- [x] **The graph was describing the project's own test runs.** 3,804 of
+      the first graph's 8,351 nodes — 45% — came from `var/`, because the
+      application resolves a relative artifact root against the repository
+      root, so `var/artifacts` holds real scans and `var/test-artifacts`
+      holds the last test run's scans, and the ignore file excluded
+      `artifacts/` but not the `var/` tree that contains it. A graph whose
+      largest subject is its own output is a graph of nothing.
+      `.graphifyignore` now excludes `var/`, and the rebuild left 240
+      files and zero runtime artifacts. `graphify update . --force` is
+      needed for this: an ordinary update only adds files, and refuses to
+      overwrite a graph that came out smaller.
+- [x] The skill's own query helper read the Graphify 0.4.x layout
+      (`file`, `edges`, `metadata`, a stored `degree`), so against the
+      installed 0.8.x graph every count came back zero and every search
+      missed. It now reads both layouts, derives degree and communities
+      from the graph when they are not stored, and labels communities from
+      `.graphify_labels.json`.
 - [x] **The working copy is WSL only.** The Windows copy at
       `E:/projects/cyberstratum` is frozen as a fallback and is no longer
       edited: two copies of a live database and two test environments

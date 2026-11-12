@@ -33,6 +33,15 @@ data/
 *.sqlite3
 *.db
 
+# The application's own artifact root, and the copy the test suite writes
+# into. Both live under the repository root because a relative artifact
+# path is resolved against REPO_ROOT, so `var/artifacts` holds real scans
+# and `var/test-artifacts` holds the last test run's scans. Neither is
+# source, and both are large and rewritten constantly: left in, they were
+# 45% of the graph and described the project's own test runs instead of
+# the project.
+var/
+
 # Graphify's own incremental cache (the graph itself is committed)
 graphify-out/cache/
 
