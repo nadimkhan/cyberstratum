@@ -356,10 +356,11 @@ What is still open, in the order it blocks the next:
    Slither detectors the corpus has produced, and the two Mythril
    detectors. Each says what the pattern is, why it matters, what to
    change, and when it is *not* a problem. The advice is served from
-   `/api/v1/knowledge`, printed in the report, and rendered under the
-   finding in the web UI. What is still missing is breadth: Slither ships
-   more detectors than the corpus has ever exercised, and those have no
-   advice yet.
+   `/api/v1/knowledge`, printed in the report, rendered under the finding
+   in the web UI, and rendered in the triage queue -- where the reviewed
+   label the model learns from is actually written. What is still missing
+   is breadth: Slither ships more detectors than the corpus has ever
+   exercised, and those have no advice yet.
 3. **Precision gates.** The gate itself is done: per-category precision
    on the validation split, a per-category threshold chosen to reach the
    precision floor, abstention for the categories that cannot reach it,

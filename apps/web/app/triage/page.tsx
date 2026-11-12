@@ -1,9 +1,10 @@
 import { ApiUnreachable } from "@/components/ApiUnreachable";
 import { EmptyState } from "@/components/EmptyState";
 import { FindingReviewPanel } from "@/components/FindingReviewPanel";
+import { GuidancePanel } from "@/components/GuidancePanel";
 import { ReviewStatusBadge } from "@/components/StatusBadge";
 import { SeverityBadge } from "@/components/SeverityBadge";
-import { API_BASE_URL, describeApiError, listFindings } from "@/lib/api";
+import { API_BASE_URL, describeApiError, getGuidanceMap, listFindings } from "@/lib/api";
 import { formatDateTime, shortAddress } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,14 @@ export const metadata = { title: "Triage" };
  * session cookie never leaves it.
  */
 export default async function TriagePage() {
-  const result = await listFindings({ limit: 200 });
+  const [result, guidanceResult] = await Promise.all([
+    listFindings({ limit: 200 }),
+    getGuidanceMap(),
+  ]);
+  // A verdict recorded here becomes a label the model learns from, so the
+  // reviewer is shown what the detector means -- and when the pattern is
+  // expected -- before they settle it.
+  const guidance = guidanceResult.ok ? guidanceResult.data : {};
 
   if (!result.ok) {
     return (
@@ -114,6 +122,8 @@ export default async function TriagePage() {
                   {finding.limitations}
                 </p>
               ) : null}
+
+              {finding.detectorId ? <GuidancePanel guidance={guidance[finding.detectorId]} /> : null}
 
               <FindingReviewPanel
                 findingId={finding.id}

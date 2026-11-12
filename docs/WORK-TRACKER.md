@@ -5,7 +5,7 @@ Update this file after every completed task. Mark the item done, note the commit
 and update the "Remaining" list so the next session knows exactly where to resume.
 
 **Last updated:** 2026-11-13
-**Latest commit:** `c00be88` — *test: prove the migrated schema accepts every provenance the code writes*
+**Latest commit:** `e05c78b` — *feat: every finding now carries the advice that says what to do about it*
 **Feature commit:** `54fced8` — *feat: manual Mythril, correspondence proof service, dataset ingestion, deterministic reports*
 
 ---
@@ -1190,6 +1190,12 @@ actually works, showed the finding and not the answer to it.
   do about it" panel is rendered under every finding that has guidance, on
   the scan page and on the findings page. It is fetched on the server, so
   the API key stays where it belongs.
+* **The advice is where the label is born.** The triage queue -- where a
+  reviewer settles a finding, and where the label the model learns from
+  is written -- carries the advice too. A reviewer can see what the
+  detector means, and when the pattern is expected, before deciding
+  whether the finding is real. The advice panel is one component, used
+  in both places, so the two never drift apart.
 * **A test pins the coverage.** Every detector the product emits must have
   guidance; every severity must be one the product uses; every id must
   appear once. A new detector without advice now fails the suite.
