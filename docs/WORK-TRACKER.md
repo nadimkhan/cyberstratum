@@ -319,6 +319,24 @@ now covered by a test that fails without the fix.
       commit and passing with it. The end-to-end path is proven against
       the running stack: scan queued, rules report a DELEGATECALL,
       verdict posted through the Next.js proxy, database holding it.
+- [x] **The loop closes: a reviewed verdict becomes a training label.**
+      `app.services.label_export` turns reviewed findings into a dataset
+      the machine learning package can load, and the rules are the point
+      of it. A category is true when a finding in it was confirmed and
+      false when the findings in it were reviewed as false positives. A
+      category with an *unreviewed* finding is unknown, and an unknown
+      category keeps the contract out of the training set -- not looked
+      at yet is not not vulnerable, and assuming that in the training
+      data would be absurd for this product. A detector outside the label
+      vocabulary (a stack-depth anomaly, an unresolved jump) is ignored
+      rather than disqualifying, so it cannot empty the dataset for no
+      gain. The family is the runtime bytecode digest, so exact clones
+      group together; the manifest says that near clones do not group
+      yet, because a manifest that hides its own weakness is worse than
+      no manifest. Proven end to end: a scan queued, two findings
+      reviewed (one confirmed, one a false positive with a reason), and
+      the export produces a dataset the package loads as one sample with
+      `unchecked_call` positive and the reviewed false positive negative.
 - [x] **The working copy is WSL only.** The Windows copy at
       `E:/projects/cyberstratum` is frozen as a fallback and is no longer
       edited: two copies of a live database and two test environments
