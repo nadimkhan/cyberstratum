@@ -1539,3 +1539,32 @@ one a person's judgement in triage. The bulk review, the guidance and
 the source panel exist so that a person can make those decisions
 quickly. Fabricating them would make the number go up and the model
 worse.
+
+### 29 The whole repository, formatted once
+
+`ruff format` had never been run over the whole tree: 87 committed
+files were unformatted, and the gate had been treating that as
+noise. It was time to make it a commit of its own rather than let it
+drift.
+
+The pass is mechanical and behaviour-free. What it bought:
+
+- `ruff format --check` now reports **every file formatted** (215
+  files), so the gate has one fewer thing to shrug at.
+- The diff is small because the files keep the line endings the
+  repository stores: 399 insertions and 623 deletions across 87
+  files, not a whole-tree rewrite.
+
+The gate after the pass: lint clean, typecheck clean, **987 Python
+tests passed**, the frontend suite green, `npm run check` green.
+
+While the pass was being made, the pending record was reconciled with
+what has actually landed, because a record that is wrong is worse
+than no record:
+
+| Item | Was | Now |
+|---|---|---|
+| 3.2 Identity | `[ ]` implementation not started | `[x]` `70ef088`, `515fa89` |
+| 3.5 Report as a first-class artifact | `[ ]` | `[x]` `b6ac6f9` |
+| 3.6 Repository-wide formatting | `[ ]` | `[x]` `c11d2fb` |
+| 3.8 Migration-vs-model diff | `[ ]` | `[x]` `70ef088` |
