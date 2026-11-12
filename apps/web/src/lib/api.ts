@@ -18,6 +18,8 @@ import type {
   MythrilRunRequest,
   Reproducibility,
   ScanDetail,
+  DiscoveryCursor,
+  DiscoveryRun,
   ScanJobInfo,
   ScanSource,
   ScanSourceFile,
@@ -359,6 +361,73 @@ export async function getScan(id: string): Promise<ApiResult<ScanDetail>> {
  * with the scan and shown beside the findings rather than behind a
  * link. A scan with no stored source says so in words.
  */
+
+/**
+ * How far the discovery feed has read on each chain.
+ *
+ * This is the visible half of the autonomous mode: without it, the
+ * product looks like a tool that scans what you give it, and the fact
+ * that it is reading the chain on its own stays invisible.
+ */
+export async function getDiscoveryCursors(): Promise<ApiResult<DiscoveryCursor[]>> {
+  const result = await request<unknown>("/discovery/cursors");
+  if (!result.ok) return result;
+  return { ok: true, data: toArray(result.data).map(normaliseDiscoveryCursor) };
+}
+
+/**
+ * The discovery cycles that have run.
+ */
+export async function getDiscoveryRuns(): Promise<ApiResult<DiscoveryRun[]>> {
+  const result = await request<unknown>("/discovery/runs?limit=25");
+  if (!result.ok) return result;
+  const record = asRecord(result.data);
+  const items = toArray(record.items ?? result.data);
+  return { ok: true, data: items.map(normaliseDiscoveryRun) };
+}
+
+/**
+ * Normalises one feed cursor.
+ */
+export function normaliseDiscoveryCursor(value: unknown): DiscoveryCursor {
+  const record = asRecord(value);
+  return {
+    chainId: pickNumber(record, ["chain_id", "chainId"]) ?? 0,
+    chainName: pickString(record, ["chain_name", "chainName"]) ?? "Unknown chain",
+    lastAddress: pickString(record, ["last_address", "lastAddress"]),
+    contractsSeen: pickNumber(record, ["contracts_seen", "contractsSeen"]) ?? 0,
+    nextPage: pickNumber(record, ["next_page", "nextPage"]) ?? 1,
+    lastVerifiedAt: toIsoString(record, ["last_verified_at", "lastVerifiedAt"]),
+    updatedAt: toIsoString(record, ["updated_at", "updatedAt"]),
+  };
+}
+
+/**
+ * Normalises one discovery cycle.
+ */
+export function normaliseDiscoveryRun(value: unknown): DiscoveryRun {
+  const record = asRecord(value);
+  const errors = toArray(record.errors).map((item) => {
+    const entry = asRecord(item);
+    return {
+      chain_id: pickNumber(entry, ["chain_id", "chainId"]) ?? undefined,
+      reason: pickString(entry, ["reason"]) ?? "",
+    };
+  });
+  return {
+    id: pickString(record, ["id"]) ?? "unknown",
+    status: pickString(record, ["status"]) ?? "unknown",
+    startedAt: toIsoString(record, ["started_at", "startedAt"]),
+    finishedAt: toIsoString(record, ["finished_at", "finishedAt"]),
+    chainsCovered: pickNumber(record, ["chains_covered", "chainsCovered"]) ?? 0,
+    chainsFailed: pickNumber(record, ["chains_failed", "chainsFailed"]) ?? 0,
+    contractsFound: pickNumber(record, ["contracts_found", "contractsFound"]) ?? 0,
+    contractsNew: pickNumber(record, ["contracts_new", "contractsNew"]) ?? 0,
+    contractsUpdated: pickNumber(record, ["contracts_updated", "contractsUpdated"]) ?? 0,
+    errors,
+  };
+}
+
 export async function getScanSource(id: string): Promise<ApiResult<ScanSource>> {
   const result = await request<unknown>(`/scans/${encodeURIComponent(id)}/source`);
   if (!result.ok) return result;
@@ -1860,6 +1929,8 @@ export { bulkVerdictProblem };
 
 export const __testing = {
   normaliseFinding,
+  normaliseDiscoveryCursor,
+  normaliseDiscoveryRun,
   normaliseScanSource,
   normaliseWorkspaces,
   bulkVerdictProblem,

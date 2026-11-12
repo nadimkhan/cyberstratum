@@ -348,6 +348,7 @@ def list_feed_cursors(
             "chain_name": chain_name,
             "last_address": cursor.last_address,
             "contracts_seen": cursor.contracts_seen,
+            "next_page": cursor.next_page,
             "last_verified_at": cursor.last_verified_at,
             "updated_at": cursor.updated_at,
         }

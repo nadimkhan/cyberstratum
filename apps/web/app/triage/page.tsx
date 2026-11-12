@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ApiUnreachable } from "@/components/ApiUnreachable";
 import { BulkReviewPanel } from "@/components/BulkReviewPanel";
 import { EmptyState } from "@/components/EmptyState";
@@ -157,6 +158,22 @@ export default async function TriagePage() {
                         <dt className="inline font-medium">Found: </dt>
                         <dd className="inline">{formatDateTime(finding.createdAt)}</dd>
                       </div>
+                      {finding.scanId ? (
+                        <div>
+                          <dt className="inline font-medium">Scan: </dt>
+                          <dd className="inline">
+                            {/* The scan page shows the evidence and the
+                                source the finding points at, which is what
+                                a reviewer needs before deciding. */}
+                            <Link
+                              href={`/scans/${finding.scanId}`}
+                              className="text-[var(--cs-accent)] underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
+                            >
+                              open the scan
+                            </Link>
+                          </dd>
+                        </div>
+                      ) : null}
                     </dl>
 
                     {finding.description ? (

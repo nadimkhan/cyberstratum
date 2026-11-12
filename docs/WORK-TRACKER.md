@@ -1401,3 +1401,60 @@ contract that was pasted, with line 17 marked in the source underneath.
 | The source of a scan | stored, unreachable | `available: true`, the file, the compiler that made it |
 | The line of a finding | in the evidence, flattened away | a field, and a marked line in the source |
 | A scan with no source | -- | `available: false`, and the reason in words |
+
+### 25 Twenty chains in one cycle
+
+Discovery had been running on two chains. The cursor machinery was
+right -- never-seen chains sort first -- but the rotation had never
+been given anything to rotate over, so the sweep kept re-reading the
+same two feeds and the rest of the chain set stood still.
+
+A cycle with twenty chains and two pages each settled it:
+
+| | |
+|---|---|
+| Chains covered | **18** (2 failed, and said why) |
+| Contracts found | **1570** |
+| Contracts new | **1485** |
+| Scans queued | **50** -- the cycle-wide budget, unchanged |
+| Cursors | 2 → **22** |
+| Time | 31 seconds |
+
+The two failures are the two chains whose Blockscout instance needs a
+paid plan: Gnosis and Polygon PoS answer "BLOCKSCOUT_API_KEY is not
+set". The run is reported as **partial**, not as a success with a
+footnote, because two of the twenty did not answer.
+
+The rest of the rotation is now automatic: the next cycle takes the
+chains that were touched longest ago, and the ones it has never seen
+come before any it has. Sixty chains are reachable; the sweep works
+through them in rounds rather than in one long run.
+
+### 26 The discovery, on a page
+
+The autonomous half of the product had no page. The API could say how
+far each chain's feed had been read and what each cycle had found, and
+the web application never asked. From the outside, CyberStratum looked
+like a tool that scans whatever you give it -- which is the half a
+competitor can copy. The part that reads the chains on its own, keeps
+its place in the history of each chain, and comes back for more was
+working and invisible.
+
+`/discovery` now shows:
+
+- **the chains** -- every chain the feed has read, how many contracts
+  it has seen, which page the next read starts from, and when it was
+  last read;
+- **the cycles** -- what each cycle covered, how many contracts it
+  found and how many were new, and the chains it could not reach,
+  named.
+
+A cycle that could not reach every chain is shown as `partial` with the
+reasons attached, not as a success with a footnote. The two chains
+that need a paid Blockscout plan are the ones that say
+`BLOCKSCOUT_API_KEY is not set` -- the product says what is missing
+instead of going quiet.
+
+The page reads the same two endpoints the rest of the application
+uses; it adds no new API surface beyond the cursor's next page, which
+the cursor route did not previously expose.

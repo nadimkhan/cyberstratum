@@ -344,3 +344,40 @@ export interface WorkspaceSummary {
   slug: string;
   openFindings: number;
 }
+
+/**
+ * How far the discovery feed has read on one chain.
+ *
+ * The cursor is what makes the autonomous mode a rotation rather than
+ * a loop over the same page: `nextPage` is where the next read starts,
+ * and it walks forward into the history of the chain.
+ */
+export interface DiscoveryCursor {
+  chainId: number;
+  chainName: string;
+  lastAddress: string | null;
+  contractsSeen: number;
+  nextPage: number;
+  lastVerifiedAt: string | null;
+  updatedAt: string | null;
+}
+
+/**
+ * One discovery cycle.
+ *
+ * A cycle that could not reach every chain is reported as `partial`,
+ * and the chains that failed are named. A cycle is never reported as a
+ * success with a footnote.
+ */
+export interface DiscoveryRun {
+  id: string;
+  status: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  chainsCovered: number;
+  chainsFailed: number;
+  contractsFound: number;
+  contractsNew: number;
+  contractsUpdated: number;
+  errors: { chain_id?: number; reason?: string }[];
+}
