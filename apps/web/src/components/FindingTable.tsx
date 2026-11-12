@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { SEVERITY_LABELS } from "@/lib/severity";
 import { formatConfidence, formatDateTime, shortAddress } from "@/lib/format";
-import { SEVERITY_ORDER, type Finding, type Severity } from "@/lib/types";
+import { SEVERITY_ORDER, type Finding, type Guidance, type Severity } from "@/lib/types";
 import { SeverityBadge } from "./SeverityBadge";
 import { ReviewStatusBadge } from "./StatusBadge";
 
@@ -12,6 +12,13 @@ export interface FindingTableProps {
   /** Hide the severity/confidence filter bar (used on the scan detail page). */
   showFilters?: boolean;
   caption?: string;
+  /**
+   * The guidance for each detector, keyed by detector id.
+   *
+   * A finding without guidance is still reported; it simply has no
+   * explanation attached, and the panel is not shown.
+   */
+  guidance?: Record<string, Guidance>;
 }
 
 type SortKey = "severity" | "confidence" | "createdAt" | "title";
@@ -25,7 +32,12 @@ const SEVERITY_RANK: Record<Severity, number> = {
 };
 
 /** Sortable, filterable findings table (design document page 8). */
-export function FindingTable({ findings, showFilters = true, caption = "Findings" }: FindingTableProps) {
+export function FindingTable({
+  findings,
+  showFilters = true,
+  caption = "Findings",
+  guidance,
+}: FindingTableProps) {
   const [severity, setSeverity] = useState<Severity | "all">("all");
   const [minConfidence, setMinConfidence] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>("severity");
@@ -195,6 +207,9 @@ export function FindingTable({ findings, showFilters = true, caption = "Findings
                       experimental
                     </span>
                   ) : null}
+                  {guidance && finding.detectorId ? (
+                    <GuidancePanel guidance={guidance[finding.detectorId]} />
+                  ) : null}
                 </th>
                 <td className="px-3 py-2 align-top font-mono text-xs">
                   {formatConfidence(finding.confidence)}
@@ -249,6 +264,46 @@ export function FindingTable({ findings, showFilters = true, caption = "Findings
 }
 
 export { SEVERITY_ORDER };
+
+/**
+ * The explanation that belongs to a finding.
+ *
+ * It says what the pattern is, why it matters, what to change, and when
+ * the pattern is expected -- the last of which is what keeps the
+ * product from crying wolf.
+ */
+export function GuidancePanel({ guidance }: { guidance?: Guidance }) {
+  if (!guidance) return null;
+  return (
+    <details className="mt-2 max-w-prose rounded border border-[var(--cs-border)] bg-[var(--cs-raised)] px-2 py-1.5 text-xs text-[var(--cs-muted)]">
+      <summary className="cursor-pointer font-medium text-[var(--cs-fg)]">
+        What this means, and what to do about it
+      </summary>
+      <dl className="mt-2 space-y-2">
+        <div>
+          <dt className="font-semibold text-[var(--cs-fg)]">What it means</dt>
+          <dd>{guidance.whatItMeans}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-[var(--cs-fg)]">Why it matters</dt>
+          <dd>{guidance.whyItMatters}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-[var(--cs-fg)]">How to fix it</dt>
+          <dd>{guidance.howToFix}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-[var(--cs-fg)]">When it is not a problem</dt>
+          <dd>{guidance.falsePositivePatterns}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold text-[var(--cs-fg)]">References</dt>
+          <dd>{guidance.references}</dd>
+        </div>
+      </dl>
+    </details>
+  );
+}
 
 const ENGINE_LABELS: Record<string, string> = {
   rule: "bytecode",

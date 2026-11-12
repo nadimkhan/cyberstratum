@@ -218,6 +218,7 @@ Moved here as it lands. Each entry names the commit and how it was verified.
 | 1.1.1 – 1.1.9 dataset ingestion machinery | `54fced8` | `evm_dataset` installed editable; its own test module; licence, tier, dedup, family, split, manifest and promotion behaviour each covered by tests. |
 | 1.2.1 – 1.2.8 Mythril as a manual action | `54fced8` | Live: the action returns `202` and says only *queued*; the dedicated worker runs the external executable and stores findings with `source="mythril"`. On Windows, where Mythril is not installed, the same path records the honest skip `mythril_not_installed` instead of a clean verdict. |
 | 1.3.1 – 1.3.6 deterministic PDF reporting | `54fced8` | Live: the report endpoint serves a PDF with an `X-Report-SHA256` header; the renderer pins its metadata and uses ReportLab's invariant mode, so identical evidence renders byte-identically. |
+| The advice a reviewer actually reads | *this round* | Live: `/api/v1/knowledge` serves **32** entries -- the six baseline detectors, the 24 Slither detectors the corpus has produced, and the two Mythril detectors -- and the `/findings` page renders **200** advice panels over 200 findings, where it rendered none. The web UI fetches the guidance on the server, so the API key never reaches the browser. A test fails the build when a detector the product emits has no advice. |
 | 1.4.1 – 1.4.4 correspondence as a stored service | `54fced8` | Live: USDC established — `FiatTokenProxy.sol`, solc `0.4.24+commit.e67f0147` — with the proof stored against the scan and readable from the scan detail. |
 | 1.2.7 persisted with provenance | `49e248e`, `e8d6269` | Live in WSL: Mythril ran on the runtime bytecode of a known reentrancy fixture, produced **SWC-105 High** and **SWC-114 Medium**, and both findings are stored with `source="mythril"`. Two database defects stood in the way and both are fixed — see §6.1. |
 | 1.2.7 no-verdict rule for a lost verdict | `49e248e` | When storage refuses a finding, the worker records `findings_persist_failed` with the number of findings lost. A verdict that is computed and then discarded must never read as a clean contract. |
@@ -350,12 +351,15 @@ What is still open, in the order it blocks the next:
    a score to a finding and changes nothing else. What is still missing
    is the evidence it needs: enough reviewed findings for the gate to
    have something to measure.
-2. **A knowledge base.** Done for the six baseline detectors: what the
-   pattern is, why it matters, what to change, and when it is *not* a
-   problem, served from a versioned data file and printed in the report.
-   What is missing is breadth -- the 122 Slither detectors have no
-   guidance yet, and each one that produces a finding without advice is
-   a finding a reviewer has to research from scratch.
+2. **A knowledge base — now covering every detector the product emits.**
+   The seed carries **32** entries: the six baseline detectors, the 24
+   Slither detectors the corpus has produced, and the two Mythril
+   detectors. Each says what the pattern is, why it matters, what to
+   change, and when it is *not* a problem. The advice is served from
+   `/api/v1/knowledge`, printed in the report, and rendered under the
+   finding in the web UI. What is still missing is breadth: Slither ships
+   more detectors than the corpus has ever exercised, and those have no
+   advice yet.
 3. **Precision gates.** The gate itself is done: per-category precision
    on the validation split, a per-category threshold chosen to reach the
    precision floor, abstention for the categories that cannot reach it,
@@ -364,16 +368,21 @@ What is still open, in the order it blocks the next:
    measure (today there is one sample), and a **time-based split** on
    top of the family split, because live chain data has temporal
    correlation and a random split leaks.
-4. **Context-gated rules.** `delegatecall` and `tx.origin` are now gated:
-   a delegatecall to a proven constant target is not reported, an
-   attacker-chosen target is, and a tx.origin read is reported with the
-   confidence its use earns. `selfdestruct` is not yet gated -- on Cancun
-   and later the opcode no longer destroys the contract, so the rule
-   depends on the fork, and a fork-blind rule would be wrong on both
-   sides of that change.
-5. **The older tail.** The feed sees new verifications quickly; a cursor
-   walk is needed for the long tail of contracts verified before the
-   feed existed.
+4. **Context-gated rules — done for `delegatecall`, `tx.origin` and
+   `selfdestruct`.** A delegatecall to a proven constant target is not
+   reported; an attacker-chosen target is; a tx.origin read is reported
+   with the confidence its use earns. `selfdestruct` follows EIP-6780:
+   before Cancun the contract can destroy itself and forward the balance,
+   and from Cancun onward the code survives and only the balance moves,
+   except for a contract created in the same transaction, which runtime
+   bytecode cannot establish. An unknown fork keeps the conservative
+   pre-Cancun wording.
+5. **The older tail — done.** The feed cursor now records the page it
+   reached, the sweep walks the history of each chain rather than its
+   newest page, and a contract skipped by the promotion cap stays
+   eligible for the next cycle instead of being stranded. The live
+   three-page Ethereum walk found 100 contracts older than the feed tip
+   and grew the known corpus from 106 to 293.
 6. **A scheduler — done.** `app.cli.discovery_cycle` queues one cycle and
    the systemd units (`cyberstratum-discovery.service` and `.timer`,
    hourly, with `Persistent=true` so a missed run happens after a
@@ -381,20 +390,24 @@ What is still open, in the order it blocks the next:
    there is exactly one execution path and a cycle waits for the worker
    instead of dying half-way through a sweep.
 
-7. **The developer's own source.** A developer can paste Solidity, but
-   the paste path is not built: the source is not compiled into the
-   bytecode the pipeline analyses, and the findings of a pasted
-   contract carry no source lines. The compiler call has to be
-   out-of-process and bounded, the same way Slither is.
-8. **The catalogue of vulnerabilities.** Six baseline detectors have
-   guidance — what the bug is, what it does, and the fix — and 122
-   Slither detectors have none. The knowledge layer is the thing the
-   model reads and the thing a developer acts on, so it is the part
-   that has to be complete.
-9. **The frontend for the progress spine.** The assets API exists and
-   works, and there is no page that shows it: no list of the addresses
-   a workspace follows, no dated history, no open-finding count that
-   moves when a fix ships.
+7. **The developer's own source — done.** A pasted contract is compiled
+   server-side with a real `solc` -- out of process and time-boxed, the
+   same way Slither is -- and the exact runtime bytes the compiler
+   returned are what the pipeline analyses. The source, ABI, compiler
+   version, source map and warnings are stored with it, and a finding
+   carries the developer's own line when the source map and the
+   disassembled instructions agree.
+8. **The catalogue of vulnerabilities — complete for what the product
+   has seen.** Every detector the product can emit now has guidance, the
+   coverage is pinned by a test, and the advice reaches the reviewer in
+   the web UI rather than only in the PDF. What is left is the detectors
+   Slither ships that the corpus has never exercised: they will need
+   advice the day they first fire, and the test will say so.
+9. **The frontend for the progress spine — done.** `/assets` lists the
+   addresses a workspace follows with their progress, `/assets/{id}` shows
+   the dated history of every scan against one address, and the progress
+   is computed from the scans themselves rather than from a counter that
+   can drift.
 
 ## 7. How this document relates to the others
 

@@ -285,3 +285,21 @@ export interface CreatedScan {
   status: ScanStatus;
   statusUrl: string | null;
 }
+/**
+ * What a detector's finding means, and what to do about it.
+ *
+ * The guidance is the half of a finding that a reviewer acts on: the
+ * pattern, the risk, the change, and -- the part that saves an
+ * afternoon -- the circumstances in which the pattern is expected.
+ */
+export interface Guidance {
+  detectorId: string;
+  title: string;
+  whatItMeans: string;
+  whyItMatters: string;
+  howToFix: string;
+  falsePositivePatterns: string;
+  references: string;
+  defaultSeverity: Severity;
+  version: string;
+}

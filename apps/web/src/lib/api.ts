@@ -9,6 +9,7 @@ import { CORRESPONDENCE_STATUSES } from "./types";
 import type {
   Artifact,
   CorrespondenceProof,
+  Guidance,
   CorrespondenceRunRequest,
   CorrespondenceStatus,
   CreatedScan,
@@ -19,6 +20,7 @@ import type {
   ScanJobInfo,
   ScanStage,
   ScanSummary,
+  Severity,
   SeverityCounts,
 } from "./types";
 
@@ -346,6 +348,52 @@ export async function getScanFindings(id: string): Promise<ApiResult<Finding[]>>
   );
   if (!result.ok) return result;
   return { ok: true, data: toArray(result.data).map(normaliseFinding) };
+}
+
+/**
+ * Normalises one guidance entry from the API.
+ *
+ * Returns `null` for anything that is not an entry, so a malformed
+ * response shows as a missing explanation rather than as an empty one.
+ */
+export function normaliseGuidance(value: unknown): Guidance | null {
+  const record = asRecord(value);
+  const detectorId = typeof record.detector_id === "string" ? record.detector_id : "";
+  if (!detectorId) return null;
+  const severity = typeof record.default_severity === "string" ? record.default_severity : "medium";
+  return {
+    detectorId,
+    title: typeof record.title === "string" ? record.title : "",
+    whatItMeans: typeof record.what_it_means === "string" ? record.what_it_means : "",
+    whyItMatters: typeof record.why_it_matters === "string" ? record.why_it_matters : "",
+    howToFix: typeof record.how_to_fix === "string" ? record.how_to_fix : "",
+    falsePositivePatterns:
+      typeof record.false_positive_patterns === "string" ? record.false_positive_patterns : "",
+    references: typeof record.references === "string" ? record.references : "",
+    defaultSeverity: (["critical", "high", "medium", "low", "info"].includes(severity)
+      ? severity
+      : "medium") as Severity,
+    version: typeof record.version === "string" ? record.version : "1",
+  };
+}
+
+/**
+ * The guidance for every detector the product knows about.
+ *
+ * It is fetched on the server, once per page, and handed to the table:
+ * the explanation belongs to the finding, not to a separate page the
+ * reader has to go and find.
+ */
+export async function getGuidanceMap(): Promise<ApiResult<Record<string, Guidance>>> {
+  const result = await request<unknown>("/knowledge");
+  if (!result.ok) return result;
+  const record = asRecord(result.data);
+  const map: Record<string, Guidance> = {};
+  for (const item of pickArray(record, ["items"])) {
+    const guidance = normaliseGuidance(item);
+    if (guidance) map[guidance.detectorId] = guidance;
+  }
+  return { ok: true, data: map };
 }
 
 export interface CreateScanPayload {
@@ -1669,6 +1717,7 @@ function normaliseCreatedScan(value: unknown): CreatedScan {
 /** Exported for tests: normalise raw backend payloads into the taxonomy. */
 export const __testing = {
   normaliseFinding,
+  normaliseGuidance,
   normaliseScanSummary,
   normaliseScanDetail,
   normaliseArtifacts,

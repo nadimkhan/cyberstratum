@@ -12,6 +12,7 @@ import { StageTimeline } from "@/components/StageTimeline";
 import {
   API_BASE_URL,
   describeApiError,
+  getGuidanceMap,
   getScan,
   getScanFindings,
   scanReportUrl,
@@ -45,7 +46,11 @@ export default async function ScanDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [scanResult, findingsResult] = await Promise.all([getScan(id), getScanFindings(id)]);
+  const [scanResult, findingsResult, guidanceResult] = await Promise.all([
+    getScan(id),
+    getScanFindings(id),
+    getGuidanceMap(),
+  ]);
 
   if (!scanResult.ok) {
     if (scanResult.error.kind === "not_found") notFound();
@@ -70,6 +75,9 @@ export default async function ScanDetailPage({
 
   const scan = scanResult.data;
   const findings = findingsResult.ok ? findingsResult.data : [];
+  // The guidance is fetched on the server and handed to the table, so the
+  // explanation of a finding arrives with the finding.
+  const guidance = guidanceResult.ok ? guidanceResult.data : {};
   const riskScore = scan.riskScore ?? estimateRiskScore(scan.findingCounts);
   const riskEstimated = scan.riskScore === null;
 
@@ -217,7 +225,12 @@ cannot be followed statically.
             action={{ label: "View all findings", href: "/findings" }}
           />
         ) : (
-          <FindingTable findings={findings} showFilters={false} caption={`Findings for scan ${scan.id}`} />
+          <FindingTable
+            findings={findings}
+            showFilters={false}
+            guidance={guidance}
+            caption={`Findings for scan ${scan.id}`}
+          />
         )}
       </section>
 

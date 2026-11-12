@@ -1,7 +1,7 @@
 import { ApiUnreachable } from "@/components/ApiUnreachable";
 import { EmptyState } from "@/components/EmptyState";
 import { FindingTable } from "@/components/FindingTable";
-import { API_BASE_URL, describeApiError, listFindings } from "@/lib/api";
+import { API_BASE_URL, describeApiError, getGuidanceMap, listFindings } from "@/lib/api";
 import { toSeverity } from "@/lib/severity";
 import { SEVERITY_ORDER, type Severity } from "@/lib/types";
 
@@ -23,10 +23,16 @@ export default async function FindingsPage({
       ? toSeverity(rawSeverity)
       : null;
 
-  const result = await listFindings({
-    severity: severity ?? undefined,
-    limit: 200,
-  });
+  const [result, guidanceResult] = await Promise.all([
+    listFindings({
+      severity: severity ?? undefined,
+      limit: 200,
+    }),
+    getGuidanceMap(),
+  ]);
+  // The guidance is fetched on the server, so every finding arrives with
+  // the explanation of what to do about it.
+  const guidance = guidanceResult.ok ? guidanceResult.data : {};
 
   return (
     <div className="space-y-6">
@@ -57,7 +63,7 @@ export default async function FindingsPage({
             {result.data.total} finding{result.data.total === 1 ? "" : "s"} in total
             {severity ? `, filtered to ${severity} severity` : ""}.
           </p>
-          <FindingTable findings={result.data.items} caption="All findings" />
+          <FindingTable findings={result.data.items} guidance={guidance} caption="All findings" />
         </div>
       )}
     </div>

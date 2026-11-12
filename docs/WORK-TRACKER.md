@@ -4,7 +4,7 @@
 Update this file after every completed task. Mark the item done, note the commit,
 and update the "Remaining" list so the next session knows exactly where to resume.
 
-**Last updated:** 2026-10-29
+**Last updated:** 2026-11-13
 **Latest commit:** `c00be88` — *test: prove the migrated schema accepts every provenance the code writes*
 **Feature commit:** `54fced8` — *feat: manual Mythril, correspondence proof service, dataset ingestion, deterministic reports*
 
@@ -1171,3 +1171,44 @@ The live proof, on the three contracts that had failed:
 
 The old failures stay in the history: they happened, and the history
 must not be rewritten.
+### 19 The advice round — a finding that does not say what to do is half a finding
+
+The corpus was producing findings from **30 different detectors**. The
+knowledge seed carried advice for **6** of them. The other 24 arrived as
+a detector id, a severity, and a title — and a reviewer had to go and
+research the pattern from scratch. Worse, the advice that *did* exist was
+in the PDF and nowhere else: the web UI, which is where a reviewer
+actually works, showed the finding and not the answer to it.
+
+* **Every emitted detector now has advice.** The seed went from 6 entries
+  to 32: the six baseline detectors, the 24 Slither detectors the corpus
+  has produced, and the two Mythril detectors. Each entry was written
+  from what the pattern actually is, not from a shared template — what it
+  means, why it matters, what to change, and **when it is not a problem**,
+  which is the half that keeps a product from crying wolf.
+* **The advice travels with the finding.** A "What this means, and what to
+  do about it" panel is rendered under every finding that has guidance, on
+  the scan page and on the findings page. It is fetched on the server, so
+  the API key stays where it belongs.
+* **A test pins the coverage.** Every detector the product emits must have
+  guidance; every severity must be one the product uses; every id must
+  appear once. A new detector without advice now fails the suite.
+
+The live proof:
+
+| Check | Before | After |
+|---|---|---|
+| Guidance entries | 6 | **32** |
+| Advice panels over 200 findings on `/findings` | 0 | **200** |
+| Advice on the scan detail page | none | rendered inline ✓ |
+
+The one detector the corpus had produced that the seed was still missing
+— `slither.reentrancy_unlimited_gas` — was found by the coverage test
+rather than by a list, and was written: a re-entrant call that forwards
+all the remaining gas hands the callee the decision of how much gas to
+use, so the re-entrant path can be driven into an out-of-gas in the
+middle of the caller's own work.
+
+**What still remains.** Slither ships more detectors than the corpus has
+ever exercised, and those still have no advice — the catalogue is
+complete for what the product has seen, not for what Slither can emit.

@@ -118,3 +118,54 @@ def test_the_guidance_is_carried_on_the_finding() -> None:
     )
     assert finding.guidance is not None
     assert finding.guidance["how_to_fix"]
+#: The detectors the Slither and Mythril integrations emit, as they
+#: appear in the live corpus.
+ENGINE_DETECTORS = (
+    "slither.assembly",
+    "slither.solc_version",
+    "slither.immutable_states",
+    "slither.locked_ether",
+    "slither.too_many_digits",
+    "slither.naming_convention",
+    "slither.dead_code",
+    "slither.low_level_calls",
+    "slither.incorrect_return",
+    "slither.unindexed_event_address",
+    "slither.unused_return",
+    "slither.divide_before_multiply",
+    "slither.calls_loop",
+    "slither.arbitrary_send_eth",
+    "slither.arbitrary_send_erc20",
+    "slither.incorrect_modifier",
+    "slither.missing_inheritance",
+    "slither.timestamp",
+    "slither.events_access",
+    "slither.missing_zero_check",
+    "slither.incorrect_exp",
+    "slither.cyclomatic_complexity",
+    "slither.pragma",
+    "slither.reentrancy_unlimited_gas",
+    "mythril.swc_114",
+    "mythril.swc_105",
+)
+
+#: The severities the product uses.
+KNOWN_SEVERITIES = ("critical", "high", "medium", "low", "info")
+
+
+def test_every_engine_detector_has_guidance() -> None:
+    """A detector the product emits must be explainable."""
+    for detector_id in ENGINE_DETECTORS:
+        guidance = guidance_for(detector_id)
+        assert guidance is not None, f"{detector_id} has no guidance"
+
+
+def test_the_severity_of_every_entry_is_one_the_product_uses() -> None:
+    for detector_id, guidance in load_seed().items():
+        assert guidance.default_severity in KNOWN_SEVERITIES, detector_id
+
+
+def test_every_detector_appears_once() -> None:
+    """Two entries for one detector would make the answer ambiguous."""
+    seed = load_seed()
+    assert len(seed) == len(set(seed))
