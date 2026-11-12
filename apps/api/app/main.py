@@ -14,6 +14,7 @@ from app.api.discovery import router as discovery_router
 from app.api.findings import router as findings_router
 from app.api.health import router as health_router
 from app.api.knowledge import router as knowledge_router
+from app.api.learning import router as learning_router
 from app.api.models import router as models_router
 from app.api.scans import router as scans_router
 from app.api.workspaces import router as workspaces_router
@@ -79,6 +80,7 @@ def create_app() -> FastAPI:
     app.include_router(scans_router)
     app.include_router(assets_router)
     app.include_router(findings_router)
+    app.include_router(learning_router)
     app.include_router(knowledge_router)
     app.include_router(discovery_router)
     app.include_router(auth_router)

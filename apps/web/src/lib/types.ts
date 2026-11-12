@@ -381,3 +381,30 @@ export interface DiscoveryRun {
   contractsUpdated: number;
   errors: { chain_id?: number; reason?: string }[];
 }
+
+/**
+ * The learning state: how much has been reviewed, and what the model
+ * may say about it.
+ */
+export interface LearningStatus {
+  reviewed: {
+    total: number;
+    confirmed: number;
+    falsePositive: number;
+    contracts: number;
+    categories: number;
+  };
+  model: {
+    manifestId: string;
+    path: string;
+    payload: Record<string, unknown>;
+  } | null;
+  lastCycle: {
+    records: number;
+    promotable: boolean;
+    gateReason: string;
+    installed: boolean;
+    manifestId: string | null;
+    datasetPath: string;
+  } | null;
+}

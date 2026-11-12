@@ -25,6 +25,7 @@ with; and the model that is installed only ever ranks findings.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import shutil
 import sys
@@ -167,7 +168,7 @@ def run_learning_cycle(
         manifest = read_model_manifest(settings)
         manifest_id = manifest.manifest_id if manifest is not None else None
 
-    return LearningOutcome(
+    outcome = LearningOutcome(
         dataset_path=str(dataset_path),
         records=len(export.records),
         promotable=promotable,
@@ -178,6 +179,17 @@ def run_learning_cycle(
         model_dir=model_dir,
         manifest_id=manifest_id,
     )
+
+    # The verdict is left where the product can read it, so that the
+    # learning page can say what the last cycle concluded instead of
+    # asking the reader to go and look at a log.
+    with contextlib.suppress(OSError):
+        (workdir / "last_outcome.json").write_text(
+            json.dumps(outcome.as_dict(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
+    return outcome
 
 
 def build_parser() -> argparse.ArgumentParser:

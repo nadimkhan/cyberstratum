@@ -1495,3 +1495,47 @@ This is what makes the catalogue usable rather than merely complete.
 A detector that fires two hundred times on one chain is a different
 problem from a detector that fires twice on forty chains, and the
 number alone cannot tell them apart.
+
+### 28 The model, and why it is not there yet
+
+The model was the part of the product nobody could see. The scan page
+said a model had not been installed; the learning cycle printed a
+refusal into a terminal. Neither said what had been reviewed, or why
+the refusal happened, in the place where a person would look.
+
+The learning cycle now leaves its verdict where the product can read
+it, and a page reads it:
+
+- `GET /api/v1/learning/status` -- the reviewed corpus, the installed
+  model, and the last cycle's outcome. Tenant-scoped; it needs a
+  credential like everything else.
+- `/learning` -- the same state, in words.
+
+Live, after the first cycle of this round:
+
+| What the page says | Value |
+|---|---|
+| Reviewed findings | 2 |
+| Confirmed | 1 |
+| False positives | 1 |
+| Contracts settled | 1 |
+| Issue categories | 2 |
+| The model | No model is installed |
+| The last learning cycle | 1 contract exported, not promotable |
+| The gate reason | *there is no validation split, so no category could be judged; a model needs at least a few distinct families* |
+
+That last line is the point of the page. A product that cannot show
+its own reason for not having a model will be asked for one anyway,
+and the honest answer belongs where the numbers are.
+
+The page also states what the model would do if it were there: it
+ranks findings, it does not decide a verdict, and every finding still
+gets its severity and its evidence from the rules whether a model is
+installed or not.
+
+What the model needs next is not code. It needs decisions: a few
+hundred reviewed findings across a few dozen distinct families, each
+one a person's judgement in triage. The bulk review, the guidance and
+the source panel exist so that a person can make those decisions
+quickly. Fabricating them would make the number go up and the model
+worse.

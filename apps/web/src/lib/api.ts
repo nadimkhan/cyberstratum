@@ -8,6 +8,7 @@ import { toReviewStatus, toScanStatus, toStageStatus } from "./status";
 import { bulkVerdictProblem } from "./bulk-review";
 import { CORRESPONDENCE_STATUSES } from "./types";
 import type {
+  LearningStatus,
   Artifact,
   CorrespondenceProof,
   Guidance,
@@ -1982,6 +1983,7 @@ function normaliseCreatedScan(value: unknown): CreatedScan {
 export { bulkVerdictProblem };
 
 export const __testing = {
+  normaliseLearningStatus,
   normaliseFinding,
   normaliseFindingsSummary,
   normaliseDiscoveryCursor,
@@ -1998,3 +2000,57 @@ export const __testing = {
   countSeverities,
   toSeverity,
 };
+
+/**
+ * Normalise the learning state.
+ *
+ * The shape is read defensively: the page states the reviewed corpus
+ * and the last cycle's verdict, and must not fall over when one of
+ * them is absent.
+ */
+export function normaliseLearningStatus(value: unknown): LearningStatus {
+  const record = asRecord(value);
+
+  const reviewedRow = asRecord(record["reviewed"]);
+  const modelRow = asRecord(record["model"]);
+  const cycleRow = asRecord(record["last_cycle"] ?? record["lastCycle"]);
+
+  const manifestId = pickString(modelRow, ["manifest_id", "manifestId"]) ?? "";
+  const model =
+    manifestId || Object.keys(modelRow).length > 0
+      ? {
+          manifestId,
+          path: pickString(modelRow, ["path"]) ?? "",
+          payload: asRecord(modelRow["payload"]),
+        }
+      : null;
+
+  const cycle = Object.keys(cycleRow).length
+    ? {
+        records: pickNumber(cycleRow, ["records"]) ?? 0,
+        promotable: pickBoolean(cycleRow, ["promotable"]) ?? false,
+        gateReason: pickString(cycleRow, ["gate_reason", "gateReason"]) ?? "",
+        installed: pickBoolean(cycleRow, ["installed"]) ?? false,
+        manifestId: pickString(cycleRow, ["manifest_id", "manifestId"]) ?? null,
+        datasetPath: pickString(cycleRow, ["dataset_path", "datasetPath", "dataset"]) ?? "",
+      }
+    : null;
+
+  return {
+    reviewed: {
+      total: pickNumber(reviewedRow, ["total"]) ?? 0,
+      confirmed: pickNumber(reviewedRow, ["confirmed"]) ?? 0,
+      falsePositive: pickNumber(reviewedRow, ["false_positive", "falsePositive"]) ?? 0,
+      contracts: pickNumber(reviewedRow, ["contracts"]) ?? 0,
+      categories: pickNumber(reviewedRow, ["categories"]) ?? 0,
+    },
+    model,
+    lastCycle: cycle,
+  };
+}
+
+export async function getLearningStatus(): Promise<ApiResult<LearningStatus>> {
+  const result = await request<unknown>("/learning/status");
+  if (!result.ok) return result;
+  return { ok: true, data: normaliseLearningStatus(result.data) };
+}

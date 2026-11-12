@@ -441,3 +441,18 @@ What is still open, in the order it blocks the next:
 | `docs/runbook.md` | How to operate the thing: commands, ports, the manual Mythril workflow, the correspondence check. |
 | `docs/adr/` | Decisions and their reasons. Each ADR is immutable once landed; corrections amend the ADR in place with a note. |
 | `docs/PENDING.md` (this file) | What is left, with acceptance criteria. |
+
+## The model needs decisions, not code (as of tracker 28)
+
+The learning state is now visible: `/learning` and
+`GET /api/v1/learning/status` show the reviewed corpus, whether a
+model is installed, and the reason the last cycle refused to promote
+one. Live, the refusal is *there is no validation split, so no
+category could be judged; a model needs at least a few distinct
+families*.
+
+What is still needed is human triage: a few hundred reviewed findings
+across a few dozen distinct families, each one a person's decision.
+The bulk review, the per-finding guidance and the source panel exist
+so that those decisions can be made quickly. Nothing will be
+fabricated to make the number look better.
