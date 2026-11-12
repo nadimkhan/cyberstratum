@@ -21,6 +21,7 @@ environments where the public RPC hosts are blocked.
 from __future__ import annotations
 
 import hashlib
+import time
 from dataclasses import dataclass
 
 import httpx
@@ -32,10 +33,35 @@ from app.services.chains import explorer_host_for
 log = get_logger(__name__)
 
 #: Public RPC endpoints tried when ``EVM_RPC_URL`` is not configured.
-DEFAULT_PUBLIC_RPC_URLS: dict[int, str] = {
-    1: "https://eth.llamarpc.com",
-    11155111: "https://rpc.sepolia.org",
+#:
+#: Several endpoints per chain, because a single public endpoint is a
+#: single point of failure: one host that is unreachable, or that
+#: answers 429 under load, would otherwise stop the whole automatic
+#: fetch. These are free, keyless, and have no stated rate limit that
+#: a scan burst would break.
+DEFAULT_PUBLIC_RPC_URLS: dict[int, tuple[str, ...]] = {
+    1: (
+        "https://ethereum-rpc.publicnode.com",
+        "https://eth.drpc.org",
+        "https://rpc.mevblocker.io",
+        "https://eth-mainnet.public.blastapi.io",
+    ),
+    10: ("https://optimism-rpc.publicnode.com", "https://optimism.drpc.org"),
+    56: ("https://bsc-rpc.publicnode.com",),
+    100: ("https://gnosis-rpc.publicnode.com",),
+    137: ("https://polygon-bor-rpc.publicnode.com", "https://polygon.drpc.org"),
+    250: ("https://fantom-rpc.publicnode.com",),
+    42161: ("https://arbitrum-one-rpc.publicnode.com",),
+    43114: ("https://avalanche-c-chain-rpc.publicnode.com", "https://avalanche.drpc.org"),
+    11155111: ("https://ethereum-sepolia-rpc.publicnode.com",),
 }
+
+#: How many times a rate-limited or temporarily failing endpoint is tried.
+FETCH_ATTEMPTS = 3
+
+#: The wait before the second attempt, in seconds. It grows with every
+#: attempt, so a busy endpoint is not hammered.
+FETCH_BACKOFF_SECONDS = 1.5
 
 #: Sourcify serves verified contracts for these chains.
 SOURCIFY_CHAIN_IDS: frozenset[int] = frozenset(
@@ -83,10 +109,57 @@ def _rpc_urls(chain_id: int) -> list[str]:
     urls: list[str] = []
     if settings.evm_rpc_url:
         urls.append(settings.evm_rpc_url)
-    default = DEFAULT_PUBLIC_RPC_URLS.get(chain_id)
-    if default is not None:
-        urls.append(default)
+    urls.extend(DEFAULT_PUBLIC_RPC_URLS.get(chain_id, ()))
     return urls
+
+
+def _post_json_rpc(
+    url: str, payload: dict[str, object], timeout: float
+) -> dict[str, object] | None:
+    """POST a JSON-RPC request, retrying a rate limit or a server error.
+
+    A public endpoint that answers 429 or 5xx is telling us about the
+    moment, not about the contract. Retrying after a short wait turns
+    that glitch into an ordinary fetch; a client error is not retried,
+    because a 404 is an answer.
+
+    Returns:
+        The decoded body, or ``None`` when the endpoint could not be
+        used.
+    """
+    for attempt in range(FETCH_ATTEMPTS):
+        try:
+            response = httpx.post(url, json=payload, timeout=timeout)
+        except httpx.HTTPError as exc:
+            log.warning("rpc_request_failed", url=url, error=str(exc))
+            return None
+
+        status = response.status_code
+        if status == 429 or status >= 500:
+            if attempt + 1 < FETCH_ATTEMPTS:
+                time.sleep(FETCH_BACKOFF_SECONDS * (attempt + 1))
+                continue
+            log.warning("rpc_endpoint_unavailable", url=url, status=status)
+            return None
+        if status >= 400:
+            return None
+
+        try:
+            body = response.json()
+        except ValueError:
+            log.warning("rpc_response_not_json", url=url, status=status)
+            return None
+
+        if not isinstance(body, dict):
+            return None
+        error = body.get("error")
+        if error is not None:
+            # The endpoint answered, but with a JSON-RPC error. That is
+            # a failure of this endpoint, not of the contract.
+            log.warning("rpc_error_response", url=url, error=str(error)[:200])
+            return None
+        return body
+    return None
 
 
 def _eth_get_code(rpc_url: str, address: str, timeout: float) -> bytes | None:
@@ -103,16 +176,10 @@ def _eth_get_code(rpc_url: str, address: str, timeout: float) -> bytes | None:
         "method": "eth_getCode",
         "params": [address, "latest"],
     }
-    try:
-        response = httpx.post(rpc_url, json=payload, timeout=timeout)
-        response.raise_for_status()
-        body = response.json()
-    except (httpx.HTTPError, ValueError) as exc:
-        log.warning("rpc_fetch_failed", rpc_url=rpc_url, error=str(exc))
+    body = _post_json_rpc(rpc_url, payload, timeout)
+    if body is None:
         return None
 
-    if not isinstance(body, dict):
-        return None
     result = body.get("result")
     if not isinstance(result, str):
         return None
@@ -186,16 +253,10 @@ def _blockscout_code(chain_id: int, address: str, timeout: float) -> bytes | Non
         "params": [address, "latest"],
         "id": 1,
     }
-    try:
-        response = httpx.post(url, json=payload, timeout=timeout)
-        response.raise_for_status()
-        body = response.json()
-    except (httpx.HTTPError, ValueError) as exc:
-        log.warning("blockscout_code_fetch_failed", url=url, error=str(exc))
+    body = _post_json_rpc(url, payload, timeout)
+    if body is None:
         return None
 
-    if not isinstance(body, dict):
-        return None
     result = body.get("result")
     if not isinstance(result, str) or not result.startswith("0x"):
         return None
@@ -293,6 +354,7 @@ __all__ = [
     "BytecodeArtifact",
     "BytecodeUnavailableError",
     "DEFAULT_PUBLIC_RPC_URLS",
+    "FETCH_ATTEMPTS",
     "SOURCIFY_BASE_URL",
     "SOURCIFY_CHAIN_IDS",
     "fetch_runtime_bytecode",

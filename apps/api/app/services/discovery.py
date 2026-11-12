@@ -42,6 +42,7 @@ from app.services.blockscout import (
 from app.services.chains import SUPPORTED_CHAINS
 from app.services.promotion import (
     DEFAULT_MAX_SCANS_PER_CYCLE,
+    TRANSIENT_SCAN_ERRORS,
     promote_contracts,
 )
 
@@ -244,6 +245,40 @@ def _unscanned_targets(
         .limit(limit)
     )
     return list(session.execute(stmt).scalars().all())
+
+
+def _transiently_failed_targets(
+    session: Session, workspace_id: uuid.UUID, chain_row: Chain, limit: int = 200
+) -> list[ContractTarget]:
+    """The contracts whose most recent scan failed for a transient reason.
+
+    A rate-limited fetch is a fact about the moment, not about the
+    contract, so such a contract has to be offered again: otherwise the
+    one failure it suffered in an unlucky minute would decide its
+    verdict for ever.
+    """
+    rows = session.execute(
+        select(ContractTarget, Scan.error_code)
+        .join(Scan, Scan.target_id == ContractTarget.id)
+        .where(
+            ContractTarget.workspace_id == workspace_id,
+            ContractTarget.chain_id == chain_row.id,
+            Scan.error_code.in_(tuple(TRANSIENT_SCAN_ERRORS)),
+        )
+        .order_by(ContractTarget.id, Scan.created_at.desc(), Scan.queued_at.desc())
+    ).all()
+
+    # The first row of a target is its most recent scan, because the
+    # rows come newest first. A target whose latest scan failed for a
+    # transient reason is the one that has to be offered again.
+    latest: dict[uuid.UUID, tuple[ContractTarget, str | None]] = {}
+    for target, error_code in rows:
+        latest.setdefault(target.id, (target, error_code))
+    return [
+        target
+        for target, error_code in latest.values()
+        if error_code in TRANSIENT_SCAN_ERRORS
+    ][:limit]
 
 
 def _verification_state(contract: DiscoveredContract) -> str:
@@ -543,10 +578,22 @@ class DiscoveryService:
         # its limits. Then everything of this chain that has never been
         # scanned is offered as well, so that a contract the cap left
         # alone is offered again rather than stranded for ever.
-        offered = list(touched)
-        seen_ids = {target.id for target in offered}
-        for target in _unscanned_targets(self.session, workspace.id, chain_row):
-            if target.id not in seen_ids:
+        # The order matters, because the cycle's budget is finite. A
+        # contract that was promised an analysis and did not get one is
+        # a debt, and it comes first; the contracts this sweep touched
+        # come next; and the contracts that have never been scanned at
+        # all come last. Otherwise the newest contracts would take the
+        # whole budget every cycle, and the debt would never be paid.
+        offered: list[ContractTarget] = []
+        seen_ids: set[uuid.UUID] = set()
+        for group in (
+            _transiently_failed_targets(self.session, workspace.id, chain_row),
+            touched,
+            _unscanned_targets(self.session, workspace.id, chain_row),
+        ):
+            for target in group:
+                if target.id in seen_ids:
+                    continue
                 offered.append(target)
                 seen_ids.add(target.id)
 

@@ -19,6 +19,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.db.enums import ScanStatus
 from app.db.models.discovery import DiscoveryRun, FeedCursor
 from app.db.models.identity import Chain, ContractTarget, Workspace
 from app.db.models.scans import Scan
@@ -33,6 +34,7 @@ from app.services.discovery import (
     persist_contracts,
     select_batch,
 )
+from app.services.promotion import promote_contracts
 
 
 class StubClient:
@@ -374,3 +376,116 @@ async def test_a_contract_the_cap_left_alone_is_offered_again(
 
     scans = db_session.execute(select(Scan)).scalars().all()
     assert len(scans) == 1
+async def _a_target_with_a_failed_scan(
+    db_session: Session, error_code: str
+) -> tuple[object, object, object]:
+    """A discovered contract whose last scan failed, for a given reason."""
+    space = get_or_create_discovery_workspace(db_session)
+    chain_row = Chain(name="Ethereum", chain_id=1, environment="mainnet")
+    db_session.add(chain_row)
+    db_session.flush()
+    run = DiscoveryRun(workspace_id=space.id, status="running")
+    db_session.add(run)
+    db_session.flush()
+    persist_contracts(db_session, space, chain_row, run, [make_contract(chain_id=1)])
+    target = db_session.execute(select(ContractTarget)).scalar_one()
+    scan = Scan(
+        workspace_id=space.id,
+        target_id=target.id,
+        status=ScanStatus.FAILED,
+        requested_by=None,
+        fork="",
+        bytecode_source="rpc",
+        error_code=error_code,
+    )
+    db_session.add(scan)
+    db_session.flush()
+    return space, chain_row, target
+
+
+async def test_a_contract_that_failed_for_a_transient_reason_is_looked_at_again(
+    db_session: Session,
+) -> None:
+    """A rate-limited fetch is a fact about the moment, not the contract."""
+    space, chain_row, target = await _a_target_with_a_failed_scan(
+        db_session, "sourcify_unavailable"
+    )
+
+    outcome = promote_contracts(db_session, space, chain_row, [target], enqueue=False)
+
+    assert outcome.queued == 1
+
+
+async def test_a_contract_that_failed_for_a_real_reason_is_left_alone(
+    db_session: Session,
+) -> None:
+    """A contract with no deployed code will not have one next time."""
+    space, chain_row, target = await _a_target_with_a_failed_scan(
+        db_session, "bytecode_empty"
+    )
+
+    outcome = promote_contracts(db_session, space, chain_row, [target], enqueue=False)
+
+    assert outcome.queued == 0
+    assert outcome.skipped_already_scanned == 1
+
+
+async def test_a_contract_that_keeps_failing_is_not_tried_for_ever(
+    db_session: Session,
+) -> None:
+    """The retries are bounded, so a broken endpoint is not hammered."""
+    space, chain_row, target = await _a_target_with_a_failed_scan(
+        db_session, "rpc_unreachable"
+    )
+    for _ in range(2):
+        db_session.add(
+            Scan(
+                workspace_id=space.id,
+                target_id=target.id,
+                status=ScanStatus.FAILED,
+                requested_by=None,
+                fork="",
+                bytecode_source="rpc",
+                error_code="rpc_unreachable",
+            )
+        )
+    db_session.flush()
+
+    outcome = promote_contracts(db_session, space, chain_row, [target], enqueue=False)
+
+    assert outcome.queued == 0
+async def test_a_contract_that_failed_transiently_is_offered_again(
+    db_session: Session,
+) -> None:
+    """The sweep offers a contract whose last scan failed for a moment."""
+    space = get_or_create_discovery_workspace(db_session)
+    chain_row = Chain(name="Ethereum", chain_id=1, environment="mainnet")
+    db_session.add(chain_row)
+    db_session.flush()
+    run = DiscoveryRun(workspace_id=space.id, status="running")
+    db_session.add(run)
+    db_session.flush()
+    persist_contracts(db_session, space, chain_row, run, [make_contract(chain_id=1)])
+    target = db_session.execute(select(ContractTarget)).scalar_one()
+    db_session.add(
+        Scan(
+            workspace_id=space.id,
+            target_id=target.id,
+            status=ScanStatus.FAILED,
+            requested_by=None,
+            fork="",
+            bytecode_source="rpc",
+            error_code="sourcify_unavailable",
+        )
+    )
+    db_session.flush()
+
+    # The feed returns nothing this cycle: the contract was found
+    # earlier, and its scan failed for a reason that may pass.
+    client = StubClient(pages={1: {}})
+    service = DiscoveryService(db_session, client)
+
+    await service.run_cycle(chain_ids=[1])
+
+    scans = db_session.execute(select(Scan)).scalars().all()
+    assert len(scans) == 2

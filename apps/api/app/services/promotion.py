@@ -45,12 +45,33 @@ from app.services.assets import InvalidAddressError, normalise_address, upsert_a
 __all__ = [
     "DEFAULT_MAX_PENDING_SCANS",
     "DEFAULT_MAX_SCANS_PER_CYCLE",
+    "MAX_TRANSIENT_RETRIES",
+    "TRANSIENT_SCAN_ERRORS",
     "PromotionOutcome",
     "promote_contracts",
 ]
 
-#: How many scans one discovery cycle may queue for a single chain.
+#: How many scans one discovery cycle may queue in total.
 DEFAULT_MAX_SCANS_PER_CYCLE = 50
+
+#: The scan error codes that describe a moment, not a fact about the
+#: contract. A contract whose scan failed because a public endpoint was
+#: rate limited, or unreachable, may be looked at again: nothing was
+#: found out about the contract. A contract that has no deployed code,
+#: or whose analysis could not be completed, may not -- repeating it
+#: would only produce the same answer.
+TRANSIENT_SCAN_ERRORS = frozenset(
+    {
+        "rpc_unreachable",
+        "sourcify_unavailable",
+        "bytecode_unavailable",
+        "enqueue_failed",
+    }
+)
+
+#: How many times a contract may be looked at again after a transient
+#: failure.
+MAX_TRANSIENT_RETRIES = 3
 
 #: How many scans may be waiting in total before the feed stops queueing.
 DEFAULT_MAX_PENDING_SCANS = 500
@@ -119,9 +140,28 @@ def _latest_scan(session: Session, target_id: object) -> Scan | None:
     return session.execute(
         select(Scan)
         .where(Scan.target_id == target_id)
-        .order_by(Scan.created_at.desc())
+        .order_by(Scan.created_at.desc(), Scan.queued_at.desc())
         .limit(1)
     ).scalar_one_or_none()
+
+
+def _transient_failures(session: Session, target_id: object) -> int:
+    """How many of a target's scans failed for a transient reason.
+
+    The count is what stops a broken endpoint from being retried for
+    ever: after a few attempts the contract waits for a person.
+    """
+    return int(
+        session.execute(
+            select(func.count())
+            .select_from(Scan)
+            .where(
+                Scan.target_id == target_id,
+                Scan.status == ScanStatus.FAILED,
+                Scan.error_code.in_(TRANSIENT_SCAN_ERRORS),
+            )
+        ).scalar_one()
+    )
 
 
 def _discovery_asset(
@@ -195,7 +235,17 @@ def promote_contracts(
                 and previous.created_at is not None
                 and target.verified_at > previous.created_at
             )
-            if not reverified:
+            # A transient failure is the other: the last attempt learned
+            # nothing about the contract, because a public endpoint was
+            # rate limited or unreachable. Looking again is the only way
+            # to find out, and it is bounded, so a contract that keeps
+            # failing is not tried for ever.
+            transient = (
+                previous.status == ScanStatus.FAILED
+                and (previous.error_code or "") in TRANSIENT_SCAN_ERRORS
+                and _transient_failures(session, target.id) < MAX_TRANSIENT_RETRIES
+            )
+            if not reverified and not transient:
                 outcome.skipped_already_scanned += 1
                 continue
 

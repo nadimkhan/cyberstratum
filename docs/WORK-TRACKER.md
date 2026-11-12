@@ -1132,3 +1132,42 @@ The live run, on Ethereum:
 
 The 100 contracts the cap left alone were persisted and are offered
 again by the next cycle rather than dropped.
+
+### 18 The fetch round — a glitch is not a fact about a contract
+
+Twenty-eight scans had failed with `sourcify_unavailable`, and the
+message blamed the contract. The real causes were three ordinary
+glitches:
+
+* the single default Ethereum RPC (`eth.llamarpc.com`) answers **525**;
+* the chain's own explorer answered **429** when a cycle queued fifty
+  scans at once, and a rate limit was treated as a final answer;
+* a JSON-RPC error body — which some endpoints return with status 200 —
+  was read as "the address holds no code".
+
+* **Several default endpoints per chain.** Probing found free, keyless
+  hosts that answer `eth_getCode` today: `publicnode`, `drpc`,
+  `mevblocker` and `blastapi` for Ethereum, and the equivalents for
+  Optimism, BSC, Polygon, Arbitrum, Avalanche and Sepolia. One dead
+  host is no longer the end of the fetch.
+* **A rate limit is retried.** A 429 or a 5xx is a fact about the
+  moment, so the request is tried again after a short wait; a 404 is
+  an answer and is not retried.
+* **A JSON-RPC error is a failed endpoint**, not an empty contract, so
+  the next route is tried.
+* **A transient failure is a debt, and debts are paid first.** The
+  sweep now offers, before anything else, the contracts whose most
+  recent scan failed for a transient reason; they were promised an
+  analysis and did not get one. The retries are bounded (three), so a
+  broken endpoint is never hammered.
+
+The live proof, on the three contracts that had failed:
+
+| Contract | Before | After |
+|---|---|---|
+| `0xbbcb4485…` | failed — sourcify_unavailable | 242 bytes fetched, scan **partial** with findings |
+| `0x3919c228…` | failed — sourcify_unavailable | 663 bytes fetched, scan **partial** with findings |
+| `0xbf2a0214…` | failed — sourcify_unavailable | 5275 bytes fetched, scan **partial** with findings |
+
+The old failures stay in the history: they happened, and the history
+must not be rewritten.

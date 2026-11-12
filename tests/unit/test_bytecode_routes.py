@@ -18,8 +18,10 @@ import pytest
 
 from app.services import bytecode as bytecode_module
 from app.services.bytecode import (
+    DEFAULT_PUBLIC_RPC_URLS,
     BytecodeUnavailableError,
     _blockscout_code,
+    _eth_get_code,
     fetch_runtime_bytecode,
 )
 
@@ -146,3 +148,66 @@ def test_the_rpc_is_still_the_first_route(monkeypatch: pytest.MonkeyPatch) -> No
 
     assert artifact.source == "rpc"
     assert calls == ["rpc"]
+def test_a_rate_limited_endpoint_is_tried_again(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A 429 is a fact about the moment, so the request is tried again."""
+    calls: list[str] = []
+
+    def fake_post(url: str, json: object, timeout: float) -> _Response:
+        calls.append(url)
+        if len(calls) == 1:
+            return _Response({}, status_code=429)
+        return _Response({"jsonrpc": "2.0", "result": "0x6080"})
+
+    monkeypatch.setattr(bytecode_module.httpx, "post", fake_post)
+    monkeypatch.setattr(bytecode_module.time, "sleep", lambda seconds: None)
+
+    code = _eth_get_code("https://rpc.example", "0x" + "11" * 20, 5.0)
+
+    assert code == b"\x60\x80"
+    assert len(calls) == 2
+
+
+def test_a_json_rpc_error_is_a_failed_endpoint(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A 200 that carries a JSON-RPC error is not an answer about the contract."""
+
+    def fake_post(url: str, json: object, timeout: float) -> _Response:
+        return _Response(
+            {"jsonrpc": "2.0", "error": {"code": -32603, "message": "Internal error"}}
+        )
+
+    monkeypatch.setattr(bytecode_module.httpx, "post", fake_post)
+
+    assert _eth_get_code("https://rpc.example", "0x" + "11" * 20, 5.0) is None
+
+
+def test_the_next_endpoint_is_tried_when_one_is_dead(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One unreachable host must not stop the fetch."""
+
+    def fake_post(url: str, json: object, timeout: float) -> _Response:
+        if "dead" in url:
+            raise httpx.ConnectError("down")
+        return _Response({"jsonrpc": "2.0", "result": "0x6080"})
+
+    monkeypatch.setattr(bytecode_module.httpx, "post", fake_post)
+    monkeypatch.setattr(
+        bytecode_module,
+        "_rpc_urls",
+        lambda chain_id: ["https://dead.example", "https://live.example"],
+    )
+
+    artifact = fetch_runtime_bytecode("0x" + "11" * 20, chain_id=1)
+
+    assert artifact.code == b"\x60\x80"
+    assert artifact.source == "rpc"
+
+
+def test_more_than_one_default_endpoint_is_configured() -> None:
+    """A single public host is a single point of failure."""
+    assert len(DEFAULT_PUBLIC_RPC_URLS[1]) > 1
+    assert len(DEFAULT_PUBLIC_RPC_URLS[11155111]) > 0
