@@ -395,6 +395,21 @@ now covered by a test that fails without the fix.
       e2e suite caught one such false negative in the narrowing itself:
       an underflowed argument frame was being read as a constant target,
       which would have turned a stack underflow into a false all-clear.
+- [x] **The chain registry now has a committed justification.** The
+      registry is hand-maintained code; the survey that says which
+      instances actually answer was run output living only in gitignored
+      runtime space. `docs/chain-probe/survey.json` records the hosts
+      that carry a decision, `docs/chain-probe/README.md` explains the
+      method and what each outcome means -- a 403 is an instance
+      refusing our agent, which is "unknown", not "dead" -- and
+      `scripts/summarise_chain_probe.py` regenerates the record and
+      cross-checks it against the registry in both directions. The
+      cross-check is now a test, so the registry cannot drift away from
+      what was probed without failing the suite. It immediately found a
+      real gap: Rootstock Testnet had been found live in the first probe
+      batch and never added to the registry. The registry now holds 66
+      chains -- 58 with a working instance, 6 PRO-only, 2 with no route
+      -- and every one of the 58 is confirmed live by the survey.
 - [x] **A scan that is gone is information, not an error.** The worker
       logged `scan_not_found` at error level and let the job complete as
       a success. A missing scan is the expected result of a cascade
