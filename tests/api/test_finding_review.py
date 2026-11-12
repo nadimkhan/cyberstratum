@@ -15,6 +15,7 @@ from dataclasses import dataclass
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session as OrmSession
 
 from app.core.security import hash_api_key
 from app.db.enums import FindingStatus, ScanStatus, Severity, WorkspaceRole
@@ -28,7 +29,6 @@ from app.db.models.identity import (
     WorkspaceMember,
 )
 from app.db.models.scans import Finding, Scan
-from sqlalchemy.orm import Session as OrmSession
 
 
 @dataclass(frozen=True)
@@ -47,9 +47,7 @@ class Tenant:
 
 def _make_tenant(db_session: Session, label: str) -> Tenant:
     """Create a workspace, a member user and a stored API key for one tenant."""
-    user = User(
-        email=f"{label}-{uuid.uuid4().hex}@example.test", display_name=f"{label} user"
-    )
+    user = User(email=f"{label}-{uuid.uuid4().hex}@example.test", display_name=f"{label} user")
     db_session.add(user)
     db_session.flush()
 
@@ -258,11 +256,7 @@ def test_a_review_is_written_to_the_audit_trail(
     )
     db_session.flush()
 
-    events = (
-        db_session.query(AuditEvent)
-        .filter(AuditEvent.resource_id == str(finding.id))
-        .all()
-    )
+    events = db_session.query(AuditEvent).filter(AuditEvent.resource_id == str(finding.id)).all()
     assert len(events) == 1
     assert events[0].action == "finding.reviewed"
     assert events[0].metadata_redacted["status"] == "needs_more_evidence"
@@ -288,9 +282,7 @@ def test_a_finding_from_another_tenant_cannot_be_reviewed(
     assert response.status_code == 404
 
 
-def test_an_unknown_finding_is_not_found(
-    client: TestClient, tenant: Tenant
-) -> None:
+def test_an_unknown_finding_is_not_found(client: TestClient, tenant: Tenant) -> None:
     response = client.post(
         f"/api/v1/findings/{uuid.uuid4()}/review",
         headers=tenant.headers,
