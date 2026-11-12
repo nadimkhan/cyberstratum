@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { parseLabels } from "@/lib/format";
+import { validateScanForm, type ScanMode } from "@/lib/scan-request";
 
 const EVM_FORKS = [
   "frontier",
@@ -22,15 +22,39 @@ const EVM_FORKS = [
   "osaka",
 ];
 
-const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
+/**
+ * What the scan is going to analyse. The three modes are genuinely
+ * different promises, so the form says which one it is before asking
+ * for the details of it.
+ */
+const MODES: { id: ScanMode; label: string; blurb: string }[] = [
+  {
+    id: "address",
+    label: "Deployed contract",
+    blurb: "Analyse the runtime bytecode a chain already holds.",
+  },
+  {
+    id: "source",
+    label: "Solidity source",
+    blurb: "Compile the source here, then analyse what the compiler produced.",
+  },
+  {
+    id: "bytecode",
+    label: "Bytecode",
+    blurb: "Analyse runtime bytecode you paste yourself.",
+  },
+];
 
 export function NewScanForm() {
   const router = useRouter();
+  const [mode, setMode] = useState<ScanMode>("address");
   const [contractAddress, setContractAddress] = useState("");
   const [chainId, setChainId] = useState("1");
-  const [fork, setFork] = useState("prague");
+  const [fork, setFork] = useState("cancun");
   const [labels, setLabels] = useState("");
   const [bytecodeHex, setBytecodeHex] = useState("");
+  const [sourceCode, setSourceCode] = useState("");
+  const [solcVersion, setSolcVersion] = useState("");
   const [experimentalMl, setExperimentalMl] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,14 +63,19 @@ export function NewScanForm() {
     event.preventDefault();
     setError(null);
 
-    const trimmedAddress = contractAddress.trim();
-    if (!ADDRESS_PATTERN.test(trimmedAddress)) {
-      setError("Enter a valid 20-byte contract address beginning with 0x.");
-      return;
-    }
-    const parsedChainId = Number.parseInt(chainId, 10);
-    if (!Number.isFinite(parsedChainId) || parsedChainId < 1) {
-      setError("Chain id must be a positive integer.");
+    const validated = validateScanForm({
+      mode,
+      contractAddress,
+      chainId,
+      fork,
+      labels,
+      bytecodeHex,
+      sourceCode,
+      solcVersion,
+      enableExperimentalMl: experimentalMl,
+    });
+    if (!validated.ok) {
+      setError(validated.error);
       return;
     }
 
@@ -57,14 +86,7 @@ export function NewScanForm() {
       const response = await fetch("/api/scans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contractAddress: trimmedAddress,
-          chainId: parsedChainId,
-          fork,
-          labels: parseLabels(labels),
-          bytecodeHex: bytecodeHex.trim() || undefined,
-          enableExperimentalMl: experimentalMl,
-        }),
+        body: JSON.stringify(validated.value),
       });
 
       const payload = (await response.json().catch(() => null)) as
@@ -85,32 +107,128 @@ export function NewScanForm() {
 
       router.push(`/scans/${encodeURIComponent(payload.id)}`);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unexpected error while queueing the scan.");
+      setError(
+        caught instanceof Error ? caught.message : "Unexpected error while queueing the scan.",
+      );
       setSubmitting(false);
     }
   }
 
+  const active = MODES.find((option) => option.id === mode) ?? MODES[0];
+
   return (
     <form onSubmit={onSubmit} className="max-w-2xl space-y-5" noValidate>
-      <div className="space-y-1.5">
-        <label htmlFor="contract-address" className="block text-sm font-medium text-[var(--cs-fg)]">
-          Contract address
-        </label>
-        <input
-          id="contract-address"
-          name="contractAddress"
-          value={contractAddress}
-          onChange={(event) => setContractAddress(event.target.value)}
-          required
-          spellCheck={false}
-          placeholder="0x0000000000000000000000000000000000000000"
-          aria-describedby="contract-address-help"
-          className="w-full rounded-md border border-[var(--cs-border)] bg-[var(--cs-raised)] px-3 py-2 font-mono text-sm text-[var(--cs-fg)] placeholder:text-[var(--cs-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
-        />
-        <p id="contract-address-help" className="text-xs text-[var(--cs-muted)]">
-          The deployed contract whose runtime bytecode will be analysed.
-        </p>
-      </div>
+      <fieldset className="space-y-2">
+        <legend className="block text-sm font-medium text-[var(--cs-fg)]">
+          What should be analysed?
+        </legend>
+        <div className="flex flex-wrap gap-2">
+          {MODES.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setMode(option.id)}
+              aria-pressed={mode === option.id}
+              className={
+                mode === option.id
+                  ? "rounded-md bg-[var(--cs-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--cs-accent-fg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
+                  : "rounded-md border border-[var(--cs-border)] bg-[var(--cs-raised)] px-3 py-1.5 text-sm text-[var(--cs-fg)] hover:border-[var(--cs-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
+              }
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-[var(--cs-muted)]">{active.blurb}</p>
+      </fieldset>
+
+      {mode === "address" ? (
+        <div className="space-y-1.5">
+          <label htmlFor="contract-address" className="block text-sm font-medium text-[var(--cs-fg)]">
+            Contract address
+          </label>
+          <input
+            id="contract-address"
+            name="contractAddress"
+            value={contractAddress}
+            onChange={(event) => setContractAddress(event.target.value)}
+            spellCheck={false}
+            placeholder="0x0000000000000000000000000000000000000000"
+            aria-describedby="contract-address-help"
+            className="w-full rounded-md border border-[var(--cs-border)] bg-[var(--cs-raised)] px-3 py-2 font-mono text-sm text-[var(--cs-fg)] placeholder:text-[var(--cs-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
+          />
+          <p id="contract-address-help" className="text-xs text-[var(--cs-muted)]">
+            The deployed contract whose runtime bytecode will be analysed.
+          </p>
+        </div>
+      ) : null}
+
+      {mode === "source" ? (
+        <>
+          <div className="space-y-1.5">
+            <label htmlFor="source-code" className="block text-sm font-medium text-[var(--cs-fg)]">
+              Solidity source
+            </label>
+            <textarea
+              id="source-code"
+              name="sourceCode"
+              rows={14}
+              value={sourceCode}
+              onChange={(event) => setSourceCode(event.target.value)}
+              spellCheck={false}
+              placeholder={"// SPDX-License-Identifier: MIT\npragma solidity ^0.8.26;\n\ncontract MyToken {\n    ...\n}"}
+              aria-describedby="source-code-help"
+              className="w-full rounded-md border border-[var(--cs-border)] bg-[var(--cs-raised)] px-3 py-2 font-mono text-xs text-[var(--cs-fg)] placeholder:text-[var(--cs-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
+            />
+            <p id="source-code-help" className="text-xs text-[var(--cs-muted)]">
+              Compiled on the server. The source map that comes with the compilation is what
+              lets a finding point at a line of your code.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="solc-version" className="block text-sm font-medium text-[var(--cs-fg)]">
+              Compiler version <span className="font-normal text-[var(--cs-muted)]">(optional)</span>
+            </label>
+            <input
+              id="solc-version"
+              name="solcVersion"
+              value={solcVersion}
+              onChange={(event) => setSolcVersion(event.target.value)}
+              spellCheck={false}
+              placeholder="0.8.26"
+              aria-describedby="solc-version-help"
+              className="w-full rounded-md border border-[var(--cs-border)] bg-[var(--cs-raised)] px-3 py-2 font-mono text-sm text-[var(--cs-fg)] placeholder:text-[var(--cs-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
+            />
+            <p id="solc-version-help" className="text-xs text-[var(--cs-muted)]">
+              The newest compiler installed on the server is used when this is left empty.
+            </p>
+          </div>
+        </>
+      ) : null}
+
+      {mode === "bytecode" ? (
+        <div className="space-y-1.5">
+          <label htmlFor="bytecode" className="block text-sm font-medium text-[var(--cs-fg)]">
+            Runtime bytecode
+          </label>
+          <textarea
+            id="bytecode"
+            name="bytecodeHex"
+            rows={6}
+            value={bytecodeHex}
+            onChange={(event) => setBytecodeHex(event.target.value)}
+            spellCheck={false}
+            placeholder="0x60806040..."
+            aria-describedby="bytecode-help"
+            className="w-full rounded-md border border-[var(--cs-border)] bg-[var(--cs-raised)] px-3 py-2 font-mono text-xs text-[var(--cs-fg)] placeholder:text-[var(--cs-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
+          />
+          <p id="bytecode-help" className="text-xs text-[var(--cs-muted)]">
+            Analyse runtime bytecode when the contract is not available from an RPC node. The
+            same bytes are always filed under the same address, so their history accumulates.
+          </p>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -121,7 +239,7 @@ export function NewScanForm() {
             id="chain-id"
             name="chainId"
             type="number"
-            min={0}
+            min={1}
             value={chainId}
             onChange={(event) => setChainId(event.target.value)}
             required
@@ -164,25 +282,6 @@ export function NewScanForm() {
         <p className="text-xs text-[var(--cs-muted)]">Comma separated.</p>
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="bytecode" className="block text-sm font-medium text-[var(--cs-fg)]">
-          Bytecode hex <span className="font-normal text-[var(--cs-muted)]">(optional)</span>
-        </label>
-        <textarea
-          id="bytecode"
-          name="bytecode"
-          rows={3}
-          value={bytecodeHex}
-          onChange={(event) => setBytecodeHex(event.target.value)}
-          spellCheck={false}
-          placeholder="0x60806040..."
-          className="w-full rounded-md border border-[var(--cs-border)] bg-[var(--cs-raised)] px-3 py-2 font-mono text-xs text-[var(--cs-fg)] placeholder:text-[var(--cs-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
-        />
-        <p className="text-xs text-[var(--cs-muted)]">
-          Supply runtime bytecode to analyse when the contract is not available from an RPC node.
-        </p>
-      </div>
-
       <div className="flex items-start gap-2">
         <input
           id="experimental-ml"
@@ -192,17 +291,17 @@ export function NewScanForm() {
           onChange={(event) => setExperimentalMl(event.target.checked)}
           className="mt-1 h-4 w-4 accent-[var(--cs-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
         />
-        <label
-          htmlFor="experimental-ml"
-          className="text-sm text-[var(--cs-muted)]"
-        >
+        <label htmlFor="experimental-ml" className="text-sm text-[var(--cs-muted)]">
           Enable experimental ML inference. Model-based results are labelled experimental and may
           produce false positives or false negatives.
         </label>
       </div>
 
       {error ? (
-        <p role="alert" className="rounded-md bg-[var(--cs-danger-soft)] px-3 py-2 text-sm text-[var(--cs-danger)]">
+        <p
+          role="alert"
+          className="rounded-md bg-[var(--cs-danger-soft)] px-3 py-2 text-sm text-[var(--cs-danger)]"
+        >
           {error}
         </p>
       ) : null}

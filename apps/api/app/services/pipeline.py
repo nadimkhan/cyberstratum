@@ -43,6 +43,12 @@ from app.db.models.scans import (
 from app.services import storage
 from app.services.bytecode import BytecodeArtifact, BytecodeUnavailableError, fetch_runtime_bytecode
 from app.services.fork_resolution import resolve_fork
+from app.services.ml_ranking import (
+    annotate_findings,
+    load_installed_model,
+    score_bytecode,
+)
+from app.services.model_manifest import ModelManifestError
 from app.services.rules import PARSER_VERSION, RULESET_VERSION, RuleFinding, run_rules
 from app.services.slither import SlitherRunner
 from app.services.source_audit import audit_source
@@ -242,6 +248,7 @@ def _store_artifacts(
             "fork": disassembly.fork,
             "codeSize": disassembly.code_size,
             "warnings": list(disassembly.warnings),
+            "notes": list(disassembly.notes),
             "instructions": [
                 {
                     "offset": instr.offset,
@@ -351,6 +358,13 @@ def _pasted_source_artifact(target: ContractTarget) -> SourceArtifact | None:
         verified=False,
     )
 
+
+#: Source-audit skip reasons that mean "there was nothing to audit", not
+#: "the audit could not be done". A contract with no verified source on
+#: the explorer has no source to audit, so nothing is missing; a contract
+#: whose source could not be fetched, or whose source engine was not
+#: available, is a gap in the scan and is reported as one.
+BENIGN_SOURCE_SKIPS = frozenset({"no_address", "no_source"})
 
 def _audit_verified_source(
     session: Session,
@@ -597,6 +611,32 @@ def run_scan(session: Session, scan: Scan) -> ScanOutcome:
     session.flush()
     findings = run_rules(disassembly, cfg, features)
 
+    # The model is a triage aid and nothing more. It ranks the
+    # findings so the reviewer knows where to look first; it never
+    # changes a severity, a confidence or a review status. With no
+    # model installed -- or with the experimental model switched
+    # off -- a scan runs exactly as it did before the model existed.
+    model_skipped: str | None = None
+    model_scores: dict[str, float] = {}
+    scan_settings = get_settings()
+    if scan_settings.enable_experimental_ml:
+        try:
+            model = load_installed_model(scan_settings)
+        except ModelManifestError as exc:
+            model = None
+            model_skipped = f"model_unreadable: {exc}"
+            log.warning("scan_model_unreadable", scan_id=str(scan.id), error=str(exc))
+        if model is not None:
+            model_scores = score_bytecode(
+                model,
+                artifact.code,
+                contract_id=str(scan.target_id),
+                chain=str(chain_id),
+            )
+            annotate_findings(findings, model_scores)
+            scan.model_version = model.version
+            scan.model_scores = model_scores or None
+
     _store_artifacts(session, scan, artifact, disassembly, cfg, features)
     session.add(
         ScanArtifact(
@@ -626,24 +666,55 @@ def run_scan(session: Session, scan: Scan) -> ScanOutcome:
     scan.source_audited = source_skipped is None
     scan.source_audit_skipped = source_skipped
 
-    partial = bool(disassembly.warnings) or bool(cfg.unresolved_edges)
+    # A scan is partial when something could not be analysed, not when
+    # the bytecode is merely dynamic. A jump whose destination is
+    # computed at run time is ordinary Solidity -- the function
+    # dispatcher is built out of them -- and no static analysis can
+    # follow it. Those are counted as coverage below, not counted as a
+    # hole in the analysis.
+    source_incomplete = (
+        source_skipped is not None and source_skipped not in BENIGN_SOURCE_SKIPS
+    )
+    partial = bool(disassembly.warnings) or bool(cfg.warnings) or source_incomplete
     scan.status = ScanStatus.PARTIAL if partial else ScanStatus.COMPLETED
 
     # A partial scan says what it could not cover. "Partial" without a
-    # reason is a shrug; the reason is what lets a reader judge how much
+    # reason is a shrug: the reason is what lets a reader judge how much
     # of the contract was actually analysed.
     limitations: dict[str, Any] = {}
     if disassembly.warnings:
         limitations["disassembly_warnings"] = [
             str(warning) for warning in disassembly.warnings
         ]
-    if cfg.unresolved_edges:
-        limitations["unresolved_control_flow_edges"] = len(cfg.unresolved_edges)
-        limitations["unresolved_edge_ratio"] = round(
+    if cfg.warnings:
+        limitations["control_flow_warnings"] = [
+            str(warning) for warning in cfg.warnings
+        ]
+    if source_incomplete:
+        limitations["source_audit_skipped"] = source_skipped
+    if model_skipped:
+        limitations["model_unavailable"] = model_skipped
+    scan.limitations = limitations or None
+
+    # Coverage is a measurement, not a gap. It says how much of the
+    # contract was decoded and how far the static view reached, so two
+    # scans of the same contract can be compared and a reader can weigh
+    # the findings against what was actually read.
+    scan.coverage = {
+        "instructions": len(disassembly.instructions),
+        "executable_bytes": disassembly.executable_size,
+        "code_bytes": disassembly.code_size,
+        "metadata_bytes": disassembly.metadata.length if disassembly.metadata else 0,
+        "edges": len(cfg.edges),
+        "dynamic_jumps": len(cfg.unresolved_edges),
+        "dynamic_jump_ratio": round(
             len(cfg.unresolved_edges) / max(len(cfg.edges), 1),
             4,
-        )
-    scan.limitations = limitations or None
+        ),
+        "unreachable_blocks": len(cfg.unreachable_blocks),
+        "notes": [str(note) for note in disassembly.notes]
+        + [str(note) for note in cfg.notes],
+    }
 
     scan.completed_at = _now()
     session.flush()

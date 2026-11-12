@@ -72,7 +72,12 @@ from app.services.report import (
     report_sha256,
 )
 from app.services.scan_requests import create_scan, resolve_chain, upsert_target
-from app.services.source_compile import CompilationError, compile_source, pasted_address
+from app.services.source_compile import (
+    CompilationError,
+    bytecode_address,
+    compile_source,
+    pasted_address,
+)
 from app.worker import enqueue_correspondence, enqueue_mythril, enqueue_scan
 
 log = get_logger(__name__)
@@ -244,6 +249,11 @@ def submit_scan(
     elif payload.bytecode_hex is not None:
         inline_bytecode = bytes.fromhex(payload.bytecode_hex)
         inline_bytecode_source = "upload"
+        if not address:
+            # Pasted bytes are not deployed anywhere either, but they
+            # still need an identity: the same bytes filed under the
+            # same address, so that their history accumulates.
+            address = bytecode_address(inline_bytecode)
 
     asset = _track_asset(session, workspace, chain, address, payload.label)
 
@@ -800,6 +810,8 @@ def download_report(
 
     data = build_report_data(
         limitations=scan.limitations,
+        coverage=scan.coverage,
+        model_scores=scan.model_scores,
         scan_id=str(scan.id),
         contract_address=contract_address,
         chain_id=chain_id,

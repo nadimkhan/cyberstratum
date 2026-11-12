@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { API_BASE_URL, API_PREFIX, createScan } from "@/lib/api";
+import { validateScanPayload } from "@/lib/scan-request";
 
 export const dynamic = "force-dynamic";
 
@@ -21,32 +22,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = (payload ?? {}) as Record<string, unknown>;
-  const contractAddress = String(body.contractAddress ?? "").trim();
-  const chainId = Number(body.chainId);
-  const fork = String(body.fork ?? "").trim();
-
-  if (!contractAddress) {
-    return NextResponse.json(
-      { detail: "contractAddress is required." },
-      { status: 400 },
-    );
-  }
-  if (!Number.isFinite(chainId)) {
-    return NextResponse.json({ detail: "chainId must be a number." }, { status: 400 });
+  // A scan needs something to analyse: an address, a source to compile,
+  // or bytes. Which of them it is changes what the scan can promise, so
+  // the mode is decided here rather than guessed at the backend.
+  const validated = validateScanPayload(payload);
+  if (!validated.ok) {
+    return NextResponse.json({ detail: validated.error }, { status: 400 });
   }
 
-  const result = await createScan({
-    contractAddress,
-    chainId,
-    fork: fork || "cancun",
-    labels: Array.isArray(body.labels) ? body.labels.map(String) : [],
-    bytecodeHex: typeof body.bytecodeHex === "string" ? body.bytecodeHex : undefined,
-    enableExperimentalMl:
-      typeof body.enableExperimentalMl === "boolean"
-        ? body.enableExperimentalMl
-        : undefined,
-  });
+  const result = await createScan(validated.value);
 
   if (!result.ok) {
     const status = result.error.kind === "network" ? 503 : result.error.status ?? 502;

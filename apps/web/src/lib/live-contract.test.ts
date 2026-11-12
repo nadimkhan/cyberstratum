@@ -133,4 +133,31 @@ describe("live backend contract", () => {
     expect(detail.coverage?.unresolvedJumps).toBe(3);
     expect(detail.coverage?.resolvedJumps).toBeNull();
   });
+  it("reads the stored coverage measurement", () => {
+    const detail = normaliseScanDetail({
+      id: "scan-5",
+      status: "completed",
+      artifacts: [],
+      findings: [],
+      coverage: {
+        instructions: 118,
+        executable_bytes: 449,
+        metadata_bytes: 53,
+        edges: 46,
+        dynamic_jumps: 6,
+        unreachable_blocks: 1,
+        notes: ["solidity metadata detected at offset 449"],
+      },
+    });
+
+    expect(detail.coverage?.instructions).toBe(118);
+    expect(detail.coverage?.executableBytes).toBe(449);
+    expect(detail.coverage?.metadataBytes).toBe(53);
+    expect(detail.coverage?.edges).toBe(46);
+    expect(detail.coverage?.unresolvedJumps).toBe(6);
+    expect(detail.coverage?.resolvedJumps).toBe(40);
+    expect(detail.coverage?.notes).toEqual([
+      "solidity metadata detected at offset 449",
+    ]);
+  });
 });

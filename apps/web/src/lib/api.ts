@@ -349,7 +349,11 @@ export async function getScanFindings(id: string): Promise<ApiResult<Finding[]>>
 }
 
 export interface CreateScanPayload {
-  contractAddress: string;
+  /**
+   * The deployed contract to analyse. Omitted when the developer is
+   * pasting source: a pasted contract is not deployed anywhere.
+   */
+  contractAddress?: string;
   chainId: number;
   fork: string;
   /**
@@ -358,6 +362,13 @@ export interface CreateScanPayload {
    */
   labels?: string[];
   bytecodeHex?: string;
+  /**
+   * Solidity source to compile on the server. The bytes the compiler
+   * produces are what gets analysed.
+   */
+  sourceCode?: string;
+  /** The solc version to compile with; the newest installed one by default. */
+  solcVersion?: string;
   enableExperimentalMl?: boolean;
 }
 
@@ -367,12 +378,15 @@ export async function createScan(
   const label = (payload.labels ?? []).join(", ").trim();
   // The backend forbids unknown fields, so only documented keys are sent.
   const body: Record<string, unknown> = {
-    contract_address: payload.contractAddress,
     chain_id: payload.chainId,
     fork: payload.fork,
   };
+  const address = payload.contractAddress?.trim();
+  if (address) body.contract_address = address;
   if (label) body.label = label.slice(0, 200);
   if (payload.bytecodeHex) body.bytecode_hex = payload.bytecodeHex;
+  if (payload.sourceCode) body.source_code = payload.sourceCode;
+  if (payload.solcVersion) body.solc_version = payload.solcVersion;
   if (payload.enableExperimentalMl !== undefined) {
     body.enable_experimental_ml = payload.enableExperimentalMl;
   }
@@ -380,6 +394,175 @@ export async function createScan(
   const result = await request<unknown>("/scans", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+  if (!result.ok) return result;
+  return { ok: true, data: normaliseCreatedScan(result.data) };
+}
+
+/* ------------------------------------------------------------------ */
+/* Tracked assets                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A tracked asset is one address the product keeps a history for: the
+ * workspace's own contract, a wallet it watches, or a contract the
+ * autonomous sweep discovered.
+ */
+export interface TrackedAsset {
+  id: string;
+  address: string;
+  label: string;
+  kind: string;
+  notes: string | null;
+  firstSeenAt: string | null;
+  active: boolean;
+}
+
+export interface AssetProgress {
+  scanCount: number;
+  lastScannedAt: string | null;
+  findingCount: number;
+  openFindingCount: number;
+  byStatus: Record<string, number>;
+  bySeverity: Record<string, number>;
+}
+
+/** One dated entry in an asset's progress log. */
+export interface AssetTimelineEntry {
+  scanId: string;
+  createdAt: string | null;
+  status: string;
+  findingCount: number;
+  byStatus: Record<string, number>;
+  bySeverity: Record<string, number>;
+}
+
+export interface AssetDetail {
+  asset: TrackedAsset;
+  evmChainId: number;
+  progress: AssetProgress;
+  timeline: AssetTimelineEntry[];
+}
+
+export interface AssetListResult {
+  items: AssetDetail[];
+  total: number;
+}
+
+export interface AssetHistoryResult extends AssetDetail {
+  total: number;
+}
+
+function normaliseCountMap(value: unknown): Record<string, number> {
+  const record = asRecord(value);
+  const counts: Record<string, number> = {};
+  for (const [key, count] of Object.entries(record)) {
+    const amount = typeof count === "number" ? count : Number(count);
+    if (Number.isFinite(amount)) counts[key] = amount;
+  }
+  return counts;
+}
+
+function normaliseAssetProgress(value: unknown): AssetProgress {
+  const record = asRecord(value);
+  return {
+    scanCount: Number(record["scan_count"] ?? record["scanCount"] ?? 0),
+    lastScannedAt:
+      toIsoString(record, ["last_scanned_at", "lastScannedAt"]),
+    findingCount: Number(record["finding_count"] ?? record["findingCount"] ?? 0),
+    openFindingCount: Number(
+      record["open_finding_count"] ?? record["openFindingCount"] ?? 0,
+    ),
+    byStatus: normaliseCountMap(record["by_status"] ?? record["byStatus"]),
+    bySeverity: normaliseCountMap(record["by_severity"] ?? record["bySeverity"]),
+  };
+}
+
+function normaliseTimeline(value: unknown): AssetTimelineEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((entry) => {
+    const record = asRecord(entry);
+    return {
+      scanId: pickString(record, ["scan_id", "scanId"]) ?? "",
+      createdAt: toIsoString(record, ["created_at", "createdAt"]),
+      status: pickString(record, ["status"]) ?? "unknown",
+      findingCount: Number(record["finding_count"] ?? record["findingCount"] ?? 0),
+      byStatus: normaliseCountMap(record["by_status"] ?? record["byStatus"]),
+      bySeverity: normaliseCountMap(record["by_severity"] ?? record["bySeverity"]),
+    };
+  });
+}
+
+function normaliseAssetDetail(value: unknown): AssetDetail {
+  const record = asRecord(value);
+  const asset = asRecord(record["asset"]);
+  return {
+    asset: {
+      id: pickString(asset, ["id"]) ?? "",
+      address: pickString(asset, ["address"]) ?? "",
+      label: pickString(asset, ["label"]) ?? "",
+      kind: pickString(asset, ["kind"]) ?? "owned",
+      notes: pickString(asset, ["notes"]) ?? null,
+      firstSeenAt: toIsoString(asset, ["first_seen_at", "firstSeenAt"]),
+      active: asset["active"] !== false,
+    },
+    evmChainId: Number(record["evm_chain_id"] ?? record["evmChainId"] ?? 0),
+    progress: normaliseAssetProgress(record["progress"]),
+    timeline: normaliseTimeline(record["timeline"]),
+  };
+}
+
+/** List the addresses this workspace keeps a history for. */
+export async function listAssets(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<ApiResult<AssetListResult>> {
+  const query = new URLSearchParams();
+  if (params?.limit !== undefined) query.set("limit", String(params.limit));
+  if (params?.offset !== undefined) query.set("offset", String(params.offset));
+  const suffix = query.toString();
+  const result = await request<unknown>(`/assets${suffix ? `?${suffix}` : ""}`);
+  if (!result.ok) return result;
+  const record = asRecord(result.data);
+  const items = Array.isArray(record["items"]) ? record["items"] : [];
+  return {
+    ok: true,
+    data: {
+      items: items.map(normaliseAssetDetail),
+      total: Number(record["total"] ?? items.length),
+    },
+  };
+}
+
+/** Read one asset, with its progress and its dated history. */
+export async function getAsset(id: string): Promise<ApiResult<AssetDetail>> {
+  const result = await request<unknown>(`/assets/${encodeURIComponent(id)}`);
+  if (!result.ok) return result;
+  return { ok: true, data: normaliseAssetDetail(result.data) };
+}
+
+/** Read the full dated progress log of one asset. */
+export async function getAssetHistory(
+  id: string,
+): Promise<ApiResult<AssetHistoryResult>> {
+  const result = await request<unknown>(
+    `/assets/${encodeURIComponent(id)}/history`,
+  );
+  if (!result.ok) return result;
+  const detail = normaliseAssetDetail(result.data);
+  const record = asRecord(result.data);
+  return {
+    ok: true,
+    data: { ...detail, total: Number(record["total"] ?? detail.timeline.length) },
+  };
+}
+
+/** Queue another scan of a tracked asset. */
+export async function rescanAsset(
+  id: string,
+): Promise<ApiResult<CreatedScan>> {
+  const result = await request<unknown>(`/assets/${encodeURIComponent(id)}/scan`, {
+    method: "POST",
   });
   if (!result.ok) return result;
   return { ok: true, data: normaliseCreatedScan(result.data) };
@@ -692,6 +875,26 @@ function normaliseLabels(record: Record<string, unknown>): string[] {
     .filter((label) => label.length > 0);
 }
 
+/**
+ * Normalise the model's per-category scores.
+ *
+ * A scan with no model, or with a model that said nothing, has no
+ * scores. That is reported as `null` rather than as an empty
+ * record, so "the model did not speak" is not mistaken for "the
+ * model scored zero".
+ */
+function normaliseModelScores(record: Record<string, unknown>) {
+  const raw = pickRecord(record, ["model_scores", "modelScores"]);
+  const scores: Record<string, number> = {};
+  for (const [category, value] of Object.entries(raw)) {
+    const score = pickNumber({ value }, ["value"]);
+    if (score !== null) {
+      scores[category] = score;
+    }
+  }
+  return Object.keys(scores).length > 0 ? scores : null;
+}
+
 function normaliseScanSummary(value: unknown): ScanSummary {
   const record = asRecord(value);
   const counts = normaliseCounts(record);
@@ -723,6 +926,7 @@ function normaliseScanSummary(value: unknown): ScanSummary {
     chainId: pickNumber(record, ["chain_id", "chainId", "chain"]),
     fork: pickString(record, ["fork", "evm_fork", "evmFork"]),
     bytecodeSource: pickString(record, ["bytecode_source", "bytecodeSource"]),
+    modelScores: normaliseModelScores(record),
     status: toScanStatus(record["status"]),
     createdAt: toIsoString(record, [
       "created_at",
@@ -1032,12 +1236,39 @@ function normaliseScanDetail(value: unknown): ScanDetail {
   const coverage = pickRecord(record, ["coverage", "graph_coverage"]);
   let coverageValue: ScanDetail["coverage"] = null;
   if (Object.keys(coverage).length > 0) {
+    const edges = pickNumber(coverage, ["edges", "edge_count", "edgeCount"]);
+    const dynamic = pickNumber(coverage, [
+      "dynamic_jumps",
+      "dynamicJumps",
+      "unresolved_jumps",
+      "unresolvedJumps",
+    ]);
+    const resolved =
+      pickNumber(coverage, ["resolved_jumps", "resolvedJumps"]) ??
+      (edges !== null && dynamic !== null ? edges - dynamic : null);
     coverageValue = {
-      resolvedJumps: pickNumber(coverage, ["resolved_jumps", "resolvedJumps"]),
-      unresolvedJumps: pickNumber(coverage, [
-        "unresolved_jumps",
-        "unresolvedJumps",
+      resolvedJumps: resolved,
+      unresolvedJumps: dynamic,
+      instructions: pickNumber(coverage, [
+        "instructions",
+        "instruction_count",
       ]),
+      executableBytes: pickNumber(coverage, [
+        "executable_bytes",
+        "executableBytes",
+      ]),
+      metadataBytes: pickNumber(coverage, [
+        "metadata_bytes",
+        "metadataBytes",
+      ]),
+      edges,
+      notes: pickArray(coverage, ["notes"])
+        .map((note) =>
+          typeof note === "string"
+            ? note
+            : pickString(asRecord(note), ["message", "detail"]),
+        )
+        .filter((note): note is string => typeof note === "string"),
     };
   } else {
     // The pipeline reports unresolved edges as an analysis-limitation finding.
@@ -1046,7 +1277,15 @@ function normaliseScanDetail(value: unknown): ScanDetail {
     );
     const unresolved = limitation?.edgeCounts?.unresolvedEdgeCount;
     if (typeof unresolved === "number") {
-      coverageValue = { resolvedJumps: null, unresolvedJumps: unresolved };
+      coverageValue = {
+        resolvedJumps: null,
+        unresolvedJumps: unresolved,
+        instructions: null,
+        executableBytes: null,
+        metadataBytes: null,
+        edges: null,
+        notes: [],
+      };
     }
   }
 

@@ -920,3 +920,83 @@ their dates, and the open-finding count moved from 0 to 1.
 | pytest, full and uncapped | 864 passed, 28 warnings in 151.79s |
 | Vitest | 12 files, 100 tests passed |
 | `npm run check` | exit 0 — every path resolves |
+
+## 13. The coverage round — a measurement is not a gap
+
+### 13.1 What was wrong
+
+A contract compiled from ordinary Solidity came back `partial`, with three
+reasons that were not defects:
+
+* `invalid opcode at offset 448` — Solidity's deliberate `0xFE` guard
+  byte, placed immediately before the CBOR metadata trailer;
+* `solidity metadata detected at offset 449` — the trailer itself, which
+  is data and was never code;
+* six unresolved control-flow edges — the runtime-computed jumps the
+  Solidity function dispatcher is built out of, which no static analysis
+  can follow.
+
+Because almost every real contract trips all three, "partial" carried no
+information at all. The word had been doing the job of a measurement.
+
+### 13.2 What changed
+
+| Where | Change |
+|---|---|
+| `packages/evm_analysis/.../disassembler.py` | `Disassembly.notes` was added. The metadata trailer and the guard byte in front of it are notes. An invalid opcode anywhere else is still a warning. |
+| `packages/evm_analysis/.../cfg.py` | Dynamic jumps moved from `cfg.warnings` to `cfg.notes`. The edge itself is still `UNRESOLVED`. |
+| `apps/api/app/services/pipeline.py` | A scan is `partial` when the disassembly or the control-flow graph has a warning, or when the source audit could not actually run. `BENIGN_SOURCE_SKIPS` separates "there was no source to audit" from "the audit could not be done". |
+| `apps/api/app/db/models/scans.py` | Every scan records a `coverage` measurement: instructions decoded, executable/code/metadata bytes, control-flow edges, dynamic jumps and their ratio, unreachable blocks, and the notes taken on the way. |
+| `apps/api/app/schemas/scans.py`, `apps/api/app/services/report.py` | The measurement is exposed through the API and rendered in the PDF as **Static coverage**, next to the limitations that are still limitations. |
+| `apps/web/...` | The scan page renders the same measurement. |
+
+Migrations `b5d9f3a7c1e2` (coverage) and `c6e1a4b8d2f3` (model scores) were
+applied to the isolated PostgreSQL on `5433`; the Alembic head is
+`c6e1a4b8d2f3`.
+
+### 13.3 The evidence
+
+`tests/unit/test_scan_coverage.py` pins the distinction: the trailer is a
+note, the guard byte is a note, an invalid opcode elsewhere is a warning, a
+dynamic jump is a note, and the report renders the measurement as sentences.
+The two pipeline tests that asserted a source-fetch failure was a *complete*
+scan now assert `partial` with the reason recorded — a gap is a gap.
+
+---
+
+## 14. The learning loop — reviewed labels in, a gated model out
+
+### 14.1 What was missing
+
+The ML baseline existed as a library: it could train, evaluate and gate
+itself. But nothing in the product ever called it. No scan used a model,
+`risk_score` did not exist in the API, and the reviewed findings that
+people had been recording never reached a dataset. The loop was open at
+both ends.
+
+### 14.2 What changed
+
+| Where | Change |
+|---|---|
+| `apps/api/app/services/ml_ranking.py` | Loads the installed model and keeps three states apart: none (`None`), readable, and broken (raised, never silently treated as "no model"). `annotate_findings()` attaches `ml_score` and `ml_category` to a finding's evidence **and changes nothing else** — not the severity, not the confidence, not the review status. |
+| `apps/api/app/services/pipeline.py` | The model is applied when `ENABLE_EXPERIMENTAL_ML` is on. The scan records `model_version` and `model_scores`. A broken installation is recorded as a limitation, not hidden. |
+| `apps/api/app/cli/learning_cycle.py` | The missing loop: export the reviewed labels → write the dataset with its provenance header → train with the family-level split → **install only if the precision gate passes**. A model that failed the gate is written for inspection and never installed. The command exits `1` when there is nothing reviewed to learn from and `2` when the gate refuses promotion. |
+| `apps/api/app/services/report.py`, `apps/web/...` | The PDF and the scan page show the model's ranking under a heading that says what it is: a triage aid, not a verdict. |
+
+### 14.3 Why the model is not allowed to decide
+
+A model is trained on reviewed labels, and the label it was trained to
+predict is *"a person confirmed this"*, not *"this is a vulnerability"*.
+So it contributes a number and nothing else. The reviewer still decides,
+and the gate still refuses to install a model whose false positives have
+not been measured.
+
+### 14.4 The evidence
+
+`tests/unit/test_ml_ranking.py` (the score is attached, the verdict is
+not), `tests/unit/test_learning_cycle.py` (a model that fails the gate is
+not installed; a model that passes is; the dataset says where its labels
+came from) and a pipeline-level test in
+`tests/api/test_pasted_source_scan.py` that runs a real scan with a model
+attached and asserts the score reached the finding while the review status
+stayed `new`.

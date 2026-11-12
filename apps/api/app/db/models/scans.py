@@ -159,6 +159,29 @@ class Scan(Base):
             "could not be resolved, and so on."
         ),
     )
+    model_scores: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        default=None,
+        doc=(
+            "The installed model's per-category scores for this contract. "
+            "These are ranking aids produced by a model trained on "
+            "reviewed labels: they are not verdicts, and they never "
+            "change a finding's severity or its review status."
+        ),
+    )
+    coverage: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        default=None,
+        doc=(
+            "How much of the contract the analysis reached: instructions "
+            "decoded, control-flow edges, dynamic jumps that could not be "
+            "followed statically, and the notes taken on the way. This is "
+            "a measurement rather than a limitation -- it is recorded for "
+            "every scan, including complete ones."
+        ),
+    )
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 

@@ -215,6 +215,8 @@ class ScanSummary(BaseModel):
     error_code: str | None = None
     error_message_redacted: str | None = None
     limitations: dict[str, Any] | None = None
+    coverage: dict[str, Any] | None = None
+    model_scores: dict[str, Any] | None = None
     created_at: datetime
 
 

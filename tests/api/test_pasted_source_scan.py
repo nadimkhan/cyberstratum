@@ -296,3 +296,95 @@ def test_a_finding_points_at_the_line_the_developer_wrote(
     source_lines = SOURCE.splitlines()
     assert 1 <= line_number <= len(source_lines)
     assert "tx.origin" in source_lines[line_number - 1]
+
+
+def test_a_compiled_scan_records_its_coverage(
+    client: TestClient, tenant: Tenant, db_session: Session, captured_enqueue
+) -> None:
+    """The scan says how far it reached, and is not partial for it.
+
+    A compiled contract has a metadata trailer and dynamic jumps. Both
+    are measured, and neither is a gap in the analysis, so neither may
+    make the scan partial.
+    """
+    response = _submit(client, tenant, source_code=SOURCE)
+    assert response.status_code == 202, response.text
+    scan = db_session.get(Scan, uuid.UUID(response.json()["id"]))
+    assert scan is not None
+
+    run_scan(db_session, scan)
+    db_session.commit()
+
+    assert scan.coverage is not None
+    coverage = scan.coverage
+    assert coverage["instructions"] > 0
+    assert coverage["executable_bytes"] > 0
+    assert coverage["edges"] > 0
+
+    limitations = scan.limitations or {}
+    assert "unresolved_control_flow_edges" not in limitations
+    warnings = limitations.get("disassembly_warnings") or []
+    assert not any("invalid opcode" in warning for warning in warnings)
+
+
+def test_the_model_ranks_the_findings_without_changing_them(
+    client: TestClient,
+    tenant: Tenant,
+    db_session: Session,
+    captured_enqueue,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The model adds a score to a finding and leaves the verdict alone.
+
+    A model is a triage aid. It says where to look first; it does not
+    say what is true.
+    """
+    from app.db.enums import FindingStatus
+    from app.db.models.scans import Finding
+    from app.services import pipeline as pipeline_service
+    from app.services.ml_ranking import InstalledModel
+    from app.services.model_manifest import ModelManifest
+
+    class _Adapter:
+        def predict_proba(self, samples: list[object]) -> list[dict[str, float]]:
+            return [{"tx_origin": 0.91} for _ in samples]
+
+    model = InstalledModel(
+        adapter=_Adapter(),
+        manifest=ModelManifest(
+            manifest_id="v-test",
+            sha256="0" * 64,
+            path="",
+            payload={"version": "v-test"},
+        ),
+        version="v-test",
+        labels=("tx_origin",),
+    )
+
+    monkeypatch.setattr(
+        pipeline_service, "load_installed_model", lambda settings=None: model
+    )
+    settings = pipeline_service.get_settings().model_copy(
+        update={"enable_experimental_ml": True}
+    )
+    monkeypatch.setattr(pipeline_service, "get_settings", lambda: settings)
+
+    response = _submit(client, tenant, source_code=SOURCE)
+    assert response.status_code == 202, response.text
+    scan = db_session.get(Scan, uuid.UUID(response.json()["id"]))
+    assert scan is not None
+
+    run_scan(db_session, scan)
+    db_session.commit()
+
+    assert scan.model_version == "v-test"
+    assert scan.model_scores == {"tx_origin": 0.91}
+
+    findings = db_session.query(Finding).filter(Finding.scan_id == scan.id).all()
+    origin = [f for f in findings if f.detector_id == "baseline.tx_origin"]
+    assert origin, "the fixture is expected to produce a tx.origin finding"
+    evidence = origin[0].evidence_json or {}
+    assert evidence["ml_score"] == 0.91
+    assert evidence["ml_category"] == "tx_origin"
+    # The verdict is the reviewer's to make, and the model has not made it.
+    assert origin[0].status == FindingStatus.NEW

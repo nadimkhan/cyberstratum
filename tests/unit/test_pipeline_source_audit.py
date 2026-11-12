@@ -185,9 +185,11 @@ def test_a_failing_source_fetch_does_not_fail_the_scan(
     scan = _make_scan(db_session, workspace, chain, "0x" + "44" * 20)
     outcome = run_scan(db_session, scan)
 
-    assert outcome.status == ScanStatus.COMPLETED
+    assert outcome.status == ScanStatus.PARTIAL
     assert scan.source_audited is False
     assert scan.source_audit_skipped == "source_fetch_failed"
+    assert scan.limitations is not None
+    assert scan.limitations["source_audit_skipped"] == "source_fetch_failed"
     assert outcome.finding_count >= 0
 
 
@@ -209,9 +211,11 @@ def test_a_skipped_source_audit_leaves_the_bytecode_results(
     scan = _make_scan(db_session, workspace, chain, "0x" + "55" * 20)
     outcome = run_scan(db_session, scan)
 
-    assert outcome.status == ScanStatus.COMPLETED
+    assert outcome.status == ScanStatus.PARTIAL
     assert scan.source_audited is False
     assert scan.source_audit_skipped == "compilation_failed"
+    assert scan.limitations is not None
+    assert scan.limitations["source_audit_skipped"] == "compilation_failed"
 
     findings = db_session.query(Finding).filter(Finding.scan_id == scan.id).all()
     assert findings

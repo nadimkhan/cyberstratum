@@ -165,6 +165,8 @@ export interface ScanSummary {
   chainId: number | null;
   fork: string | null;
   bytecodeSource: string | null;
+  /** The model's per-category scores, when a model was applied. */
+  modelScores: ScanModelScores;
   status: ScanStatus;
   createdAt: string | null;
   startedAt: string | null;
@@ -193,6 +195,38 @@ export interface ScanSummary {
   error: string | null;
 }
 
+/**
+ * How much of the contract a scan actually reached.
+ *
+ * This is a measurement rather than a verdict: the counts say how
+ * much was decoded and how far the static view travelled, so the
+ * findings can be weighed against what was read.
+ */
+export interface ScanCoverage {
+  /** Control-flow jumps the static view could follow to a target. */
+  resolvedJumps: number | null;
+  /** Control-flow jumps whose target is computed at run time. */
+  unresolvedJumps: number | null;
+  /** Instructions the disassembler decoded. */
+  instructions: number | null;
+  /** Bytes of executable code that were analysed. */
+  executableBytes: number | null;
+  /** Bytes of non-executable metadata that were set aside. */
+  metadataBytes: number | null;
+  /** Control-flow edges the static view followed. */
+  edges: number | null;
+  /** Notes taken while measuring coverage. */
+  notes: string[];
+}
+
+/**
+ * The installed model's per-category scores for a scan.
+ *
+ * These are ranking aids, not verdicts: the model says where to
+ * look first, and the reviewer still decides what is true.
+ */
+export type ScanModelScores = Record<string, number> | null;
+
 export interface ScanDetail extends ScanSummary {
   stages: ScanStage[];
   artifacts: Artifact[];
@@ -200,7 +234,7 @@ export interface ScanDetail extends ScanSummary {
   jobs: ScanJobInfo[];
   reproducibility: Reproducibility;
   warnings: string[];
-  coverage: { resolvedJumps: number | null; unresolvedJumps: number | null } | null;
+  coverage: ScanCoverage | null;
   /** The stored source-to-bytecode correspondence proof, when one exists. */
   correspondence: CorrespondenceProof | null;
 }

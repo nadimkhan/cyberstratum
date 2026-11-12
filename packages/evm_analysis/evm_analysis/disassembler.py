@@ -93,6 +93,14 @@ class Disassembly:
 
     instructions: list[Instruction] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+    """Observations that are not defects.
+
+    A note says what was found without implying that something went
+    wrong: the metadata trailer of a compiler-produced contract, for
+    instance, is data that is correctly left undecoded. Only a *warning*
+    means that part of the code could not be analysed.
+    """
     fork: str = ""
     code_size: int = 0
     metadata: MetadataRegion | None = None
@@ -170,11 +178,12 @@ def disassemble(
         if region is not None:
             result.metadata = region
             length = region.start_offset
-            result.warnings.append(
+            result.notes.append(
                 f"solidity metadata detected at offset {region.start_offset} "
                 f"({region.length} bytes); not decoded as instructions"
             )
 
+    pending_invalid: list[int] = []
     while offset < length:
         opcode_byte = code[offset]
         opcode: Opcode | None = table.get(opcode_byte)
@@ -197,7 +206,7 @@ def disassemble(
                     status=InstructionStatus.INVALID_OPCODE,
                 )
             )
-            result.warnings.append(f"invalid opcode at offset {offset}")
+            pending_invalid.append(offset)
             offset += 1
             continue
 
@@ -267,5 +276,21 @@ def disassemble(
             )
         )
         offset += 1
+
+    # The designated invalid opcode is a defect in the code -- except when
+    # the compiler put it there on purpose. Solidity ends a contract's
+    # runtime with a guard byte immediately before the metadata trailer,
+    # so an invalid opcode exactly there is the guard, not a mistake.
+    for invalid_offset in pending_invalid:
+        if (
+            result.metadata is not None
+            and invalid_offset == result.metadata.start_offset - 1
+        ):
+            result.notes.append(
+                f"solidity guard byte (INVALID) at offset {invalid_offset}, "
+                "immediately before the metadata trailer"
+            )
+        else:
+            result.warnings.append(f"invalid opcode at offset {invalid_offset}")
 
     return result

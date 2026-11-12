@@ -20,7 +20,7 @@ leaving it to rot in the main list.
 | `[x]` | Done — ticked with the commit that landed it |
 | `[!]` | Blocked — the reason is stated inline and it is also listed in §4 |
 
-**Last updated:** 2026-10-29
+**Last updated:** 2026-11-13
 **Rule that governs every item below:** an engine that did not produce a
 verdict is reported as *no verdict / skipped / error* — never as *clean*.
 Applies to Mythril, Slither, the ML model, the correspondence proof, and the
@@ -342,9 +342,14 @@ What is still open, in the order it blocks the next:
 1. **A review surface.** Human triage is where the labels come from, and
    both halves are now done: the API records a verdict with its reviewer,
    its time and its reason, and `/triage` is the queue a human works
-   through. What is still missing is the loop that closes: reviewed
-   findings do not yet flow into a dataset manifest, so the labels exist
-   but no model has seen them.
+   through. **The loop that closes is now built**: `app.cli.learning_cycle`
+   exports the reviewed labels into a dataset with a provenance header,
+   trains on it with the family-level split, puts the result through the
+   precision gate, and installs the model only if the gate passes. The
+   installed model is applied to every scan as a *ranking aid* — it adds
+   a score to a finding and changes nothing else. What is still missing
+   is the evidence it needs: enough reviewed findings for the gate to
+   have something to measure.
 2. **A knowledge base.** Done for the six baseline detectors: what the
    pattern is, why it matters, what to change, and when it is *not* a
    problem, served from a versioned data file and printed in the report.

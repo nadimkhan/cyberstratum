@@ -70,7 +70,7 @@ def test_dynamic_jump_is_unresolved(cancun) -> None:
     assert unresolved
     assert unresolved[0].target is None
     assert cfg.unresolved_edges
-    assert any("unresolved" in w for w in cfg.warnings)
+    assert any("unresolved" in note for note in cfg.notes)
 
 
 def test_jump_to_non_jumpdest_is_unresolved(cancun) -> None:

@@ -102,6 +102,18 @@ def pasted_address(source_code: str) -> str:
     return "0x" + digest[:40]
 
 
+def bytecode_address(code: bytes) -> str:
+    """Return the stable address raw bytecode is filed under.
+
+    Bytecode pasted by a developer is no more deployed than source is,
+    so it gets the same treatment: an identity derived from the bytes
+    themselves. The same bytes are always the same target, which is
+    what lets a developer's history accumulate.
+    """
+    digest = hashlib.sha256(code).hexdigest()
+    return "0x" + digest[:40]
+
+
 def _installed_solvers(artifacts_dir: str | None = None) -> list[Path]:
     """Return the installed solc binaries, newest version first."""
     root = Path(

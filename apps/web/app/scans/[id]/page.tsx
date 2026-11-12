@@ -130,6 +130,53 @@ export default async function ScanDetailPage({
         </div>
       </section>
 
+      {scan.modelScores ? (
+        <section aria-labelledby="model-heading" className="space-y-2">
+          <h2 id="model-heading" className="text-lg font-semibold text-[var(--cs-fg)]">
+            Model ranking
+          </h2>
+          <p className="text-sm text-[var(--cs-muted)]">
+            These are triage aids, not verdicts. The model says where to look
+            first; a reviewer decides what is true.
+          </p>
+          <ul className="flex flex-wrap gap-3" role="list">
+            {Object.entries(scan.modelScores).map(([category, score]) => (
+              <li
+                key={category}
+                className="rounded-md border border-[var(--cs-border)] bg-[var(--cs-surface)] px-3 py-1 text-sm text-[var(--cs-fg)]"
+              >
+                {category}: {score.toFixed(2)}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {scan.coverage ? (
+        <section aria-labelledby="coverage-heading" className="space-y-2">
+          <h2
+            id="coverage-heading"
+            className="text-lg font-semibold text-[var(--cs-fg)]"
+          >
+            Static coverage
+          </h2>
+          <p className="text-sm text-[var(--cs-muted)]">
+            {scan.coverage.instructions ?? "?"} instructions decoded,{" "}
+            {scan.coverage.executableBytes ?? "?"} executable bytes{scan.coverage.metadataBytes ? ` and ${scan.coverage.metadataBytes} metadata bytes` : ""},{" "}
+{scan.coverage.edges ?? "?"} control-flow edges, of which{" "}
+{scan.coverage.unresolvedJumps ?? 0} jump to a target computed at run time and{" "}
+cannot be followed statically.
+          </p>
+          {scan.coverage.notes.length > 0 ? (
+            <ul className="space-y-1 text-xs text-[var(--cs-muted)]" role="list">
+              {scan.coverage.notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
+
       <section aria-labelledby="severity-heading" className="space-y-3">
         <h2 id="severity-heading" className="text-lg font-semibold text-[var(--cs-fg)]">
           Findings by severity

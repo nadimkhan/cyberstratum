@@ -284,6 +284,22 @@ class ReportData:
     When set, every finding carries a link to its machine-readable form.
     """
 
+    coverage: tuple[str, ...] = ()
+    """How much of the contract the analysis reached.
+
+    Coverage is a measurement, not a gap: it says how much was decoded
+    and how far the static view reached, so the findings can be weighed
+    against it.
+    """
+
+    model_scores: tuple[str, ...] = ()
+    """The model's per-category scores.
+
+    These are ranking aids, not verdicts. The report says so,
+    because a number that looks like a score is easy to read as a
+    judgement.
+    """
+
     limitations: tuple[str, ...] = ()
     """What the analysis could not cover, in plain sentences.
 
@@ -547,6 +563,8 @@ def build_report_data(
     disclosure_reference: str = "",
     finding_base_url: str = "",
     limitations: Mapping[str, Any] | None = None,
+    coverage: Mapping[str, Any] | None = None,
+    model_scores: Mapping[str, Any] | None = None,
 ) -> ReportData:
     """Build a :class:`ReportData` from already-materialised values.
 
@@ -615,6 +633,8 @@ def build_report_data(
         artifacts=built_artifacts,
         engines=built_engines,
         limitations=_limitation_lines(limitations),
+        coverage=_coverage_lines(coverage),
+        model_scores=_model_lines(model_scores),
         tool_versions=dict(tool_versions or {}),
         dataset_manifest=(
             _manifest_from_mapping(dataset_manifest) if dataset_manifest is not None else None
@@ -958,6 +978,81 @@ def _severity_summary(findings: Sequence[ReportFinding]) -> _Table:
     return _Table(header=("Severity", "Findings"), rows=rows, widths=(0.7, 0.3), right_aligned=(1,))
 
 
+def _model_lines(model_scores: Mapping[str, Any] | None) -> tuple[str, ...]:
+    """Turn the model's scores into readable lines.
+
+    The stored form is a mapping of category to probability; the
+    report is read by people, so the numbers are rendered with the
+    category they belong to.
+    """
+    if not model_scores:
+        return ()
+
+    lines: list[str] = []
+    for category, value in sorted(model_scores.items()):
+        try:
+            probability = float(value)
+        except (TypeError, ValueError):
+            continue
+        lines.append(f"{category}: {probability:.2f}")
+    return tuple(lines)
+
+
+def _coverage_lines(coverage: Mapping[str, Any] | None) -> tuple[str, ...]:
+    """Turn a scan's stored coverage into readable sentences.
+
+    The stored form is JSON so it can be queried; the report is read by
+    people, so the same numbers are rendered as sentences in a fixed
+    order.
+    """
+    if not coverage:
+        return ()
+
+    lines: list[str] = []
+
+    def number(key: str) -> int | None:
+        value = coverage.get(key)
+        return value if isinstance(value, int) else None
+
+    instructions = number("instructions")
+    if instructions is not None:
+        lines.append(f"{instructions} instruction(s) were decoded.")
+
+    executable = number("executable_bytes")
+    metadata = number("metadata_bytes")
+    if executable is not None:
+        if metadata:
+            lines.append(
+                f"{executable} byte(s) of executable code were analysed; "
+                f"{metadata} byte(s) of non-executable metadata were set aside."
+            )
+        else:
+            lines.append(f"{executable} byte(s) of executable code were analysed.")
+
+    edges = number("edges")
+    dynamic = number("dynamic_jumps")
+    if edges is not None and dynamic is not None:
+        lines.append(
+            f"{edges} control-flow edge(s) were followed; {dynamic} dynamic "
+            "jump(s) could not be followed statically, because their "
+            "destination is computed at run time."
+        )
+
+    unreachable = number("unreachable_blocks")
+    if unreachable:
+        lines.append(
+            f"{unreachable} block(s) were not reachable from the entry point; "
+            "these are typically Solidity data segments rather than code."
+        )
+
+    notes = coverage.get("notes")
+    if isinstance(notes, list):
+        for note in notes:
+            lines.append(str(note))
+
+    return tuple(lines)
+
+
 def _limitation_lines(limitations: Mapping[str, Any] | None) -> tuple[str, ...]:
     """Turn a scan's stored limitations into readable sentences.
 
@@ -1174,6 +1269,12 @@ def _build_blocks(data: ReportData) -> list[_Block]:
         )
     )
 
+    if data.coverage:
+        blocks.append(_Line("Static coverage", "heading"))
+        blocks.extend(_Line(f"  {line}", "evidence") for line in data.coverage)
+    if data.model_scores:
+        blocks.append(_Line("Model ranking (triage aid, not a verdict)", "heading"))
+        blocks.extend(_Line(f"  {line}", "evidence") for line in data.model_scores)
     if data.limitations:
         blocks.append(_Line("Coverage limitations", "heading"))
         blocks.extend(_Line(f"  {line}", "evidence") for line in data.limitations)

@@ -132,7 +132,7 @@ def test_disassembler_stops_before_the_metadata() -> None:
     assert disassembly.executable_size == 3
     # PUSH1 0x80, STOP -- and nothing from the metadata region.
     assert [i.name for i in disassembly.instructions] == ["PUSH1", "STOP"]
-    assert any("metadata" in w for w in disassembly.warnings)
+    assert any("metadata" in note for note in disassembly.notes)
 
 
 def test_disassembler_can_skip_metadata_detection() -> None:

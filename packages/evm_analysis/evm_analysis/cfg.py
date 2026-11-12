@@ -134,6 +134,14 @@ class ControlFlowGraph:
     blocks: dict[int, Block] = field(default_factory=dict)
     edges: list[Edge] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+    """Observations about the graph that are not defects.
+
+    A dynamic jump is a property of the bytecode, not a failure of
+    the analysis: the destination is computed at run time and no
+    static analysis can follow it. It is counted and reported, but
+    it does not mean the contract was left unanalysed.
+    """
     entry_offset: int = 0
 
     @property
@@ -348,7 +356,7 @@ def build_cfg(disassembly: Disassembly) -> ControlFlowGraph:
     for edge in cfg.edges:
         if edge.resolution is Resolution.UNRESOLVED:
             kind = "conditional" if edge.edge_type is EdgeType.CONDITIONAL_JUMP else "unconditional"
-            cfg.warnings.append(
+            cfg.notes.append(
                 f"unresolved {kind} jump at offset {edge.instruction_offset}"
             )
 
@@ -516,7 +524,7 @@ def _mark_reachable(cfg: ControlFlowGraph) -> None:
     unreachable = [b for b in cfg.blocks.values() if not b.reachable]
     if unreachable:
         total = sum(b.byte_size for b in unreachable)
-        cfg.warnings.append(
+        cfg.notes.append(
             f"{len(unreachable)} unreachable block(s) covering {total} byte(s); "
             "these are typically Solidity data segments (revert strings) rather "
             "than executable code"
