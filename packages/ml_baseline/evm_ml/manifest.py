@@ -60,6 +60,13 @@ class ArtifactManifest:
     labels: list[str] = field(default_factory=list)
     hyperparameters: dict[str, Any] = field(default_factory=dict)
     metrics: dict[str, Any] = field(default_factory=dict)
+    gate: dict[str, Any] | None = None
+    """The promotion gate's verdict, when one was run.
+
+    ``None`` means the model was trained without a gate, which is not
+    the same as a model that passed one. A reader of the manifest should
+    not have to guess which it is.
+    """
     limitations: list[str] = field(default_factory=list)
     notes: str = ""
 

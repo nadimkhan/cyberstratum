@@ -121,6 +121,40 @@ def render_model_card(
         add("- No limitations were recorded for this artifact.")
     add("")
 
+    add("## Promotion gate")
+    add("")
+    gate = manifest.gate
+    if not gate:
+        add(
+            "No promotion gate was recorded for this artifact. That is not the "
+            "same as passing one: nothing has been measured, so nothing may "
+            "be claimed."
+        )
+    else:
+        add(f"- **Promotable:** {'yes' if gate.get('promotable') else 'no'}")
+        add(f"- **Reason:** {gate.get('reason', 'unknown')}")
+        shipped = gate.get("shipped_categories") or []
+        abstained = gate.get("abstained_categories") or []
+        add(
+            f"- **May speak about:** {', '.join(shipped) if shipped else 'no category'}"
+        )
+        add(
+            f"- **Must stay quiet about:** {', '.join(abstained) if abstained else 'no category'}"
+        )
+        add("")
+        add("| Category | Decision | Precision | Recall | Support | Why |")
+        add("|---|---|---|---|---|---|")
+        for decision in gate.get("decisions", []):
+            add(
+                f"| {decision.get('category', '')} "
+                f"| {decision.get('status', '')} "
+                f"| {decision.get('precision', 0):.2f} "
+                f"| {decision.get('recall', 0):.2f} "
+                f"| {decision.get('support', 0)} "
+                f"| {decision.get('reason', '')} |"
+            )
+    add("")
+
     add("## Release gate status")
     add("")
     add(

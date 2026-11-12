@@ -20,6 +20,7 @@ from typing import Any
 
 from .dataset import LABEL_CATEGORIES, Dataset, Sample, load_dataset, split_dataset
 from .evaluate import evaluate, latency_profile
+from .gates import GateConfig, GateReport, gate_categories
 from .features import FeatureBuilder, FeatureConfig
 from .manifest import ArtifactManifest, library_versions, now_iso
 from .model import save_adapter, train_adapter
@@ -69,8 +70,15 @@ def run_training(
     ngram_max: int = 3,
     labels: list[str] | None = None,
     threshold: float = 0.5,
+    gate_config: GateConfig = GateConfig(),
 ) -> dict[str, Any]:
-    """Run a full training run and write the artifact, manifest and card."""
+    """Run a full training run and write the artifact, manifest and card.
+
+    The gate is part of the run, not a separate step: a model that fails
+    it is still written, so that it can be inspected, but it is marked
+    as not promotable and the manifest says which categories may speak
+    and which must stay quiet.
+    """
     dataset = load_dataset(dataset_path)
     if not dataset.samples:
         raise ValueError("the dataset is empty")
@@ -91,16 +99,42 @@ def run_training(
     builder = FeatureBuilder(config)
     adapter = train_adapter(builder, train_samples, category_list)
 
+    validation_predictions = _predict(adapter, val_samples) if val_samples else []
     validation_report = (
         evaluate(
             val_samples,
-            _predict(adapter, val_samples),
+            validation_predictions,
             category_list,
             threshold=threshold,
         )
         if val_samples
         else None
     )
+
+    # The gate decides, per category, whether the model may speak about
+    # it. A category whose detector is too noisy is silenced rather
+    # than shipped: the one true finding in a flood of false ones is
+    # exactly what gets lost.
+    gate: GateReport | None = None
+    if validation_report is not None:
+        gate = gate_categories(
+            validation_report,
+            config=gate_config,
+            samples=val_samples,
+            probabilities=validation_predictions,
+            labels=category_list,
+        )
+    else:
+        # No validation split means nothing was judged. That is not the
+        # same as passing, and the manifest must not leave the reader
+        # guessing which it is.
+        gate = GateReport(
+            promotable=False,
+            reason=(
+                "there is no validation split, so no category could be judged; "
+                "a model needs at least a few distinct families"
+            ),
+        )
     test_report = (
         evaluate(
             test_samples,
@@ -186,6 +220,7 @@ def run_training(
             "validation": validation_report.as_dict() if validation_report else None,
             "test": test_report.as_dict() if test_report else None,
         },
+        gate=gate.as_dict() if gate is not None else None,
         limitations=[
             "The baseline reads only the bytecode; it has no notion of source "
             "code, storage layout, or contract semantics.",
@@ -235,6 +270,12 @@ def run_training(
         "evaluation": str(report_path),
         "split": manifest.split,
         "manifest_fingerprint": manifest.fingerprint(),
+        "promotable": bool(gate.promotable) if gate is not None else False,
+        "shipped_categories": list(gate.shipped_categories) if gate is not None else [],
+        "abstained_categories": (
+            list(gate.abstained_categories) if gate is not None else []
+        ),
+        "gate_reason": gate.reason if gate is not None else "no validation split",
     }
 
 
@@ -253,6 +294,18 @@ def main(argv: list[str] | None = None) -> int:
         help="Comma-separated label categories. Defaults to the canonical set.",
     )
     parser.add_argument("--threshold", type=float, default=0.5)
+    parser.add_argument(
+        "--min-precision",
+        type=float,
+        default=GateConfig().min_precision,
+        help="The precision a category must reach on the validation split.",
+    )
+    parser.add_argument(
+        "--min-support",
+        type=int,
+        default=GateConfig().min_positive_support,
+        help="How many positive examples a category needs to be judged.",
+    )
     args = parser.parse_args(argv)
 
     labels = [item.strip() for item in args.labels.split(",") if item.strip()]
@@ -265,8 +318,21 @@ def main(argv: list[str] | None = None) -> int:
         ngram_max=args.ngram_max,
         labels=labels or None,
         threshold=args.threshold,
+        gate_config=GateConfig(
+            min_precision=args.min_precision,
+            min_positive_support=args.min_support,
+        ),
     )
     print(json.dumps(result, indent=2, sort_keys=True))
+    if not result["promotable"]:
+        # The artifact is written so it can be inspected, but a model
+        # that failed the gate must not be promoted by accident.
+        print(
+            "GATE: the model may not be promoted: "
+            f"{result['gate_reason']}",
+            file=sys.stderr,
+        )
+        return 2
     return 0
 
 
