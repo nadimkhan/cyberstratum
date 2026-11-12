@@ -1571,6 +1571,8 @@ than no record:
 
 ### 30 The authorisation a scan was made under
 
+Commit `e24fe31`. Migration `f5a7c3e91b04`.
+
 Until now the product said what it found and how confident it was. It
 never said whether the workspace was *allowed* to look. That is the
 other half of a security product's job, and it is the half that gets
