@@ -359,11 +359,13 @@ What is still open, in the order it blocks the next:
    measure (today there is one sample), and a **time-based split** on
    top of the family split, because live chain data has temporal
    correlation and a random split leaks.
-4. **Context-gated rules.** `delegatecall`, `selfdestruct` and
-   `tx.origin` are patterns, not bugs. Gating them by context -- is
-   `tx.origin` used for authorization, is the target attacker-controlled,
-   is the contract a proxy -- is the single biggest lever on the false
-   positive rate, and it is cheaper than any model.
+4. **Context-gated rules.** `delegatecall` and `tx.origin` are now gated:
+   a delegatecall to a proven constant target is not reported, an
+   attacker-chosen target is, and a tx.origin read is reported with the
+   confidence its use earns. `selfdestruct` is not yet gated -- on Cancun
+   and later the opcode no longer destroys the contract, so the rule
+   depends on the fork, and a fork-blind rule would be wrong on both
+   sides of that change.
 5. **The older tail.** The feed sees new verifications quickly; a cursor
    walk is needed for the long tail of contracts verified before the
    feed existed.

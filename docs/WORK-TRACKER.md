@@ -372,6 +372,29 @@ now covered by a test that fails without the fix.
       `/api/v1/knowledge`, and the tests pin that a detector with no
       guidance gets none -- advice with a missing half is worse than
       silence.
+- [x] **The rules now ask what a pattern is used for.** The rules that
+      reported the presence of an opcode were the noisiest thing this
+      product did: DELEGATECALL is the expected shape of an upgradeable
+      proxy, and TX.ORIGIN is harmless in a log line. Reporting either
+      without asking what the value is *for* fills a reviewer's queue
+      with patterns and teaches them to ignore the tool -- and the one
+      true finding in the noise goes with it. `app.services.context`
+      tracks, per basic block, where a value came from: a known
+      constant, the transaction origin, or something outside the
+      contract's control. A DELEGATECALL to a *proven* constant target
+      is the expected proxy pattern and is no longer reported; a target
+      the analysis cannot resolve -- from calldata, from storage, or
+      from an argument frame that underflowed -- is still reported. The
+      narrowing is one-sided on purpose. TX.ORIGIN is reported
+      confidently when an authorisation-shaped use is located (a
+      comparison, or a use as a call target), and with a lower
+      confidence, and a limitation that says so, when the use cannot be
+      established: a per-block analysis cannot prove a value is not
+      compared elsewhere, and dropping those findings would be a false
+      negative, which is the worse mistake in a security product. The
+      e2e suite caught one such false negative in the narrowing itself:
+      an underflowed argument frame was being read as a constant target,
+      which would have turned a stack underflow into a false all-clear.
 - [x] **The working copy is WSL only.** The Windows copy at
       `E:/projects/cyberstratum` is frozen as a fallback and is no longer
       edited: two copies of a live database and two test environments
