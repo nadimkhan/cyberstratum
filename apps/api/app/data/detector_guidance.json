@@ -1,0 +1,72 @@
+{
+  "version": "1",
+  "description": "What each detector's finding means, why it matters, what to change, and when it is not a problem at all. The false-positive half is the part that saves a reviewer their afternoon.",
+  "detectors": [
+    {
+      "detector_id": "baseline.delegatecall",
+      "title": "Delegatecall to another contract",
+      "what_it_means": "The contract executes code in another contract's context, using its own storage. The callee sees the caller's storage, and the caller's balance.",
+      "why_it_matters": "If the address being delegated to can be influenced by an attacker, that code runs with the caller's authority and can take anything the contract holds. Even when the target is fixed, a delegatecall means the callee may write to the caller's storage in ways the caller does not expect.",
+      "how_to_fix": "Never delegate to an address that a caller, an administrator, or any on-chain value can influence. Where a delegatecall is unavoidable, make the implementation self-contained: read the target from an immutable, admin-set value, and verify the target's code hash on deployment rather than trusting the address.",
+      "false_positive_patterns": "The pattern is expected where the contract is an upgradeable proxy delegating to an immutable implementation, where the target address is fixed in immutable storage, or where the contract is itself a library called by a proxy and never holds funds. What matters is who controls the target, not the presence of the opcode.",
+      "references": "SWC-105; Solidity documentation on delegatecall and proxies",
+      "default_severity": "high",
+      "version": "1"
+    },
+    {
+      "detector_id": "baseline.tx_origin",
+      "title": "tx.origin used where msg.sender belongs",
+      "what_it_means": "The contract reads the address that signed the transaction rather than the address that called it.",
+      "why_it_matters": "tx.origin is the outermost signer, so an intermediary contract can make the original signer look like the caller. A contract that authorizes on tx.origin lets any intermediary act on the signer's authority, which is how phishing contracts get the victim's authority.",
+      "how_to_fix": "Authorize on msg.sender. If the contract genuinely needs to know the outermost signer, treat it as untrusted information and never let it satisfy an authorization check.",
+      "false_positive_patterns": "Reading tx.origin for logging, for analytics, or for a purely informational purpose is not a vulnerability. So is using it to identify the EOA behind a multisig for display. The finding matters when tx.origin is compared against an allowlist or used in an authorization decision.",
+      "references": "SWC-115; Solidity documentation on msg.sender and tx.origin",
+      "default_severity": "low",
+      "version": "1"
+    },
+    {
+      "detector_id": "baseline.selfdestruct",
+      "title": "SELFDESTRUCT reachable",
+      "what_it_means": "The contract can destroy itself, sending its balance to an address it chooses.",
+      "why_it_matters": "A destroyed contract's code stays at its address but can never run again, so every function that moves funds becomes permanently unreachable. If the trigger is reachable by an attacker, the contract can be killed.",
+      "how_to_fix": "Remove the SELFDESTRUCT from any path a user can reach. Where it exists for a migration, gate it behind an address that no user can become, and migrate funds rather than destroying the contract.",
+      "false_positive_patterns": "On chains where SELFDESTRUCT is disabled or altered by a later fork, the opcode does not do what the source suggests; on Cancun and later, sending ether in the same transaction as a SELFDESTRUCT does not destroy the contract. A SELFDESTRUCT that is unreachable -- behind an impossible condition, or only callable by an immutable owner -- is not a live risk, though it is still worth removing.",
+      "references": "SWC-106; EIP-6780 (the Cancun change to SELFDESTRUCT)",
+      "default_severity": "medium",
+      "version": "1"
+    },
+    {
+      "detector_id": "baseline.call_before_state_write",
+      "title": "External call before the state is written",
+      "what_it_means": "The contract calls out to another address before recording the state change that the call is supposed to cause.",
+      "why_it_matters": "If the called address can call back into this contract, it can re-enter it while the state still says the action has not happened. The classic consequence is a balance that is read twice: once before the update and once after.",
+      "how_to_fix": "Follow the checks-effects-interactions pattern: validate the inputs, write the state, and only then make the external call. Where a call must precede the write, guard the entry point with a re-entrancy lock and make sure the state it relies on is already final.",
+      "false_positive_patterns": "The pattern is expected where the call is to a trusted, immutable address that cannot call back -- a well-known token, for instance. It is also expected where the state written afterwards is not relied upon by the callee. What matters is whether the callee can re-enter, not the ordering alone.",
+      "references": "SWC-107; Solidity documentation on checks-effects-interactions",
+      "default_severity": "high",
+      "version": "1"
+    },
+    {
+      "detector_id": "baseline.stack_underflow",
+      "title": "Stack depth goes negative",
+      "what_it_means": "A linear simulation of the code reaches a stack position below zero: the code reads more values than it has.",
+      "why_it_matters": "This is not a vulnerability by itself; it is a sign that the disassembly and the runtime's stack do not agree. Either the analysis has mis-decoded the bytecode, or the code depends on stack state that the analysis cannot model -- usually because a jump destination was resolved incorrectly.",
+      "how_to_fix": "Treat this as an analysis fault, not a contract fault. Check that the fork and the bytecode match the deployed contract, and that the disassembler resolved every jump. Only then consider whether the contract itself is malformed.",
+      "false_positive_patterns": "Most occurrences are artifacts: a jump into the middle of a PUSH immediate, or an unresolved dynamic jump. The finding is a prompt to check the analysis, and on its own it says nothing about the contract's safety.",
+      "references": "The CyberStratum correspondence prover; the scan's fork_resolution artefact",
+      "default_severity": "low",
+      "version": "1"
+    },
+    {
+      "detector_id": "baseline.unresolved_jumps",
+      "title": "A jump destination could not be resolved",
+      "what_it_means": "The control-flow graph could not decide where a dynamic jump lands, so the code after it could not be analysed.",
+      "why_it_matters": "An unresolved jump is a blind spot. Anything the code does after that jump is invisible to the analysis, and a finding that is not there is not the same as a finding that is absent.",
+      "how_to_fix": "Treat the scan as partial. The rules still ran over everything that was resolved, but the result does not cover the whole contract. Resolve the jump -- often by looking at the jump table the contract builds at run time -- before relying on the result.",
+      "false_positive_patterns": "Some contracts compute their jump targets at run time from a table, and the analysis cannot follow them without running the code. Those contracts are genuinely only partly analysable, and the honest answer is to say so rather than to report the scan as complete.",
+      "references": "The scan's CFG artefact; the scan status (partial rather than completed)",
+      "default_severity": "medium",
+      "version": "1"
+    }
+  ]
+}

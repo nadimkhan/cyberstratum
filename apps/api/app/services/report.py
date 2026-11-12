@@ -46,6 +46,7 @@ from dataclasses import dataclass, field
 from typing import Any, Final
 
 from app.core.logging import get_logger
+from app.services.knowledge import guidance_for
 
 log = get_logger(__name__)
 
@@ -162,6 +163,13 @@ class ReportFinding:
     limitations: str = ""
     status: str = ""
     finding_id: str = ""
+    guidance: Mapping[str, Any] | None = None
+    """What the detector's finding means and what to do about it.
+
+    The guidance is what turns a pattern into an action. It is absent
+    when the product has no guidance for that detector, and the report
+    then says nothing about a fix rather than inventing one.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -298,6 +306,8 @@ def _finding_from_mapping(raw: Mapping[str, Any]) -> ReportFinding:
     raw_evidence = raw.get("evidence") or raw.get("evidence_json") or {}
     evidence: dict[str, Any] = dict(raw_evidence) if isinstance(raw_evidence, Mapping) else {}
     limitations = str(raw.get("limitations") or evidence.get("limitations") or "")
+    detector_id = str(raw.get("detector_id") or "")
+    guidance = guidance_for(detector_id)
     return ReportFinding(
         detector_id=str(raw.get("detector_id") or ""),
         category=str(raw.get("category") or ""),
@@ -310,6 +320,7 @@ def _finding_from_mapping(raw: Mapping[str, Any]) -> ReportFinding:
         limitations=limitations,
         status=str(raw.get("status") or ""),
         finding_id=str(raw.get("finding_id") or raw.get("id") or ""),
+        guidance=guidance.as_dict() if guidance is not None else None,
     )
 
 
@@ -1015,6 +1026,30 @@ def _provenance_lines(data: ReportData) -> list[_Block]:
     return blocks
 
 
+def _guidance_blocks(finding: ReportFinding) -> list[_Block]:
+    """Render the guidance for a finding, if there is any.
+
+    Four things, in the order a reader needs them: what the pattern is,
+    why it matters, what to change, and -- the part that saves a
+    reviewer an afternoon -- when it is not a problem at all.
+    """
+    guidance = finding.guidance
+    if not guidance:
+        return []
+    blocks: list[_Block] = [_Line("What this means", "heading")]
+    for label, key in (
+        ("What it is", "what_it_means"),
+        ("Why it matters", "why_it_matters"),
+        ("What to change", "how_to_fix"),
+        ("When it is not a problem", "false_positive_patterns"),
+        ("References", "references"),
+    ):
+        value = str(guidance.get(key) or "").strip()
+        if value:
+            blocks.append(_Line(f"{label}: {value}", "body"))
+    return blocks
+
+
 def _finding_blocks(
     finding: ReportFinding,
     proof: CorrespondenceProof | None,
@@ -1032,6 +1067,7 @@ def _finding_blocks(
         blocks.append(_Line(f"Status: {finding.status}", "body"))
     if finding.description:
         blocks.append(_Line(finding.description, "body"))
+    blocks.extend(_guidance_blocks(finding))
     blocks.extend(_Line(line, "evidence") for line in _evidence_lines(finding, proof))
     limitations = finding.limitations or str(finding.evidence.get("limitations") or "")
     if limitations:
