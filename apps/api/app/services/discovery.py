@@ -33,13 +33,17 @@ from sqlalchemy.orm import Session
 
 from app.db.models.discovery import DiscoveryRun, FeedCursor
 from app.db.models.identity import Chain, ContractTarget, Workspace
+from app.db.models.scans import Scan
 from app.services.blockscout import (
     BlockscoutClient,
     BlockscoutUnavailableError,
     DiscoveredContract,
 )
 from app.services.chains import SUPPORTED_CHAINS
-from app.services.promotion import promote_contracts
+from app.services.promotion import (
+    DEFAULT_MAX_SCANS_PER_CYCLE,
+    promote_contracts,
+)
 
 log = logging.getLogger("cyberstratum.discovery")
 
@@ -48,6 +52,13 @@ DISCOVERY_WORKSPACE_SLUG = "discovery"
 
 #: How many chains one cycle sweeps by default.
 DEFAULT_BATCH_SIZE = 10
+
+#: How many pages of the feed one chain reads in a cycle by default.
+#:
+#: One page is the newest contracts. Reading more pages walks into the
+#: history of the chain, which is how the contracts that were verified
+#: before this product started watching are found.
+DEFAULT_PAGES_PER_CHAIN = 1
 
 
 @dataclass
@@ -212,6 +223,29 @@ def _cursor_for(
     return cursor
 
 
+def _unscanned_targets(
+    session: Session, workspace_id: uuid.UUID, chain_row: Chain, limit: int = 200
+) -> list[ContractTarget]:
+    """The contracts of this workspace and chain that have never been scanned.
+
+    A contract the promotion cap left alone must be offered again
+    later, or the cap would strand it for ever: the feed offers what
+    it touched, and a contract that was touched once and capped once
+    would never be offered again.
+    """
+    scanned = select(Scan.target_id).where(Scan.target_id.is_not(None))
+    stmt = (
+        select(ContractTarget)
+        .where(
+            ContractTarget.workspace_id == workspace_id,
+            ContractTarget.chain_id == chain_row.id,
+            ContractTarget.id.not_in(scanned),
+        )
+        .limit(limit)
+    )
+    return list(session.execute(stmt).scalars().all())
+
+
 def _verification_state(contract: DiscoveredContract) -> str:
     """The verification state of a discovered contract."""
     if contract.is_verified is True:
@@ -336,6 +370,7 @@ class DiscoveryService:
         chain_ids: Sequence[int] | None = None,
         workspace: Workspace | None = None,
         batch_size: int = DEFAULT_BATCH_SIZE,
+        pages: int = DEFAULT_PAGES_PER_CHAIN,
     ) -> DiscoveryOutcome:
         """Run one discovery cycle.
 
@@ -344,6 +379,8 @@ class DiscoveryService:
                 the registry.
             workspace: The discovery workspace. Created on first use.
             batch_size: How many chains to sweep in this cycle.
+            pages: How many pages of the feed each chain reads. More
+                than one page walks into the history of the chain.
 
         Returns:
             What the cycle achieved, including the per-chain failures.
@@ -364,6 +401,9 @@ class DiscoveryService:
         self.session.flush()
 
         outcome = DiscoveryOutcome(run_id=run.id)
+        # The promotion budget belongs to the cycle, not to each chain:
+        # a cycle queues at most this many scans in total.
+        budget = DEFAULT_MAX_SCANS_PER_CYCLE
 
         for chain_id in batch:
             chain = next(
@@ -372,8 +412,9 @@ class DiscoveryService:
             name = chain.name if chain is not None else f"chain-{chain_id}"
             try:
                 found, new, updated, queued = await self._sweep_chain(
-                    chain_id, name, target_workspace, run
+                    chain_id, name, target_workspace, run, pages=pages, limit=budget
                 )
+                budget = max(0, budget - queued)
             except BlockscoutUnavailableError as exc:
                 log.warning("discovery: chain %s unavailable: %s", chain_id, exc)
                 outcome.chains_failed += 1
@@ -421,12 +462,21 @@ class DiscoveryService:
         chain_name: str,
         workspace: Workspace,
         run: DiscoveryRun,
+        *,
+        pages: int = DEFAULT_PAGES_PER_CHAIN,
+        limit: int = DEFAULT_MAX_SCANS_PER_CYCLE,
     ) -> tuple[int, int, int, int]:
         """Sweep one chain.
 
         The cursor is advanced *before* the contracts are analysed, so a
         failure downstream cannot cause the same contract to be fetched
         again on every cycle.
+
+        The walk continues from the page the cursor reached last time,
+        so the pages behind the newest one -- the history of the chain
+        -- are read as well. When the walk runs off the end of the feed
+        it returns to page one, which is where the next new contract
+        will appear.
 
         Returns:
             How many contracts were found, how many were new, how many
@@ -435,57 +485,90 @@ class DiscoveryService:
         chain_row = _ensure_chain(self.session, chain_id, chain_name)
         cursor = _cursor_for(self.session, chain_row, workspace.id)
 
-        contracts = await self.client.list_contracts(chain_id)
-        if not contracts:
-            return (0, 0, 0, 0)
+        found = 0
+        new_count = 0
+        updated_count = 0
+        queued = 0
+        touched: list[ContractTarget] = []
 
-        # The cursor moves before anything downstream can fail.
-        cursor.last_address = contracts[-1].address.lower()
-        cursor.contracts_seen += len(contracts)
-        newest: datetime | None = None
-        for contract in contracts:
-            seen = _parse_verified_at(contract)
-            if seen is not None and (newest is None or seen > newest):
-                newest = seen
-        if newest is not None and (
-            cursor.last_verified_at is None or newest > cursor.last_verified_at
-        ):
-            cursor.last_verified_at = newest
-        self.session.flush()
+        page = max(1, cursor.next_page or 1)
+        for _ in range(max(1, pages)):
+            contracts = await self.client.list_contracts(chain_id, page=page)
+            if not contracts:
+                # There is no page here: the walk has reached the end of
+                # the history, and returns to the newest page.
+                cursor.next_page = 1
+                self.session.flush()
+                break
 
-        new_count, updated_count = persist_contracts(
-            self.session, workspace, chain_row, run, contracts
-        )
+            # The cursor moves before anything downstream can fail.
+            cursor.last_address = contracts[-1].address.lower()
+            cursor.contracts_seen += len(contracts)
+            newest: datetime | None = None
+            for contract in contracts:
+                seen = _parse_verified_at(contract)
+                if seen is not None and (newest is None or seen > newest):
+                    newest = seen
+            if newest is not None and (
+                cursor.last_verified_at is None or newest > cursor.last_verified_at
+            ):
+                cursor.last_verified_at = newest
+            cursor.next_page = page + 1
+            page += 1
+            self.session.flush()
 
-        # The feed's job is not complete until the contracts it found
-        # have been analysed. Everything this sweep touched -- new and
-        # re-verified alike -- is offered to the promotion pass, which
-        # decides what has not been seen before and keeps the queue
-        # inside its limits.
-        touched = list(
-            self.session.execute(
-                select(ContractTarget).where(
-                    ContractTarget.workspace_id == workspace.id,
-                    ContractTarget.chain_id == chain_row.id,
-                    ContractTarget.discovery_run_id == run.id,
-                )
+            new, updated = persist_contracts(
+                self.session, workspace, chain_row, run, contracts
             )
-            .scalars()
-            .all()
-        )
+            found += len(contracts)
+            new_count += new
+            updated_count += updated
+
+            touched.extend(
+                self.session.execute(
+                    select(ContractTarget).where(
+                        ContractTarget.workspace_id == workspace.id,
+                        ContractTarget.chain_id == chain_row.id,
+                        ContractTarget.discovery_run_id == run.id,
+                    )
+                )
+                .scalars()
+                .all()
+            )
+
+        # The feed's job is not complete until the contracts it found have
+        # been analysed. Everything this sweep touched -- new and
+        # re-verified alike -- is offered to the promotion pass, which
+        # decides what has not been seen before and keeps the queue inside
+        # its limits. Then everything of this chain that has never been
+        # scanned is offered as well, so that a contract the cap left
+        # alone is offered again rather than stranded for ever.
+        offered = list(touched)
+        seen_ids = {target.id for target in offered}
+        for target in _unscanned_targets(self.session, workspace.id, chain_row):
+            if target.id not in seen_ids:
+                offered.append(target)
+                seen_ids.add(target.id)
+
         promotion = promote_contracts(
-            self.session, workspace, chain_row, touched
+            self.session,
+            workspace,
+            chain_row,
+            offered,
+            limit=max(0, limit - queued),
         )
+        queued += promotion.queued
         if promotion.errors:
             log.warning(
                 "discovery: %d contracts could not be queued for scanning",
                 promotion.failed,
             )
-        return (len(contracts), new_count, updated_count, promotion.queued)
+        return (found, new_count, updated_count, queued)
 
 
 __all__ = [
     "DEFAULT_BATCH_SIZE",
+    "DEFAULT_PAGES_PER_CHAIN",
     "DISCOVERY_WORKSPACE_SLUG",
     "DiscoveryOutcome",
     "DiscoveryService",

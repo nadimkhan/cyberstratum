@@ -45,7 +45,7 @@ from app.queue.connection import (
 )
 from app.services import storage
 from app.services.correspondence import CorrespondenceOutcome, CorrespondenceProver
-from app.services.discovery import DEFAULT_BATCH_SIZE
+from app.services.discovery import DEFAULT_BATCH_SIZE, DEFAULT_PAGES_PER_CHAIN
 from app.services.mythril import MythrilRunner, to_rule_findings
 from app.services.pipeline import persist_findings, run_scan
 
@@ -176,6 +176,7 @@ def process_scan_job(scan_id: str, job_id: str | None = None) -> dict[str, objec
 def process_discovery_job(
     batch_size: int = DEFAULT_BATCH_SIZE,
     chain_ids: list[int] | None = None,
+    pages: int = DEFAULT_PAGES_PER_CHAIN,
 ) -> dict[str, object]:
     """Execute one discovery cycle.
 
@@ -186,6 +187,8 @@ def process_discovery_job(
         batch_size: How many chains to sweep in this cycle.
         chain_ids: The chains to consider. ``None`` means every chain in
             the registry.
+        pages: How many pages of the feed each chain reads. More than
+            one page walks into the history of the chain.
 
     Returns:
         A summary dict describing the outcome.
@@ -200,7 +203,9 @@ def process_discovery_job(
         async with BlockscoutClient() as client:
             with _session_scope() as session:
                 service = DiscoveryService(session, client)
-                outcome = await service.run_cycle(chain_ids=chain_ids, batch_size=batch_size)
+                outcome = await service.run_cycle(
+                    chain_ids=chain_ids, batch_size=batch_size, pages=pages
+                )
                 return {
                     "run_id": str(outcome.run_id),
                     "status": outcome.status,
@@ -221,6 +226,7 @@ def process_discovery_job(
 def enqueue_discovery(
     batch_size: int = DEFAULT_BATCH_SIZE,
     chain_ids: list[int] | None = None,
+    pages: int = DEFAULT_PAGES_PER_CHAIN,
 ) -> str:
     """Enqueue a discovery cycle and return the RQ job id."""
     queue = get_discovery_queue()
@@ -229,6 +235,7 @@ def enqueue_discovery(
         process_discovery_job,
         batch_size,
         chain_ids,
+        pages,
         job_timeout=settings.scan_job_timeout_seconds,
         result_ttl=3600,
         failure_ttl=3600,

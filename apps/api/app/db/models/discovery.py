@@ -68,6 +68,16 @@ class FeedCursor(Base):
     contracts_seen: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default=text("0")
     )
+    next_page: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
+    """The next page of the feed to read.
+
+    The feed is newest first, so page one is where a new contract
+    appears. Walking the pages forward reads the *history* of the
+    chain; when the end of the feed is reached the cursor returns to
+    page one, because that is where the next new contract will be.
+    """
     updated_at: Mapped[datetime] = updated_at_column()
 
     chain: Mapped[Chain] = relationship()

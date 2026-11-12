@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models.discovery import DiscoveryRun, FeedCursor
 from app.db.models.identity import Chain, ContractTarget, Workspace
+from app.db.models.scans import Scan
 from app.services.blockscout import (
     BlockscoutUnavailableError,
     DiscoveredContract,
@@ -41,18 +42,24 @@ class StubClient:
         self,
         contracts: dict[int, list[DiscoveredContract]] | None = None,
         failures: dict[int, Exception] | None = None,
+        pages: dict[int, dict[int, list[DiscoveredContract]]] | None = None,
     ) -> None:
         self.contracts = contracts or {}
         self.failures = failures or {}
+        self.pages = pages or {}
         self.calls: list[int] = []
+        self.pages_requested: list[tuple[int, int]] = []
 
     async def list_contracts(
-        self, chain_id: int, **_: Any
+        self, chain_id: int, page: int = 1, **_: Any
     ) -> list[DiscoveredContract]:
         """Return the canned contracts, or raise the canned failure."""
         self.calls.append(chain_id)
+        self.pages_requested.append((chain_id, page))
         if chain_id in self.failures:
             raise self.failures[chain_id]
+        if chain_id in self.pages:
+            return list(self.pages[chain_id].get(page, []))
         return list(self.contracts.get(chain_id, []))
 
 
@@ -286,3 +293,84 @@ def test_an_empty_chain_list_selects_nothing(db_session: Session) -> None:
     """An empty candidate list produces an empty batch."""
     space = get_or_create_discovery_workspace(db_session)
     assert select_batch(db_session, space.id, [], batch_size=10) == []
+async def test_the_walk_continues_where_the_cursor_left_off(
+    db_session: Session,
+) -> None:
+    """The pages behind the newest one are read as well."""
+    client = StubClient(
+        pages={
+            1: {
+                1: [make_contract(chain_id=1, address="0x" + "11" * 20)],
+                2: [make_contract(chain_id=1, address="0x" + "22" * 20)],
+            }
+        }
+    )
+    service = DiscoveryService(db_session, client)
+
+    outcome = await service.run_cycle(chain_ids=[1], pages=2)
+
+    assert outcome.contracts_found == 2
+    assert outcome.contracts_new == 2
+    assert client.pages_requested == [(1, 1), (1, 2)]
+    cursor = db_session.execute(select(FeedCursor)).scalar_one()
+    assert cursor.next_page == 3
+
+
+async def test_the_walk_returns_to_the_newest_page_at_the_end(
+    db_session: Session,
+) -> None:
+    """The end of the feed sends the walk back to page one."""
+    client = StubClient(pages={1: {1: [make_contract(chain_id=1)]}})
+    service = DiscoveryService(db_session, client)
+
+    await service.run_cycle(chain_ids=[1], pages=3)
+
+    cursor = db_session.execute(select(FeedCursor)).scalar_one()
+    assert cursor.next_page == 1
+    assert (1, 2) in client.pages_requested
+
+
+async def test_the_backfill_analyses_the_contracts_it_finds(
+    db_session: Session,
+) -> None:
+    """A contract found on an older page is scanned, not only recorded."""
+    client = StubClient(
+        pages={
+            1: {
+                1: [make_contract(chain_id=1, address="0x" + "11" * 20)],
+                2: [make_contract(chain_id=1, address="0x" + "22" * 20)],
+            }
+        }
+    )
+    service = DiscoveryService(db_session, client)
+
+    await service.run_cycle(chain_ids=[1], pages=2)
+
+    scans = db_session.execute(select(Scan)).scalars().all()
+    assert len(scans) == 2
+
+
+async def test_a_contract_the_cap_left_alone_is_offered_again(
+    db_session: Session,
+) -> None:
+    """A contract found but never scanned is offered again, not stranded."""
+    space = get_or_create_discovery_workspace(db_session)
+    chain_row = Chain(name="Ethereum", chain_id=1, environment="mainnet")
+    db_session.add(chain_row)
+    db_session.flush()
+    run = DiscoveryRun(workspace_id=space.id, status="running")
+    db_session.add(run)
+    db_session.flush()
+    persist_contracts(
+        db_session, space, chain_row, run, [make_contract(chain_id=1)]
+    )
+
+    # The feed returns nothing this cycle: the contract was found
+    # earlier and never scanned, and must still be offered.
+    client = StubClient(pages={1: {}})
+    service = DiscoveryService(db_session, client)
+
+    await service.run_cycle(chain_ids=[1])
+
+    scans = db_session.execute(select(Scan)).scalars().all()
+    assert len(scans) == 1

@@ -66,6 +66,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Only sweep this chain. May be given more than once.",
     )
     parser.add_argument(
+        "--pages",
+        type=int,
+        default=None,
+        help=(
+            "How many pages of the feed each chain reads in this cycle. "
+            "More than one page walks into the history of the chain."
+        ),
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         help="Queue a cycle even when one is already in flight.",
@@ -115,10 +124,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Queue one discovery cycle and report what happened."""
     args = build_parser().parse_args(argv)
 
-    from app.services.discovery import DEFAULT_BATCH_SIZE
+    from app.services.discovery import DEFAULT_BATCH_SIZE, DEFAULT_PAGES_PER_CHAIN
     from app.worker import enqueue_discovery
 
     batch_size = args.batch_size if args.batch_size is not None else DEFAULT_BATCH_SIZE
+    pages = args.pages if args.pages is not None else DEFAULT_PAGES_PER_CHAIN
+    if pages < 1:
+        print("--pages must be at least 1", file=sys.stderr)
+        return 2
 
     with session_scope() as session:
         if not args.force and (_job_pending() or _cycle_running(session)):
@@ -126,12 +139,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
 
     try:
-        rq_job_id = enqueue_discovery(batch_size=batch_size, chain_ids=args.chain_ids)
+        rq_job_id = enqueue_discovery(
+            batch_size=batch_size, chain_ids=args.chain_ids, pages=pages
+        )
     except Exception as exc:  # noqa: BLE001 - a queue failure must be reported
         print(f"could not queue a discovery cycle: {exc}", file=sys.stderr)
         return 1
 
-    print(f"queued discovery cycle {rq_job_id} (batch size {batch_size})")
+    print(
+        f"queued discovery cycle {rq_job_id} "
+        f"(batch size {batch_size}, {pages} page(s) per chain)"
+    )
     return 0
 
 

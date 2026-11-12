@@ -1099,3 +1099,36 @@ The live run:
 
 One address, `0xbbcb4485…`, appears in both lists: each workspace keeps
 its own row for it, which is what the asset registry is for.
+
+### 17 The backfill round — the history of the chain, not only its newest page
+
+The feed lists contracts newest first, and the cycle read page one and
+stopped there. So the newest contracts were found over and over while
+everything older was never seen at all: the product was watching the
+tip of the feed and nothing behind it.
+
+* **`feed_cursors.next_page`** (migration `e1f3b5d7a902`) records where a
+  chain's walk has reached. A cycle reads `pages` pages from there, and
+  when the walk runs off the end of the feed it returns to page one --
+  which is where the next new contract appears.
+* **`python -m app.cli.discovery_cycle --pages N`** sets how deep a cycle
+  reads. One page is the tip; more pages walk into the history.
+* **The promotion cap no longer strands a contract.** The sweep offers
+  the contracts it touched *and* everything of that chain that has never
+  been scanned, so a contract the cap left alone is offered again in a
+  later cycle instead of sitting in the database for ever.
+* **The promotion budget belongs to the cycle, not to each chain.** Fifty
+  scans per cycle, as the limit always claimed; the old code allowed
+  fifty per chain, which was more than it said.
+
+The live run, on Ethereum:
+
+| | Before | After |
+|---|---|---|
+| contracts found by one cycle | 100 (the tip, twice) | 150 (three pages, of which 100 were older) |
+| contracts known | 106 | 256 |
+| scans | 114 | 164 |
+| the cursor | none | `next_page=4, seen=200` |
+
+The 100 contracts the cap left alone were persisted and are offered
+again by the next cycle rather than dropped.
