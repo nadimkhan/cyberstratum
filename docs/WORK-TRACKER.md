@@ -337,6 +337,24 @@ now covered by a test that fails without the fix.
       reviewed (one confirmed, one a false positive with a reason), and
       the export produces a dataset the package loads as one sample with
       `unchecked_call` positive and the reviewed false positive negative.
+- [x] **A model may not ship unless its categories earn it.** The
+      training pipeline computed precision for every category and wrote
+      it into a report; a report is not a decision. `evm_ml.gates` now
+      decides, per category, on the validation split: *ship* when the
+      precision is at or above the floor with enough evidence to believe
+      it, *abstain* when the category is too noisy -- the weights stay in
+      the artifact but the model must not speak about that category --
+      and *insufficient data* when there are not enough positives to
+      measure it, which is not the same as abstaining. The gate also
+      chooses a threshold per category: the most conservative one that
+      still reaches the floor, which recovers the most recall within it
+      while promising the fewest false positives. It is wired into the
+      run, not left as a separate step: the manifest records the
+      verdict, the model card renders it as a table, and the CLI exits
+      non-zero when the model may not be promoted. A run with no
+      validation split records "nothing was judged", which is not
+      passing. Training against today's reviewed-label dataset therefore
+      refuses to promote, and the manifest says exactly why.
 - [x] **The working copy is WSL only.** The Windows copy at
       `E:/projects/cyberstratum` is frozen as a fallback and is no longer
       edited: two copies of a live database and two test environments

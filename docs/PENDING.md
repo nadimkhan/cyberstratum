@@ -349,11 +349,14 @@ What is still open, in the order it blocks the next:
    "error, its details and its solution" is a table: detector, what it
    means, why it matters, how to fix it, and the patterns that are known
    to be false positives.
-3. **Precision gates.** Before any model ships: per-detector precision
-   measured on reviewed labels, calibrated thresholds with an
-   abstention state, and a time-based split on top of the family split,
-   because live chain data has temporal correlation and a random split
-   leaks.
+3. **Precision gates.** The gate itself is done: per-category precision
+   on the validation split, a per-category threshold chosen to reach the
+   precision floor, abstention for the categories that cannot reach it,
+   and a training run that refuses to promote a model that fails. What
+   is left is the evidence it needs: a reviewed corpus large enough to
+   measure (today there is one sample), and a **time-based split** on
+   top of the family split, because live chain data has temporal
+   correlation and a random split leaks.
 4. **Context-gated rules.** `delegatecall`, `selfdestruct` and
    `tx.origin` are patterns, not bugs. Gating them by context -- is
    `tx.origin` used for authorization, is the target attacker-controlled,
