@@ -284,6 +284,14 @@ class ReportData:
     When set, every finding carries a link to its machine-readable form.
     """
 
+    limitations: tuple[str, ...] = ()
+    """What the analysis could not cover, in plain sentences.
+
+    A partial scan is not a clean scan with fewer findings. These
+    lines say what was left out, so a reader can judge the result
+    instead of having to trust it.
+    """
+
 
 # -- building the data model ---------------------------------------------
 
@@ -538,6 +546,7 @@ def build_report_data(
     disclosure_status: str = "",
     disclosure_reference: str = "",
     finding_base_url: str = "",
+    limitations: Mapping[str, Any] | None = None,
 ) -> ReportData:
     """Build a :class:`ReportData` from already-materialised values.
 
@@ -605,6 +614,7 @@ def build_report_data(
         findings=built_findings,
         artifacts=built_artifacts,
         engines=built_engines,
+        limitations=_limitation_lines(limitations),
         tool_versions=dict(tool_versions or {}),
         dataset_manifest=(
             _manifest_from_mapping(dataset_manifest) if dataset_manifest is not None else None
@@ -948,6 +958,39 @@ def _severity_summary(findings: Sequence[ReportFinding]) -> _Table:
     return _Table(header=("Severity", "Findings"), rows=rows, widths=(0.7, 0.3), right_aligned=(1,))
 
 
+def _limitation_lines(limitations: Mapping[str, Any] | None) -> tuple[str, ...]:
+    """Turn a scan's stored limitations into readable sentences.
+
+    The stored form is a JSON document so that it can be queried. The
+    report is for a reader, so the same information is rendered as
+    sentences, in a fixed order, and nothing is dropped.
+    """
+    if not limitations:
+        return ()
+
+    lines: list[str] = []
+    warnings = limitations.get("disassembly_warnings")
+    if isinstance(warnings, list) and warnings:
+        shown = "; ".join(str(item) for item in warnings[:5])
+        more = "" if len(warnings) <= 5 else f" (and {len(warnings) - 5} more)"
+        lines.append(f"{len(warnings)} disassembly warning(s): {shown}{more}")
+
+    edges = limitations.get("unresolved_control_flow_edges")
+    if isinstance(edges, int):
+        ratio = limitations.get("unresolved_edge_ratio")
+        detail = f"{edges} control-flow edge(s) could not be resolved statically"
+        if isinstance(ratio, (int, float)):
+            detail += f" ({float(ratio):.1%} of the graph)"
+        lines.append(detail)
+
+    known = {"disassembly_warnings", "unresolved_control_flow_edges", "unresolved_edge_ratio"}
+    for key in sorted(limitations):
+        if key in known:
+            continue
+        lines.append(f"{key}: {limitations[key]}")
+    return tuple(lines)
+
+
 def _engine_summary(engines: Sequence[EngineReport]) -> _Table:
     """The per-engine breakdown: who ran, who did not, and why."""
     rows: list[tuple[str, ...]] = []
@@ -1131,7 +1174,18 @@ def _build_blocks(data: ReportData) -> list[_Block]:
         )
     )
 
-    blocks.append(_Line("Findings", "heading"))
+    if data.limitations:
+        blocks.append(_Line("Coverage limitations", "heading"))
+        blocks.extend(_Line(f"  {line}", "evidence") for line in data.limitations)
+        blocks.append(
+            _Line(
+                "These are the parts of the contract this scan could not "
+                "analyse. The findings below are what the engines that did "
+                "run were able to see.",
+                "body",
+            )
+        )
+        blocks.append(_Line("Findings", "heading"))
     if not findings:
         blocks.append(_Line("No findings were produced by the engines that ran.", "body"))
     for finding in findings:

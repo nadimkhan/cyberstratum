@@ -20,6 +20,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
@@ -518,6 +519,23 @@ def run_scan(session: Session, scan: Scan) -> ScanOutcome:
 
     partial = bool(disassembly.warnings) or bool(cfg.unresolved_edges)
     scan.status = ScanStatus.PARTIAL if partial else ScanStatus.COMPLETED
+
+    # A partial scan says what it could not cover. "Partial" without a
+    # reason is a shrug; the reason is what lets a reader judge how much
+    # of the contract was actually analysed.
+    limitations: dict[str, Any] = {}
+    if disassembly.warnings:
+        limitations["disassembly_warnings"] = [
+            str(warning) for warning in disassembly.warnings
+        ]
+    if cfg.unresolved_edges:
+        limitations["unresolved_control_flow_edges"] = len(cfg.unresolved_edges)
+        limitations["unresolved_edge_ratio"] = round(
+            len(cfg.unresolved_edges) / max(len(cfg.edges), 1),
+            4,
+        )
+    scan.limitations = limitations or None
+
     scan.completed_at = _now()
     session.flush()
 

@@ -27,6 +27,7 @@ import httpx
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.services.chains import explorer_host_for
 
 log = get_logger(__name__)
 
@@ -160,6 +161,53 @@ def _sourcify_code(chain_id: int, address: str, timeout: float) -> bytes | None:
         return None
 
 
+def _blockscout_code(chain_id: int, address: str, timeout: float) -> bytes | None:
+    """Fetch deployed runtime bytecode from the chain's Blockscout instance.
+
+    Every Blockscout instance proxies the Ethereum JSON-RPC API at
+    ``/api/eth-rpc``, so the instance that already answered the
+    discovery query can also serve the contract's bytecode. That route
+    matters: the public RPC endpoints for a chain are often unreachable
+    from a small server, and a contract that is verified on the chain's
+    own explorer must still be analysable.
+
+    Returns:
+        The bytecode, or ``None`` when the instance is unknown,
+        unreachable, or answers with something other than code.
+    """
+    host = explorer_host_for(chain_id)
+    if not host:
+        return None
+
+    url = f"https://{host}/api/eth-rpc"
+    payload = {
+        "jsonrpc": "2.0",
+        "method": "eth_getCode",
+        "params": [address, "latest"],
+        "id": 1,
+    }
+    try:
+        response = httpx.post(url, json=payload, timeout=timeout)
+        response.raise_for_status()
+        body = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        log.warning("blockscout_code_fetch_failed", url=url, error=str(exc))
+        return None
+
+    if not isinstance(body, dict):
+        return None
+    result = body.get("result")
+    if not isinstance(result, str) or not result.startswith("0x"):
+        return None
+    if result == "0x":
+        return b""
+    try:
+        return bytes.fromhex(result[2:])
+    except ValueError:
+        log.warning("blockscout_result_not_hex", url=url)
+        return None
+
+
 def fetch_runtime_bytecode(
     address: str,
     chain_id: int = 1,
@@ -168,16 +216,26 @@ def fetch_runtime_bytecode(
 ) -> BytecodeArtifact:
     """Fetch deployed runtime bytecode for ``address``.
 
+    Three routes are tried, in order of authority:
+
+    1. the chain's public RPC endpoints, which report what is actually
+       deployed right now;
+    2. Sourcify, which serves the deployed bytecode of a verified
+       contract;
+    3. the chain's Blockscout instance, which proxies ``eth_getCode``.
+
     Raises:
-        BytecodeUnavailableError: when no reachable RPC returns code, or the
+        BytecodeUnavailableError: when no route can serve the code, or the
             contract has no deployed code.
     """
     urls = _rpc_urls(chain_id)
     if not urls and chain_id not in SOURCIFY_CHAIN_IDS:
-        raise BytecodeUnavailableError(
-            "No RPC endpoint is configured and no default endpoint exists for this chain.",
-            code="rpc_not_configured",
-        )
+        blockscout_host = explorer_host_for(chain_id)
+        if not blockscout_host:
+            raise BytecodeUnavailableError(
+                "No RPC endpoint is configured and no default endpoint exists for this chain.",
+                code="rpc_not_configured",
+            )
 
     for rpc_url in urls:
         code = _eth_get_code(rpc_url, address, timeout)
@@ -190,7 +248,8 @@ def fetch_runtime_bytecode(
             )
         return BytecodeArtifact(code=code, source="rpc", source_uri=rpc_url, address=address)
 
-    if chain_id in SOURCIFY_CHAIN_IDS:
+    sourcify_tried = chain_id in SOURCIFY_CHAIN_IDS
+    if sourcify_tried:
         code = _sourcify_code(chain_id, address, timeout)
         if code:
             return BytecodeArtifact(
@@ -199,8 +258,28 @@ def fetch_runtime_bytecode(
                 source_uri=f"{SOURCIFY_BASE_URL}/contract/{chain_id}/{address}",
                 address=address,
             )
+
+    # The chain's own explorer is the last route: it is where the
+    # contract was discovered, and it proxies eth_getCode, so a chain
+    # whose public RPC endpoints are unreachable is still analysable.
+    code = _blockscout_code(chain_id, address, timeout)
+    if code is not None:
+        if not code:
+            raise BytecodeUnavailableError(
+                "The contract has no deployed code at the requested address.",
+                code="bytecode_empty",
+            )
+        return BytecodeArtifact(
+            code=code,
+            source="blockscout",
+            source_uri=f"https://{explorer_host_for(chain_id)}/api/eth-rpc",
+            address=address,
+        )
+
+    if sourcify_tried:
         raise BytecodeUnavailableError(
-            "The contract could not be retrieved from Sourcify; it may not be verified there.",
+            "The contract could not be retrieved from Sourcify or from the "
+            "chain's explorer; it may not be verified there.",
             code="sourcify_unavailable",
         )
 

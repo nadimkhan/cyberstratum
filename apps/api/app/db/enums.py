@@ -135,7 +135,23 @@ class CorrespondenceStatus(StrEnum):
     UNAVAILABLE = "unavailable"
 
 
+class AssetKind(StrEnum):
+    """Why a workspace follows an address.
+
+    The kind records intent and decides nothing about the analysis: a
+    discovered contract is analysed exactly like one the user owns. It
+    exists so a workspace can tell "my contracts" from "contracts I
+    found", and so the product knows which addresses a user is asking to
+    be watched over time.
+    """
+
+    OWNED = "owned"
+    WATCHED = "watched"
+    DISCOVERED = "discovered"
+
+
 __all__ = [
+    "AssetKind",
     "AuthorizationStatus",
     "BytecodeType",
     "ChainEnvironment",

@@ -369,9 +369,27 @@ What is still open, in the order it blocks the next:
 5. **The older tail.** The feed sees new verifications quickly; a cursor
    walk is needed for the long tail of contracts verified before the
    feed existed.
-6. **A scheduler.** The cycle is still triggered by hand or by the API.
-   A systemd timer, in the shape of the update-check timer that already
-   exists, is the deployment answer.
+6. **A scheduler — done.** `app.cli.discovery_cycle` queues one cycle and
+   the systemd units (`cyberstratum-discovery.service` and `.timer`,
+   hourly, with `Persistent=true` so a missed run happens after a
+   reboot) call it. The cycle is *queued* rather than run in-process, so
+   there is exactly one execution path and a cycle waits for the worker
+   instead of dying half-way through a sweep.
+
+7. **The developer's own source.** A developer can paste Solidity, but
+   the paste path is not built: the source is not compiled into the
+   bytecode the pipeline analyses, and the findings of a pasted
+   contract carry no source lines. The compiler call has to be
+   out-of-process and bounded, the same way Slither is.
+8. **The catalogue of vulnerabilities.** Six baseline detectors have
+   guidance — what the bug is, what it does, and the fix — and 122
+   Slither detectors have none. The knowledge layer is the thing the
+   model reads and the thing a developer acts on, so it is the part
+   that has to be complete.
+9. **The frontend for the progress spine.** The assets API exists and
+   works, and there is no page that shows it: no list of the addresses
+   a workspace follows, no dated history, no open-finding count that
+   moves when a fix ships.
 
 ## 7. How this document relates to the others
 

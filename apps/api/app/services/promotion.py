@@ -36,9 +36,11 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.db.enums import ScanJobStatus, ScanJobType, ScanStatus
+from app.db.enums import AssetKind, ScanJobStatus, ScanJobType, ScanStatus
+from app.db.models.assets import TrackedAsset
 from app.db.models.identity import Chain, ContractTarget, Workspace
 from app.db.models.scans import Scan, ScanJob
+from app.services.assets import InvalidAddressError, normalise_address, upsert_asset
 
 __all__ = [
     "DEFAULT_MAX_PENDING_SCANS",
@@ -122,6 +124,27 @@ def _latest_scan(session: Session, target_id: object) -> Scan | None:
     ).scalar_one_or_none()
 
 
+def _discovery_asset(
+    session: Session, workspace: Workspace, chain_row: Chain, address: str | None
+) -> TrackedAsset | None:
+    """Register a discovered contract as a tracked asset.
+
+    The autonomous path needs a memory too: a contract that was found
+    and scanned is an asset the workspace follows, with the dated
+    history of what was found in it. An address that is not a valid
+    20-byte address is not tracked, but the scan still runs.
+    """
+    if not address:
+        return None
+    try:
+        normalised = normalise_address(address)
+    except InvalidAddressError:
+        return None
+    return upsert_asset(
+        session, workspace, chain_row, normalised, kind=AssetKind.DISCOVERED
+    )
+
+
 def promote_contracts(
     session: Session,
     workspace: Workspace,
@@ -176,9 +199,12 @@ def promote_contracts(
                 outcome.skipped_already_scanned += 1
                 continue
 
+        asset = _discovery_asset(session, workspace, chain_row, target.address)
+
         scan = Scan(
             workspace_id=workspace.id,
             target_id=target.id,
+            asset_id=asset.id if asset is not None else None,
             status=ScanStatus.QUEUED,
             requested_by=None,
             fork="",

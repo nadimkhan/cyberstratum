@@ -1,0 +1,17 @@
+[Unit]
+Description=Run a CyberStratum discovery cycle every hour
+Documentation=https://hermes-agent.nousresearch.com/docs
+
+[Timer]
+# Hourly, a few minutes past the hour so the run does not coincide with
+# every other cron job on the machine.
+OnCalendar=*-*-* *:07:00
+# A missed run (the machine was off) is run as soon as it is back.
+Persistent=true
+# Spread the start over 30 seconds so a fleet of instances does not hit
+# the chain's explorer at the same second.
+RandomizedDelaySec=30
+Unit=cyberstratum-discovery.service
+
+[Install]
+WantedBy=timers.target

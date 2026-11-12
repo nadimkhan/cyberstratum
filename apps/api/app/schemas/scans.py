@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -160,6 +161,7 @@ class ScanSummary(BaseModel):
     mythril_skipped: str | None = None
     error_code: str | None = None
     error_message_redacted: str | None = None
+    limitations: dict[str, Any] | None = None
     created_at: datetime
 
 

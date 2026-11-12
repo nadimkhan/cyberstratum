@@ -24,7 +24,6 @@ conventions defined in :mod:`app.core.security`:
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
@@ -40,7 +39,8 @@ from app.core.security import (
     read_scope,
     write_workspace_id,
 )
-from app.db.enums import ScanJobStatus, ScanJobType, ScanStatus
+from app.db.enums import AssetKind, ScanJobStatus, ScanJobType, ScanStatus
+from app.db.models.assets import TrackedAsset
 from app.db.models.identity import Chain, ContractTarget, Workspace
 from app.db.models.scans import (
     CorrespondenceProof,
@@ -62,6 +62,7 @@ from app.schemas.scans import (
     ScanSummary,
 )
 from app.services import storage
+from app.services.assets import InvalidAddressError, normalise_address, upsert_asset
 from app.services.model_manifest import ModelManifestError, read_model_manifest
 from app.services.report import (
     ReportLabUnavailableError,
@@ -69,6 +70,7 @@ from app.services.report import (
     render_report,
     report_sha256,
 )
+from app.services.scan_requests import create_scan, resolve_chain, upsert_target
 from app.worker import enqueue_correspondence, enqueue_mythril, enqueue_scan
 
 log = get_logger(__name__)
@@ -130,12 +132,32 @@ def _resolve_workspace(
 
 def _resolve_chain(session: Session, chain_id: int) -> Chain:
     """Return the chain row for an EVM chain id."""
-    chain = session.scalars(select(Chain).where(Chain.chain_id == chain_id)).one_or_none()
-    if chain is None:
-        chain = Chain(name=f"Chain {chain_id}", chain_id=chain_id, environment="mainnet")
-        session.add(chain)
-        session.flush()
-    return chain
+    return resolve_chain(session, chain_id)
+
+
+def _track_asset(
+    session: Session,
+    workspace: Workspace,
+    chain: Chain,
+    address: str,
+    label: str | None,
+) -> TrackedAsset | None:
+    """Register the address as a tracked asset, when it is one.
+
+    A scan of the user's own contract starts a history. The findings of
+    this scan and of every later one are then reachable from the
+    address, which is what lets the user see that a fix moved the
+    number. An address that is not a valid 20-byte address is not
+    tracked: the scan still runs, it simply has nothing to attach its
+    history to.
+    """
+    try:
+        normalised = normalise_address(address)
+    except InvalidAddressError:
+        return None
+    return upsert_asset(
+        session, workspace, chain, normalised, label=label, kind=AssetKind.OWNED
+    )
 
 
 def _upsert_target(
@@ -148,35 +170,10 @@ def _upsert_target(
 ) -> ContractTarget:
     """Return the existing target for ``address`` or create one.
 
-    When ``inline_bytecode`` is given, it is stored on the target so that the
-    worker analyses exactly those bytes instead of contacting an RPC.
+    When ``inline_bytecode`` is given, it is stored on the target so that
+    the worker analyses exactly those bytes instead of contacting an RPC.
     """
-    target = session.scalars(
-        select(ContractTarget).where(
-            ContractTarget.workspace_id == workspace.id,
-            ContractTarget.chain_id == chain.id,
-            ContractTarget.address == address,
-        )
-    ).one_or_none()
-    if target is None:
-        target = ContractTarget(
-            workspace_id=workspace.id,
-            chain_id=chain.id,
-            address=address,
-            label=label or address,
-            bytecode_type="runtime",
-            authorization_status="unknown",
-            inline_bytecode=inline_bytecode,
-        )
-        session.add(target)
-        session.flush()
-    else:
-        if label:
-            target.label = label
-        if inline_bytecode is not None:
-            target.inline_bytecode = inline_bytecode
-        session.flush()
-    return target
+    return upsert_target(session, workspace, chain, address, label, inline_bytecode)
 
 
 @router.post(
@@ -202,36 +199,20 @@ def submit_scan(
     if payload.bytecode_hex is not None:
         inline_bytecode = bytes.fromhex(payload.bytecode_hex)
 
-    target = _upsert_target(
+    asset = _track_asset(session, workspace, chain, payload.contract_address, payload.label)
+
+    scan, job = create_scan(
         session,
-        workspace,
-        chain,
-        payload.contract_address,
-        payload.label,
-        inline_bytecode=inline_bytecode,
-    )
-
-    scan = Scan(
-        workspace_id=workspace.id,
-        target_id=target.id,
-        status=ScanStatus.QUEUED,
+        workspace=workspace,
+        chain=chain,
+        address=payload.contract_address,
+        label=payload.label,
         requested_by=principal.user_id,
+        inline_bytecode=inline_bytecode,
+        asset=asset,
         fork=payload.fork or "",
-        bytecode_source="upload" if inline_bytecode is not None else "rpc",
-        queued_at=datetime.now(UTC),
-    )
-    session.add(scan)
-    session.flush()
-
-    job = ScanJob(
-        scan_id=scan.id,
-        job_type=ScanJobType.SCAN,
         queue_name=get_queue().name,
-        status=ScanJobStatus.QUEUED,
-        attempt=0,
     )
-    session.add(job)
-    session.flush()
 
     try:
         rq_job_id = enqueue_scan(scan.id, job.id)
@@ -769,6 +750,7 @@ def download_report(
     model_manifest_reference = _model_manifest_reference()
 
     data = build_report_data(
+        limitations=scan.limitations,
         scan_id=str(scan.id),
         contract_address=contract_address,
         chain_id=chain_id,

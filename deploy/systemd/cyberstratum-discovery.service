@@ -1,0 +1,25 @@
+[Unit]
+Description=CyberStratum discovery cycle (find newly verified contracts and scan them)
+
+[Service]
+Type=oneshot
+User=cyberstratum
+Group=cyberstratum
+WorkingDirectory=/opt/cyberstratum/app
+EnvironmentFile=/etc/cyberstratum/app.env
+# The cycle is QUEUED here and run by the discovery worker, so a cycle
+# that overlaps a worker restart waits in the queue instead of dying
+# half-way through a sweep. Discovery is idempotent, so a repeat is
+# harmless: contracts are unique per workspace, chain and address, and a
+# contract that has already been scanned is not scanned again.
+ExecStart=/opt/cyberstratum/app/.venv/bin/python -m app.cli.discovery_cycle
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/cyberstratum
+StandardOutput=append:/var/log/cyberstratum/discovery.log
+StandardError=append:/var/log/cyberstratum/discovery.err
+
+[Install]
+WantedBy=multi-user.target

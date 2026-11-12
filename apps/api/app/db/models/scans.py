@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     Boolean,
@@ -37,6 +37,7 @@ from app.db.enums import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
+    from app.db.models.assets import TrackedAsset
     from app.db.models.identity import ContractTarget
 
 
@@ -52,6 +53,17 @@ class Scan(Base):
     )
     target_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("contract_targets.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    asset_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("tracked_assets.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        doc=(
+            "The tracked asset this scan belongs to, when the address is "
+            "one the workspace follows. Deleting an asset keeps its "
+            "scans: the history of a contract outlives the decision to "
+            "keep watching it."
+        ),
     )
     status: Mapped[ScanStatus] = mapped_column(
         enum_column(ScanStatus, "scan_status"),
@@ -135,10 +147,23 @@ class Scan(Base):
     )
     error_code: Mapped[str | None] = mapped_column(String(64))
     error_message_redacted: Mapped[str | None] = mapped_column(Text)
+    limitations: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        default=None,
+        doc=(
+            "What was incomplete about this analysis. A 'partial' scan is "
+            "not a clean scan with fewer findings: it is a scan whose "
+            "coverage was incomplete, and this records exactly how: the "
+            "disassembly warnings, the number of control-flow edges that "
+            "could not be resolved, and so on."
+        ),
+    )
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 
     target: Mapped[ContractTarget] = relationship(back_populates="scans")
+    asset: Mapped[TrackedAsset | None] = relationship(back_populates="scans")
     jobs: Mapped[list[ScanJob]] = relationship(back_populates="scan", cascade="all, delete-orphan")
     findings: Mapped[list[Finding]] = relationship(
         back_populates="scan", cascade="all, delete-orphan"
