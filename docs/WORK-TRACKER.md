@@ -1065,3 +1065,37 @@ now fork-aware.
 
 Four tests pin the narrowing, including that a later fork still narrows
 and that the opcode offset is still reported.
+
+### 16 The key round — a machine client belongs to one tenant
+
+An API key was a machine client with no tenant of its own: it was
+resolved to its owner's *earliest* workspace membership, because the
+``api_keys`` table carried no workspace column. A key whose owner was in
+several workspaces therefore acted in whichever one they happened to
+join first, and nothing in the product could say which one was meant.
+
+Three things changed:
+
+* **`api_keys.workspace_id`** (migration `d8f2a4c6b901`) binds every
+  key to the workspace it acts in. Existing keys were backfilled to the
+  workspace of their owner's earliest membership -- the only workspace
+  they could have been used in -- and a key with no workspace still
+  falls back to that, so nothing that worked before stops working.
+* **Expiry is enforced.** `expires_at` was stored but never checked, so
+  an expired key kept working for ever. It is now refused.
+* **`python -m app.cli.issue_key`** mints a key for a workspace. Nothing
+  could mint one before: keys were inserted by hand, so machine clients
+  had no way in. The command prints the plaintext once and stores only
+  its SHA-256 digest, refuses a user who is not a member of the
+  workspace named, and can set an expiry.
+
+The live run:
+
+| Key | Workspace | Assets it can see |
+|---|---|---|
+| issued for `default` | the tenant | 2 (the developer's own contracts) |
+| issued for `discovery` | the discovery workspace | 100 (the discovered contracts) |
+| an unknown key | — | refused |
+
+One address, `0xbbcb4485…`, appears in both lists: each workspace keeps
+its own row for it, which is what the asset registry is for.

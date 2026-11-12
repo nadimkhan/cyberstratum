@@ -58,6 +58,7 @@ import hashlib
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status
@@ -133,13 +134,29 @@ def _principal_for_configured_key() -> Principal:
     )
 
 
+def _has_expired(expires_at: datetime | None) -> bool:
+    """Whether a key's expiry has passed.
+
+    A key with no expiry never expires. A stored expiry is read as UTC
+    when it arrives naive, because every timestamp this product writes
+    is UTC, and a naive timestamp compared against an aware one would
+    raise rather than answer.
+    """
+    if expires_at is None:
+        return False
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    return expires_at <= datetime.now(UTC)
+
+
 def _principal_for_stored_key(session: Session, raw_key: str) -> Principal | None:
     """Resolve a stored key to a tenant principal.
 
-    The key is scoped to the owner's earliest workspace membership. The
-    ``api_keys`` table carries no workspace column, so a key owned by a
-    member of several workspaces is bound to exactly one of them; binding a
-    key to a specific workspace needs a schema change.
+    The key is scoped to the workspace it was issued for, so a machine
+    client acts in exactly one tenant. A key issued before the
+    ``workspace_id`` column existed carries none, and then falls back to
+    the owner's earliest workspace membership, which is the only workspace
+    such a key can have been used in.
 
     Returns:
         The principal, or ``None`` when no active key matches the digest.
@@ -148,10 +165,12 @@ def _principal_for_stored_key(session: Session, raw_key: str) -> Principal | Non
     api_key = session.scalars(select(ApiKey).where(ApiKey.key_hash == digest)).one_or_none()
     if api_key is None or not api_key.is_active:
         return None
+    if _has_expired(api_key.expires_at):
+        return None
 
-    workspace_id: uuid.UUID | None = None
+    workspace_id: uuid.UUID | None = api_key.workspace_id
     user_id = api_key.user_id
-    if user_id is not None:
+    if workspace_id is None and user_id is not None:
         membership = session.scalars(
             select(WorkspaceMember)
             .where(WorkspaceMember.user_id == user_id)
