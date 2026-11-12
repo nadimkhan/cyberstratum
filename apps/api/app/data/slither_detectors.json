@@ -1,0 +1,814 @@
+{
+  "version": "slither-0.11.6",
+  "note": "The detectors Slither ships, as a versioned snapshot. The product names them with underscores; the original Slither check id is kept so the two can be matched. A detector in this list without guidance is a detector that can produce a finding no reviewer has been given advice about.",
+  "detectors": [
+    {
+      "detector_id": "slither.abiencoderv2_array",
+      "check": "abiencoderv2-array",
+      "title": "Storage abiencoderv2 array",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#storage-abiencoderv2-array"
+    },
+    {
+      "detector_id": "slither.arbitrary_send_erc20",
+      "check": "arbitrary-send-erc20",
+      "title": "transferFrom uses arbitrary `from`",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#arbitrary-from-in-transferfrom"
+    },
+    {
+      "detector_id": "slither.arbitrary_send_erc20_permit",
+      "check": "arbitrary-send-erc20-permit",
+      "title": "transferFrom uses arbitrary from with permit",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#arbitrary-from-in-transferfrom-used-with-permit"
+    },
+    {
+      "detector_id": "slither.arbitrary_send_eth",
+      "check": "arbitrary-send-eth",
+      "title": "Functions that send Ether to arbitrary destinations",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#functions-that-send-ether-to-arbitrary-destinations"
+    },
+    {
+      "detector_id": "slither.array_by_reference",
+      "check": "array-by-reference",
+      "title": "Modifying storage array by value",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#modifying-storage-array-by-value"
+    },
+    {
+      "detector_id": "slither.assembly",
+      "check": "assembly",
+      "title": "Assembly usage",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage"
+    },
+    {
+      "detector_id": "slither.assert_state_change",
+      "check": "assert-state-change",
+      "title": "Assert state change",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#assert-state-change"
+    },
+    {
+      "detector_id": "slither.boolean_cst",
+      "check": "boolean-cst",
+      "title": "Misuse of Boolean constant",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#misuse-of-a-boolean-constant"
+    },
+    {
+      "detector_id": "slither.boolean_equal",
+      "check": "boolean-equal",
+      "title": "Comparison to boolean constant",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#boolean-equality"
+    },
+    {
+      "detector_id": "slither.cache_array_length",
+      "check": "cache-array-length",
+      "title": "Detects `for` loops that use `length` member of some storage array in their loop condition and don't modify it.",
+      "impact": "Optimization",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#cache-array-length"
+    },
+    {
+      "detector_id": "slither.calls_loop",
+      "check": "calls-loop",
+      "title": "Multiple calls in a loop",
+      "impact": "Low",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation/#calls-inside-a-loop"
+    },
+    {
+      "detector_id": "slither.chainlink_feed_registry",
+      "check": "chainlink-feed-registry",
+      "title": "Detect when chainlink feed registry is used",
+      "impact": "Low",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#chainlink-feed-registry-usage"
+    },
+    {
+      "detector_id": "slither.chronicle_unchecked_price",
+      "check": "chronicle-unchecked-price",
+      "title": "Detect when Chronicle price is not checked.",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#chronicle-unchecked-price"
+    },
+    {
+      "detector_id": "slither.constable_states",
+      "check": "constable-states",
+      "title": "State variables that could be declared constant",
+      "impact": "Optimization",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-constant"
+    },
+    {
+      "detector_id": "slither.constant_function_asm",
+      "check": "constant-function-asm",
+      "title": "Constant functions using assembly code",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#constant-functions-using-assembly-code"
+    },
+    {
+      "detector_id": "slither.constant_function_state",
+      "check": "constant-function-state",
+      "title": "Constant functions changing the state",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#constant-functions-changing-the-state"
+    },
+    {
+      "detector_id": "slither.controlled_array_length",
+      "check": "controlled-array-length",
+      "title": "Tainted array length assignment",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#array-length-assignment"
+    },
+    {
+      "detector_id": "slither.controlled_delegatecall",
+      "check": "controlled-delegatecall",
+      "title": "Controlled delegatecall destination",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#controlled-delegatecall"
+    },
+    {
+      "detector_id": "slither.costly_loop",
+      "check": "costly-loop",
+      "title": "Costly operations in a loop",
+      "impact": "Informational",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#costly-operations-inside-a-loop"
+    },
+    {
+      "detector_id": "slither.cyclomatic_complexity",
+      "check": "cyclomatic-complexity",
+      "title": "Detects functions with high (> 11) cyclomatic complexity",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#cyclomatic-complexity"
+    },
+    {
+      "detector_id": "slither.dead_code",
+      "check": "dead-code",
+      "title": "Functions that are not used",
+      "impact": "Informational",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#dead-code"
+    },
+    {
+      "detector_id": "slither.delegatecall_loop",
+      "check": "delegatecall-loop",
+      "title": "Payable functions using `delegatecall` inside a loop",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation/#payable-functions-using-delegatecall-inside-a-loop"
+    },
+    {
+      "detector_id": "slither.deprecated_standards",
+      "check": "deprecated-standards",
+      "title": "Deprecated Solidity Standards",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#deprecated-standards"
+    },
+    {
+      "detector_id": "slither.divide_before_multiply",
+      "check": "divide-before-multiply",
+      "title": "Imprecise arithmetic operations order",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#divide-before-multiply"
+    },
+    {
+      "detector_id": "slither.domain_separator_collision",
+      "check": "domain-separator-collision",
+      "title": "Detects ERC20 tokens that have a function whose signature collides with EIP-2612's DOMAIN_SEPARATOR()",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#domain-separator-collision"
+    },
+    {
+      "detector_id": "slither.encode_packed_collision",
+      "check": "encode-packed-collision",
+      "title": "ABI encodePacked Collision",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#abi-encodePacked-collision"
+    },
+    {
+      "detector_id": "slither.enum_conversion",
+      "check": "enum-conversion",
+      "title": "Detect dangerous enum conversion",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-enum-conversion"
+    },
+    {
+      "detector_id": "slither.erc20_indexed",
+      "check": "erc20-indexed",
+      "title": "Un-indexed ERC20 event parameters",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#unindexed-erc20-event-parameters"
+    },
+    {
+      "detector_id": "slither.erc20_interface",
+      "check": "erc20-interface",
+      "title": "Incorrect ERC20 interfaces",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-erc20-interface"
+    },
+    {
+      "detector_id": "slither.erc721_interface",
+      "check": "erc721-interface",
+      "title": "Incorrect ERC721 interfaces",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-erc721-interface"
+    },
+    {
+      "detector_id": "slither.events_access",
+      "check": "events-access",
+      "title": "Missing Events Access Control",
+      "impact": "Low",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#missing-events-access-control"
+    },
+    {
+      "detector_id": "slither.events_maths",
+      "check": "events-maths",
+      "title": "Missing Events Arithmetic",
+      "impact": "Low",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#missing-events-arithmetic"
+    },
+    {
+      "detector_id": "slither.external_function",
+      "check": "external-function",
+      "title": "Public function that could be declared external",
+      "impact": "Optimization",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#public-function-that-could-be-declared-external"
+    },
+    {
+      "detector_id": "slither.function_init_state",
+      "check": "function-init-state",
+      "title": "Function initializing state variables",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#function-initializing-state"
+    },
+    {
+      "detector_id": "slither.gelato_unprotected_randomness",
+      "check": "gelato-unprotected-randomness",
+      "title": "Call to _requestRandomness within an unprotected function",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#gelato-unprotected-randomness"
+    },
+    {
+      "detector_id": "slither.immutable_states",
+      "check": "immutable-states",
+      "title": "State variables that could be declared immutable",
+      "impact": "Optimization",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-immutable"
+    },
+    {
+      "detector_id": "slither.incorrect_equality",
+      "check": "incorrect-equality",
+      "title": "Dangerous strict equalities",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-strict-equalities"
+    },
+    {
+      "detector_id": "slither.incorrect_exp",
+      "check": "incorrect-exp",
+      "title": "Incorrect exponentiation",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-exponentiation"
+    },
+    {
+      "detector_id": "slither.incorrect_modifier",
+      "check": "incorrect-modifier",
+      "title": "Modifiers that can return the default value",
+      "impact": "Low",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-modifier"
+    },
+    {
+      "detector_id": "slither.incorrect_return",
+      "check": "incorrect-return",
+      "title": "If a `return` is incorrectly used in assembly mode.",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-return-in-assembly"
+    },
+    {
+      "detector_id": "slither.incorrect_shift",
+      "check": "incorrect-shift",
+      "title": "The order of parameters in a shift instruction is incorrect.",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-shift-in-assembly"
+    },
+    {
+      "detector_id": "slither.incorrect_unary",
+      "check": "incorrect-unary",
+      "title": "Dangerous unary expressions",
+      "impact": "Low",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-unary-expressions"
+    },
+    {
+      "detector_id": "slither.incorrect_using_for",
+      "check": "incorrect-using-for",
+      "title": "Detects using-for statement usage when no function from a given library matches a given type",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-usage-of-using-for-statement"
+    },
+    {
+      "detector_id": "slither.locked_ether",
+      "check": "locked-ether",
+      "title": "Contracts that lock ether",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#contracts-that-lock-ether"
+    },
+    {
+      "detector_id": "slither.low_level_calls",
+      "check": "low-level-calls",
+      "title": "Low level calls",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls"
+    },
+    {
+      "detector_id": "slither.mapping_deletion",
+      "check": "mapping-deletion",
+      "title": "Deletion on mapping containing a structure",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#deletion-on-mapping-containing-a-structure"
+    },
+    {
+      "detector_id": "slither.missing_inheritance",
+      "check": "missing-inheritance",
+      "title": "Missing inheritance",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#missing-inheritance"
+    },
+    {
+      "detector_id": "slither.missing_zero_check",
+      "check": "missing-zero-check",
+      "title": "Missing Zero Address Validation",
+      "impact": "Low",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#missing-zero-address-validation"
+    },
+    {
+      "detector_id": "slither.msg_value_in_nonpayable",
+      "check": "msg-value-in-nonpayable",
+      "title": "msg.value used in functions unreachable from payable entry points",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#msgvalue-in-nonpayable"
+    },
+    {
+      "detector_id": "slither.msg_value_loop",
+      "check": "msg-value-loop",
+      "title": "msg.value inside a loop",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation/#msgvalue-inside-a-loop"
+    },
+    {
+      "detector_id": "slither.multiple_constructors",
+      "check": "multiple-constructors",
+      "title": "Multiple constructor schemes",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#multiple-constructor-schemes"
+    },
+    {
+      "detector_id": "slither.name_reused",
+      "check": "name-reused",
+      "title": "Contract's name reused",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#name-reused"
+    },
+    {
+      "detector_id": "slither.naming_convention",
+      "check": "naming-convention",
+      "title": "Conformity to Solidity naming conventions",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions"
+    },
+    {
+      "detector_id": "slither.optimism_deprecation",
+      "check": "optimism-deprecation",
+      "title": "Detect when deprecated Optimism predeploy or function is used.",
+      "impact": "Low",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#optimism-deprecated-predeploy-or-function"
+    },
+    {
+      "detector_id": "slither.out_of_order_retryable",
+      "check": "out-of-order-retryable",
+      "title": "Out-of-order retryable transactions",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#out-of-order-retryable-transactions"
+    },
+    {
+      "detector_id": "slither.pragma",
+      "check": "pragma",
+      "title": "If different pragma directives are used",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#different-pragma-directives-are-used"
+    },
+    {
+      "detector_id": "slither.protected_vars",
+      "check": "protected-vars",
+      "title": "Detected unprotected variables",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#protected-variables"
+    },
+    {
+      "detector_id": "slither.public_mappings_nested",
+      "check": "public-mappings-nested",
+      "title": "Public mappings with nested variables",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#public-mappings-with-nested-variables"
+    },
+    {
+      "detector_id": "slither.pyth_deprecated_functions",
+      "check": "pyth-deprecated-functions",
+      "title": "Detect Pyth deprecated functions",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#pyth-deprecated-functions"
+    },
+    {
+      "detector_id": "slither.pyth_unchecked_confidence",
+      "check": "pyth-unchecked-confidence",
+      "title": "Detect when the confidence level of a Pyth price is not checked",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#pyth-unchecked-confidence-level"
+    },
+    {
+      "detector_id": "slither.pyth_unchecked_publishtime",
+      "check": "pyth-unchecked-publishtime",
+      "title": "Detect when the publishTime of a Pyth price is not checked",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#pyth-unchecked-publishtime"
+    },
+    {
+      "detector_id": "slither.redundant_statements",
+      "check": "redundant-statements",
+      "title": "Redundant statements",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#redundant-statements"
+    },
+    {
+      "detector_id": "slither.reentrancy_balance",
+      "check": "reentrancy-balance",
+      "title": "Reentrancy vulnerabilities leading to outdated balance checks",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities"
+    },
+    {
+      "detector_id": "slither.reentrancy_benign",
+      "check": "reentrancy-benign",
+      "title": "Benign reentrancy vulnerabilities",
+      "impact": "Low",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3"
+    },
+    {
+      "detector_id": "slither.reentrancy_eth",
+      "check": "reentrancy-eth",
+      "title": "Reentrancy vulnerabilities (theft of ethers)",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-1"
+    },
+    {
+      "detector_id": "slither.reentrancy_events",
+      "check": "reentrancy-events",
+      "title": "Reentrancy vulnerabilities leading to out-of-order Events",
+      "impact": "Low",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-4"
+    },
+    {
+      "detector_id": "slither.reentrancy_no_eth",
+      "check": "reentrancy-no-eth",
+      "title": "Reentrancy vulnerabilities (no theft of ethers)",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-2"
+    },
+    {
+      "detector_id": "slither.reentrancy_unlimited_gas",
+      "check": "reentrancy-unlimited-gas",
+      "title": "Reentrancy vulnerabilities through send and transfer",
+      "impact": "Informational",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-5"
+    },
+    {
+      "detector_id": "slither.return_bomb",
+      "check": "return-bomb",
+      "title": "A low level callee may consume all callers gas unexpectedly.",
+      "impact": "Low",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#return-bomb"
+    },
+    {
+      "detector_id": "slither.return_leave",
+      "check": "return-leave",
+      "title": "If a `return` is used instead of a `leave`.",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#return-instead-of-leave-in-assembly"
+    },
+    {
+      "detector_id": "slither.reused_constructor",
+      "check": "reused-constructor",
+      "title": "Reused base constructor",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#reused-base-constructors"
+    },
+    {
+      "detector_id": "slither.rtlo",
+      "check": "rtlo",
+      "title": "Right-To-Left-Override control character is used",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#right-to-left-override-character"
+    },
+    {
+      "detector_id": "slither.shadowing_abstract",
+      "check": "shadowing-abstract",
+      "title": "State variables shadowing from abstract contracts",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#state-variable-shadowing-from-abstract-contracts"
+    },
+    {
+      "detector_id": "slither.shadowing_builtin",
+      "check": "shadowing-builtin",
+      "title": "Built-in symbol shadowing",
+      "impact": "Low",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#builtin-symbol-shadowing"
+    },
+    {
+      "detector_id": "slither.shadowing_local",
+      "check": "shadowing-local",
+      "title": "Local variables shadowing",
+      "impact": "Low",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#local-variable-shadowing"
+    },
+    {
+      "detector_id": "slither.shadowing_state",
+      "check": "shadowing-state",
+      "title": "State variables shadowing",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#state-variable-shadowing"
+    },
+    {
+      "detector_id": "slither.solc_version",
+      "check": "solc-version",
+      "title": "Incorrect Solidity version",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity"
+    },
+    {
+      "detector_id": "slither.storage_array",
+      "check": "storage-array",
+      "title": "Signed storage integer array compiler bug",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#storage-signed-integer-array"
+    },
+    {
+      "detector_id": "slither.suicidal",
+      "check": "suicidal",
+      "title": "Functions allowing anyone to destruct the contract",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#suicidal"
+    },
+    {
+      "detector_id": "slither.tautological_compare",
+      "check": "tautological-compare",
+      "title": "Comparing a variable to itself always returns true or false, depending on comparison",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#tautological-compare"
+    },
+    {
+      "detector_id": "slither.tautology",
+      "check": "tautology",
+      "title": "Tautology or contradiction",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#tautology-or-contradiction"
+    },
+    {
+      "detector_id": "slither.timestamp",
+      "check": "timestamp",
+      "title": "Dangerous usage of `block.timestamp`",
+      "impact": "Low",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp"
+    },
+    {
+      "detector_id": "slither.too_many_digits",
+      "check": "too-many-digits",
+      "title": "Conformance to numeric notation best practices",
+      "impact": "Informational",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#too-many-digits"
+    },
+    {
+      "detector_id": "slither.tx_origin",
+      "check": "tx-origin",
+      "title": "Dangerous usage of `tx.origin`",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#dangerous-usage-of-txorigin"
+    },
+    {
+      "detector_id": "slither.unchecked_lowlevel",
+      "check": "unchecked-lowlevel",
+      "title": "Unchecked low-level calls",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#unchecked-low-level-calls"
+    },
+    {
+      "detector_id": "slither.unchecked_send",
+      "check": "unchecked-send",
+      "title": "Unchecked send",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#unchecked-send"
+    },
+    {
+      "detector_id": "slither.unchecked_transfer",
+      "check": "unchecked-transfer",
+      "title": "Unchecked tokens transfer",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#unchecked-transfer"
+    },
+    {
+      "detector_id": "slither.unimplemented_functions",
+      "check": "unimplemented-functions",
+      "title": "Unimplemented functions",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#unimplemented-functions"
+    },
+    {
+      "detector_id": "slither.unindexed_event_address",
+      "check": "unindexed-event-address",
+      "title": "Events with address parameters but no indexed parameters",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#unindexed-event-address-parameters"
+    },
+    {
+      "detector_id": "slither.uninitialized_fptr_cst",
+      "check": "uninitialized-fptr-cst",
+      "title": "Uninitialized function pointer calls in constructors",
+      "impact": "Low",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-function-pointers-in-constructors"
+    },
+    {
+      "detector_id": "slither.uninitialized_local",
+      "check": "uninitialized-local",
+      "title": "Uninitialized local variables",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-local-variables"
+    },
+    {
+      "detector_id": "slither.uninitialized_state",
+      "check": "uninitialized-state",
+      "title": "Uninitialized state variables",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-state-variables"
+    },
+    {
+      "detector_id": "slither.uninitialized_storage",
+      "check": "uninitialized-storage",
+      "title": "Uninitialized storage variables",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#uninitialized-storage-variables"
+    },
+    {
+      "detector_id": "slither.unprotected_upgrade",
+      "check": "unprotected-upgrade",
+      "title": "Unprotected upgradeable contract",
+      "impact": "High",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#unprotected-upgradeable-contract"
+    },
+    {
+      "detector_id": "slither.unused_return",
+      "check": "unused-return",
+      "title": "Unused return values",
+      "impact": "Medium",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return"
+    },
+    {
+      "detector_id": "slither.unused_state",
+      "check": "unused-state",
+      "title": "Unused state variables",
+      "impact": "Informational",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#unused-state-variable"
+    },
+    {
+      "detector_id": "slither.var_read_using_this",
+      "check": "var-read-using-this",
+      "title": "Contract reads its own variable using `this`",
+      "impact": "Optimization",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#public-variable-read-in-external-context"
+    },
+    {
+      "detector_id": "slither.variable_scope",
+      "check": "variable-scope",
+      "title": "Local variables used prior their declaration",
+      "impact": "Low",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#pre-declaration-usage-of-local-variables"
+    },
+    {
+      "detector_id": "slither.void_cst",
+      "check": "void-cst",
+      "title": "Constructor called not implemented",
+      "impact": "Low",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#void-constructor"
+    },
+    {
+      "detector_id": "slither.weak_prng",
+      "check": "weak-prng",
+      "title": "Weak PRNG",
+      "impact": "High",
+      "confidence": "Medium",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#weak-PRNG"
+    },
+    {
+      "detector_id": "slither.write_after_write",
+      "check": "write-after-write",
+      "title": "Unused write",
+      "impact": "Medium",
+      "confidence": "High",
+      "wiki_url": "https://github.com/crytic/slither/wiki/Detector-Documentation#write-after-write"
+    }
+  ]
+}

@@ -1218,3 +1218,32 @@ middle of the caller's own work.
 **What still remains.** Slither ships more detectors than the corpus has
 ever exercised, and those still have no advice — the catalogue is
 complete for what the product has seen, not for what Slither can emit.
+### 20 The catalogue gap, measured
+
+The advice round left a number nobody had measured: Slither ships **101**
+detectors, and the seed answered **24** of them. The gap was a sentence in
+a document; now it is a number the build can see.
+
+* **The catalogue is a versioned snapshot.**
+  `apps/api/app/data/slither_detectors.json` records every detector
+  Slither 0.11.6 ships -- its id, its title, its impact and its
+  documentation link -- with the original check id kept beside the
+  product's name, so the two can always be matched.
+* **The gap is measured by a command.**
+  `python -m app.cli.guidance_audit` prints the coverage and names the
+  detectors that have no advice; `--strict` turns a gap into a non-zero
+  exit, so a build gate can insist on it.
+* **A typo can no longer hide.** The audit also names guidance entries
+  that name no known detector. A misspelt id would otherwise sit in the
+  seed looking like advice for something.
+* **The next batch of advice is written.** 24 more detectors now have
+  guidance: the re-entrancy family (including the benign one), the
+  unchecked-call family, the uninitialised-state family, the
+  caller-controlled delegatecall and array-length families, weak
+  randomness, the return bomb, the `encodePacked` collision, the
+  unprotected upgrade, and Ether accepted on a path that did not expect
+  it.
+
+| Coverage | Before | After |
+|---|---|---|
+| Slither detectors with advice | 24/101 | **48/101** |
