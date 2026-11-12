@@ -10,6 +10,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.db.enums import Severity
+from app.services.context import (
+    USE_CALL_TARGET,
+    USE_COMPARED,
+    analyse_graph,
+)
 from evm_analysis.cfg import ControlFlowGraph
 from evm_analysis.disassembler import Disassembly
 from evm_analysis.features import ContractFeatures
@@ -64,24 +69,60 @@ def _call_then_storage_write(
 def _delegatecall(
     disassembly: Disassembly, cfg: ControlFlowGraph, features: ContractFeatures
 ) -> RuleFinding | None:
-    """Flag DELEGATECALL usage, which forwards control and storage context."""
+    """Flag DELEGATECALL whose target an attacker could choose.
+
+    DELEGATECALL to a *compile-time constant* target is the expected
+    shape of an upgradeable proxy whose implementation is immutable: the
+    target cannot be swapped, so there is nothing to act on. Reporting
+    it anyway is the single largest source of noise in a proxy-heavy
+    codebase, and a reviewer who learns to ignore the rule stops seeing
+    the one that matters.
+
+    The narrowing is deliberately one-sided. A target the analysis
+    cannot resolve -- because it came from calldata, from storage, or
+    from a value the analysis does not track -- is reported. Only a
+    target proven to be a constant is passed over.
+    """
     delegatecalls = [
         instr.offset for instr in disassembly.instructions if instr.name == "DELEGATECALL"
     ]
     if not delegatecalls:
         return None
+
+    facts = analyse_graph(cfg)
+    fixed = {target.offset for target in facts.delegatecall_targets if target.is_fixed}
+    risky = [offset for offset in delegatecalls if offset not in fixed]
+    if not risky:
+        # Every delegatecall goes to a constant target: the expected
+        # proxy pattern. Nothing to report.
+        return None
+
+    kinds = {
+        target.offset: target.kind for target in facts.delegatecall_targets
+    }
     return RuleFinding(
         detector_id="baseline.delegatecall",
         category="delegatecall_usage",
         title="DELEGATECALL executes foreign code in the caller's storage context",
         description=(
-            "The contract uses DELEGATECALL. The callee runs in the caller's storage "
-            "context, so a malicious implementation can overwrite state."
+            "The contract uses DELEGATECALL to an address this analysis could not "
+            "prove to be fixed at compile time. The callee runs in the caller's "
+            "storage context, so an implementation an attacker can choose can "
+            "overwrite state."
         ),
         severity=Severity.HIGH,
         confidence=0.7,
-        evidence={"offsets": delegatecalls, "signals": ["delegatecall"]},
-        limitations="Presence of DELEGATECALL does not by itself imply a vulnerable proxy.",
+        evidence={
+            "offsets": risky,
+            "signals": ["delegatecall"],
+            "targetKinds": {str(offset): kinds.get(offset, "unknown") for offset in risky},
+            "fixedTargetOffsets": sorted(fixed),
+        },
+        limitations=(
+            "A target that could not be resolved is reported, not dismissed. "
+            "DELEGATECALL to a compile-time constant is the expected proxy "
+            "pattern and is not reported."
+        ),
     )
 
 
@@ -110,22 +151,70 @@ def _selfdestruct(
 def _tx_origin(
     disassembly: Disassembly, cfg: ControlFlowGraph, features: ContractFeatures
 ) -> RuleFinding | None:
-    """Flag TX.ORIGIN, which is a known phishing/authorization footgun."""
+    """Flag TX.ORIGIN, and say how it is used when that can be shown.
+
+    Reading tx.origin is not a finding. Using it to *authorise* is:
+    tx.origin is the outermost signer, so an intermediary contract can
+    make the original signer look like the caller.
+
+    The analysis can show an authorisation-shaped use -- a comparison, or
+    a use as the target of a call. It cannot show the absence of one,
+    because a value can be written to memory and compared in another
+    block. So the finding is still reported when the use is not
+    established, but with a lower confidence and a limitation that says
+    exactly what is and is not known.
+    """
     offsets = [instr.offset for instr in disassembly.instructions if instr.name == "ORIGIN"]
     if not offsets:
         return None
+
+    facts = analyse_graph(cfg)
+    shaped = [use.offset for use in facts.origin_uses if use.is_authorisation_shaped]
+    if shaped:
+        return RuleFinding(
+            detector_id="baseline.tx_origin",
+            category="tx_origin_dependency",
+            title="TX.ORIGIN is used in an authorisation decision",
+            description=(
+                "The contract compares tx.origin, or calls it, in a way that "
+                "authorises the transaction. tx.origin is the outermost signer, "
+                "so an intermediary contract can act with the signer's authority."
+            ),
+            severity=Severity.MEDIUM,
+            confidence=0.75,
+            evidence={
+                "offsets": offsets,
+                "signals": ["tx_origin", "authorisation_shaped_use"],
+                "authorisationOffsets": sorted(shaped),
+                "useKinds": {
+                    str(use.offset): use.kind
+                    for use in facts.origin_uses
+                    if use.kind in (USE_COMPARED, USE_CALL_TARGET)
+                },
+            },
+            limitations=(
+                "The authorisation-shaped use was located; whether the "
+                "comparison is reachable by an attacker was not established."
+            ),
+        )
+
     return RuleFinding(
         detector_id="baseline.tx_origin",
         category="tx_origin_dependency",
         title="Contract reads TX.ORIGIN",
         description=(
-            "The contract depends on tx.origin for an authorization decision. "
-            "tx.origin can be an intermediate contract, enabling phishing attacks."
+            "The contract reads tx.origin. This analysis did not find an "
+            "authorisation-shaped use of it, but it cannot rule one out: the "
+            "value could be written to memory and compared elsewhere."
         ),
         severity=Severity.LOW,
-        confidence=0.6,
+        confidence=0.3,
         evidence={"offsets": offsets, "signals": ["tx_origin"]},
-        limitations="The surrounding authorization logic was not traced.",
+        limitations=(
+            "No authorisation-shaped use was located, and the analysis is not "
+            "strong enough to rule one out. Treat this as a prompt to look, "
+            "not as a finding of an authorisation bug."
+        ),
     )
 
 
