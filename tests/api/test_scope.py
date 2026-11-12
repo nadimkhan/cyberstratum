@@ -232,3 +232,111 @@ def test_an_administrative_action_must_name_its_workspace(
         json={"kind": "contract", "value": "0xabc"},
     )
     assert refused_write.status_code == 403
+
+
+def test_an_expiry_is_stored_and_is_read_back(
+    client: TestClient, api_headers: dict[str, str], workspace: Workspace
+) -> None:
+    """A grant that says when it ends says it when it is stored."""
+    created = client.post(
+        "/api/v1/scope/grants",
+        headers=api_headers,
+        params={"workspace_id": str(workspace.id)},
+        json={
+            "kind": "contract",
+            "value": "0x7777777777777777777777777777777777777777",
+            "expires_at": "2027-01-01T00:00:00Z",
+        },
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["expires_at"].startswith("2027-01-01T00:00:00")
+
+    listed = client.get(
+        "/api/v1/scope/grants",
+        headers=api_headers,
+        params={"workspace_id": str(workspace.id)},
+    )
+    assert listed.status_code == 200
+    stored = [item for item in listed.json() if item["expires_at"]]
+    assert len(stored) == 1
+
+
+def test_an_expiry_that_cannot_be_read_is_refused(
+    client: TestClient, api_headers: dict[str, str], workspace: Workspace
+) -> None:
+    """A grant whose date the product cannot read is not stored at all."""
+    refused = client.post(
+        "/api/v1/scope/grants",
+        headers=api_headers,
+        params={"workspace_id": str(workspace.id)},
+        json={
+            "kind": "contract",
+            "value": "0x8888888888888888888888888888888888888888",
+            "expires_at": "whenever",
+        },
+    )
+    assert refused.status_code == 422
+
+    listed = client.get(
+        "/api/v1/scope/grants",
+        headers=api_headers,
+        params={"workspace_id": str(workspace.id)},
+    )
+    assert all(
+        item["value"] != "0x8888888888888888888888888888888888888888" for item in listed.json()
+    )
+
+
+def test_a_declaration_can_be_withdrawn(
+    client: TestClient, api_headers: dict[str, str], workspace: Workspace
+) -> None:
+    """A declaration that was made in error has to be withdrawable."""
+    created = client.post(
+        "/api/v1/scope/grants",
+        headers=api_headers,
+        params={"workspace_id": str(workspace.id)},
+        json={"kind": "contract", "value": "0x9999999999999999999999999999999999999999"},
+    )
+    assert created.status_code == 201, created.text
+    grant_id = created.json()["id"]
+
+    withdrawn = client.delete(
+        f"/api/v1/scope/grants/{grant_id}",
+        headers=api_headers,
+        params={"workspace_id": str(workspace.id)},
+    )
+    assert withdrawn.status_code == 204, withdrawn.text
+
+    listed = client.get(
+        "/api/v1/scope/grants",
+        headers=api_headers,
+        params={"workspace_id": str(workspace.id)},
+    )
+    assert all(item["id"] != grant_id for item in listed.json())
+
+
+def test_another_workspaces_grant_cannot_be_withdrawn(
+    client: TestClient,
+    api_headers: dict[str, str],
+    db_session: Session,
+    workspace: Workspace,
+) -> None:
+    """A declaration belongs to one workspace, and only that one."""
+    other = Workspace(name="Other", slug=f"other-{uuid.uuid4().hex[:8]}")
+    db_session.add(other)
+    db_session.flush()
+    grant = _grant(db_session, other, value=OTHER_ADDRESS)
+    db_session.flush()
+
+    refused = client.delete(
+        f"/api/v1/scope/grants/{grant.id}",
+        headers=api_headers,
+        params={"workspace_id": str(workspace.id)},
+    )
+    assert refused.status_code == 404
+
+    # The row is still there: the refusal did not withdraw it. The
+    # session is told to forget what it cached, so the check reads the
+    # database and not the object the test happens to be holding.
+    db_session.expire_all()
+    assert db_session.get(ScopeGrant, grant.id) is not None

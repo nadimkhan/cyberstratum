@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { ApiUnreachable } from "@/components/ApiUnreachable";
 import { ScopeGrantForm } from "@/components/ScopeGrantForm";
+import { ScopeGrantList } from "@/components/ScopeGrantList";
 import {
   API_BASE_URL,
   type ApiError,
+  type ApiResult,
   describeApiError,
   listScopeGrants,
   listWorkspaces,
 } from "@/lib/api";
+import type { ScopeGrantSummary } from "@/lib/types";
 
 export const metadata = { title: "Authorised scope" };
 export const dynamic = "force-dynamic";
@@ -58,9 +61,9 @@ export default async function ScopePage({
   const chosen =
     workspaces.find((workspace) => workspace.id === requested) ?? workspaces[0];
 
-  const grantsResult = chosen
+  const grantsResult: ApiResult<ScopeGrantSummary[]> = chosen
     ? await listScopeGrants(chosen.id)
-    : ({ ok: true, data: [] } as const);
+    : { ok: true, data: [] };
 
   if (!grantsResult.ok) {
     const error: ApiError = grantsResult.error;
@@ -141,27 +144,7 @@ export default async function ScopePage({
             that the analysis is not authorised for disclosure.
           </p>
         ) : (
-          <ul className="space-y-2">
-            {grants.map((grant) => (
-              <li
-                key={grant.id}
-                className="rounded-lg border border-[var(--cs-border)] p-4"
-              >
-                <p className="text-sm text-[var(--cs-fg)]">
-                  <span className="font-mono">{grant.kind}</span> &middot;{" "}
-                  <span className="font-mono">{grant.value}</span>
-                </p>
-                <p className="mt-1 text-xs text-[var(--cs-muted)]">
-                  {grant.safeHarbour
-                    ? "Safe harbour accepted"
-                    : "No safe-harbour declaration"}
-                  {grant.chainId ? ` · chain ${grant.chainId}` : ""}
-                  {grant.reference ? ` · ${grant.reference}` : ""}
-                  {grant.expiresAt ? ` · expires ${grant.expiresAt}` : ""}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <ScopeGrantList grants={grants} workspaceId={chosen?.id ?? ""} />
         )}
       </section>
 

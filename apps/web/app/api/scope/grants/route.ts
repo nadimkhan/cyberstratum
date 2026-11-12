@@ -24,6 +24,7 @@ export async function POST(request: Request) {
     chain_id?: number | null;
     safe_harbour?: boolean;
     reference?: string | null;
+    expires_at?: string | null;
   };
   try {
     body = (await request.json()) as {
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
       chain_id?: number | null;
       safe_harbour?: boolean;
       reference?: string | null;
+      expires_at?: string | null;
     };
   } catch {
     return NextResponse.json(
@@ -55,6 +57,7 @@ export async function POST(request: Request) {
     chainId: body.chain_id ?? null,
     safeHarbour: body.safe_harbour ?? false,
     reference: (body.reference ?? "").trim() || null,
+    expiresAt: (body.expires_at ?? "").trim() || null,
   });
   if (!result.ok) {
     const statusCode =

@@ -166,17 +166,18 @@ now covered by a test that fails without the fix.
 - [x] Multi-tenant enforcement — workspace isolation across every query path
       (2026-11-05: 27 isolation tests, every route enumerated from the OpenAPI
       schema; conventions in `docs/PENDING.md` §3.1.1).
-- [ ] Google OAuth for humans + hashed API keys for machine clients.
-      **ADR-0020 written; the implementation is in flight.**
+- [x] Google OAuth for humans + hashed API keys for machine clients.
+      ADR-0020; both are implemented, and every key is bound to the one
+      workspace it may act in.
 - [x] Daily dependency update checks (check only; upgrade through gated CI)
       (2026-11-05: `python -m app.cli.update_check` + a systemd timer at 03:17).
-- [ ] Authorised bug-bounty scope ingestion + safe-harbour rules.
-- [ ] Store the generated PDF as a scan artifact with its own sha256, so a report
-      can be proven to be the one that was issued.
-- [ ] A migration-vs-model diff over **every** table. The contract test now
-      covers the one constraint that bit us; a general autogenerate diff
-      would catch the next column width, index, or constraint that exists
-      only in a migration.
+- [x] Authorised bug-bounty scope ingestion + safe-harbour rules — see §30 and §32.
+      The registry is declared by the workspace rather than crawled from a
+      programme, and it can end and be withdrawn.
+- [x] Store the generated PDF as a scan artifact with its own sha256, so a report
+      can be proven to be the one that was issued (`b6ac6f9`).
+- [x] A migration-vs-model diff over **every** table — the general autogenerate
+      diff is in place (`70ef088`).
 
 ### P2 — housekeeping
 - [ ] `ruff format` over the whole repository. 44 committed files are still
@@ -1663,3 +1664,61 @@ stored, and the page showed it — the address, the workspace it belongs
 to, and that the safe harbour had been accepted. A declaration with no
 workspace named was refused with `422`. The proof workspace and its
 grant were removed afterwards.
+
+## 32. A declaration that ends, and a declaration that can be taken back
+
+**Status: done.**
+
+Two defects remained in the scope registry, and both were of the same
+kind: a declaration was accepted and then quietly forgotten.
+
+**The expiry was discarded.** `expires_at` was read from the request and
+never written to the row. A workspace could declare that a contract was in
+bounds until the end of a programme, and the registry would keep treating
+it as in bounds forever. The expiry is now parsed as UTC, refused with a
+readable `422` when the date cannot be read, and stored. A grant whose
+end has passed is not in scope: the target resolves to `unknown`, which is
+the honest answer, and not to `in_scope` and not to `out_of_scope`.
+
+**A declaration could not be withdrawn.** A registry that can only grow
+keeps making statements that have stopped being true — an address pasted
+wrongly, a programme that ended, a chain that was never in bounds. There
+is now `DELETE /api/v1/scope/grants/{grant_id}`. It acts in one named
+workspace; a grant belonging to another workspace returns `404` and is
+left alone. The browser reaches it through a server-side proxy, so the
+service credential stays out of the client bundle.
+
+The `/scope` page now offers the expiry as a field, shows the expiry of
+every declaration it lists, and carries a **Withdraw** button on each one.
+
+**Proved live**, against the running stack, in a throwaway workspace:
+
+| Check | Result |
+| --- | --- |
+| A declaration with no workspace named | refused, `422` |
+| An expiry the product cannot read | refused, `422` |
+| A declaration whose end has passed | stored; the target resolves to `unknown` |
+| A declaration that ends later | stored; the target resolves to `in_scope` |
+| The `/scope` page | shows the expiry of the declaration |
+| Withdrawal through the browser proxy | `200`, the declaration is withdrawn |
+| After the withdrawal | the target resolves to `unknown` again |
+
+The proof workspace and its grants were removed afterwards; no residue was
+left in the database.
+
+**What this does not do.** It does not discover a programme's scope on its
+own, send a request to any target, execute anything, or disclose
+anything. A declaration is still only what a workspace says about itself,
+and an expired declaration is `unknown` rather than a judgement.
+
+**Files:** `apps/api/app/api/scope.py`, `tests/api/test_scope.py`,
+`apps/web/src/lib/scope.ts`, `apps/web/src/lib/api.ts`,
+`apps/web/src/lib/types.ts`, `apps/web/src/components/ScopeGrantForm.tsx`,
+`apps/web/src/components/ScopeGrantList.tsx`, `apps/web/app/scope/page.tsx`,
+`apps/web/app/api/scope/grants/route.ts`,
+`apps/web/app/api/scope/grants/[id]/route.ts`,
+`apps/web/src/lib/scope.test.ts`.
+
+**Tests:** 13 focused scope tests, including the stored expiry, the
+unreadable expiry, the successful withdrawal, and the cross-workspace
+withdrawal refusal.

@@ -2184,6 +2184,7 @@ export async function createScopeGrant(
     chainId: number | null;
     safeHarbour: boolean;
     reference: string | null;
+    expiresAt?: string | null;
   },
 ): Promise<ApiResult<ScopeGrantSummary>> {
   const result = await request<unknown>(
@@ -2196,6 +2197,7 @@ export async function createScopeGrant(
         chain_id: grant.chainId,
         safe_harbour: grant.safeHarbour,
         reference: grant.reference,
+        expires_at: grant.expiresAt ?? null,
       }),
     },
   );
@@ -2213,4 +2215,22 @@ export async function createScopeGrant(
     };
   }
   return { ok: true, data: grants[0] };
+}
+
+/**
+ * Withdraw one of a workspace's declarations.
+ *
+ * The workspace is named, because a declaration belongs to one
+ * workspace and only that workspace may withdraw it.
+ */
+export async function withdrawScopeGrant(
+  workspaceId: string,
+  grantId: string,
+): Promise<ApiResult<{ withdrawn: boolean }>> {
+  const result = await request<unknown>(
+    `/scope/grants/${encodeURIComponent(grantId)}?workspace_id=${encodeURIComponent(workspaceId)}`,
+    { method: "DELETE" },
+  );
+  if (!result.ok) return result;
+  return { ok: true, data: { withdrawn: true } };
 }

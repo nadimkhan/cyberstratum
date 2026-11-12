@@ -8,9 +8,10 @@ where the declaration is made and read.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
@@ -79,6 +80,35 @@ def _workspace_id(principal: Any, requested: uuid.UUID | None) -> uuid.UUID:
     return scope
 
 
+def _parse_expiry(raw: str | None) -> datetime | None:
+    """Read the date a grant stops applying.
+
+    A grant that says when it ends is a promise that can be kept. A
+    grant whose date cannot be read is not stored at all: a declaration
+    whose expiry the product did not understand would silently become a
+    declaration that never ends.
+
+    The date is read as UTC. A grant that ends at a moment is compared
+    against a moment, and the two have to be the same kind of thing.
+    """
+    if raw is None:
+        return None
+    text = raw.strip()
+    if not text:
+        return None
+    candidate = text[:-1] + "+00:00" if text.endswith("Z") else text
+    try:
+        parsed = datetime.fromisoformat(candidate)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"expires_at is not a date this product can read: {raw}",
+        ) from error
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
 @router.get("/grants", summary="List the authorised scope of this workspace")
 def list_grants(
     session: SessionDep,
@@ -135,6 +165,7 @@ def create_grant(
             detail="value must not be empty",
         )
 
+    expires_at = _parse_expiry(payload.expires_at)
     grant = ScopeGrant(
         workspace_id=scope,
         kind=payload.kind,
@@ -142,6 +173,7 @@ def create_grant(
         chain_id=payload.chain_id,
         safe_harbour=payload.safe_harbour,
         reference=payload.reference,
+        expires_at=expires_at,
     )
     session.add(grant)
     session.flush()
@@ -193,3 +225,37 @@ __all__ = [
     "UNKNOWN_SCOPE",
     "router",
 ]
+
+
+@router.delete(
+    "/grants/{grant_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Withdraw a declaration",
+)
+def withdraw_grant(
+    grant_id: uuid.UUID,
+    session: SessionDep,
+    principal: CurrentPrincipal,
+    workspace_id: uuid.UUID | None = Query(default=None),
+) -> Response:
+    """Withdraw one of this workspace's declarations.
+
+    A declaration that was made in error has to be withdrawable. An
+    address pasted wrongly, a programme that has ended, a chain that was
+    never in bounds: each of them is a statement that is no longer true,
+    and a registry that can only grow will keep making it.
+
+    The workspace is named for the same reason it is named everywhere
+    else here, and a grant belonging to another workspace is not found:
+    it is not this workspace's to withdraw.
+    """
+    scope = _workspace_id(principal, workspace_id)
+    grant = session.get(ScopeGrant, grant_id)
+    if grant is None or grant.workspace_id != scope:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="That declaration does not exist in this workspace.",
+        )
+    session.delete(grant)
+    session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

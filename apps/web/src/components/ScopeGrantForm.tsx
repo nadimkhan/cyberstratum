@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { scopeGrantProblem, SCOPE_GRANT_KINDS, type ScopeGrantKind } from "@/lib/scope";
+import {
+  scopeExpiryProblem,
+  scopeGrantProblem,
+  SCOPE_GRANT_KINDS,
+  type ScopeGrantKind,
+} from "@/lib/scope";
 
 /**
  * Declare what a workspace is allowed to look at.
@@ -23,6 +28,7 @@ export function ScopeGrantForm({ workspaceId }: { workspaceId: string }) {
   const [chainId, setChainId] = useState("1");
   const [safeHarbour, setSafeHarbour] = useState(false);
   const [reference, setReference] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -32,6 +38,12 @@ export function ScopeGrantForm({ workspaceId }: { workspaceId: string }) {
     if (problem) {
       setFailed(true);
       setMessage(problem);
+      return;
+    }
+    const expiryProblem = scopeExpiryProblem(expiresAt);
+    if (expiryProblem) {
+      setFailed(true);
+      setMessage(expiryProblem);
       return;
     }
 
@@ -50,6 +62,7 @@ export function ScopeGrantForm({ workspaceId }: { workspaceId: string }) {
           chain_id: kind === "chain" ? Number(chainId.trim()) : Number(chainId.trim()) || null,
           safe_harbour: safeHarbour,
           reference: reference.trim() || null,
+          expires_at: expiresAt.trim() || null,
         }),
       });
       const payload = (await response.json()) as { detail?: string };
@@ -60,6 +73,7 @@ export function ScopeGrantForm({ workspaceId }: { workspaceId: string }) {
       }
       setValue("");
       setReference("");
+      setExpiresAt("");
       setMessage("The declaration was recorded.");
       router.refresh();
     } catch {
@@ -129,6 +143,16 @@ export function ScopeGrantForm({ workspaceId }: { workspaceId: string }) {
             />
           </label>
         ) : null}
+
+        <label className="block space-y-1 text-sm">
+          <span className="text-[var(--cs-muted)]">Ends on</span>
+          <input
+            type="date"
+            value={expiresAt}
+            onChange={(event) => setExpiresAt(event.target.value)}
+            className="w-full rounded-md border border-[var(--cs-border)] bg-[var(--cs-surface)] px-2 py-1 text-sm"
+          />
+        </label>
 
         <label className="block space-y-1 text-sm">
           <span className="text-[var(--cs-muted)]">Where it is published</span>

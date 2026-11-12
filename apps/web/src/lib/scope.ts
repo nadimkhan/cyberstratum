@@ -80,3 +80,20 @@ export function scopeGrantProblem(
   }
   return null;
 }
+
+/**
+ * Read the date a declaration stops applying.
+ *
+ * Returns the date in ISO form, or `null` when there is none. A date
+ * that cannot be read is refused: a declaration whose expiry the
+ * product did not understand would quietly become one that never ends.
+ */
+export function scopeExpiryProblem(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return "The expiry is not a date this product can read.";
+  }
+  return null;
+}
