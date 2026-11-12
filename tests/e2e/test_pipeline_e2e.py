@@ -132,7 +132,16 @@ def test_a_scan_produces_findings_artifacts_and_reproducibility(
 
     artifacts = db_session.query(ScanArtifact).filter(ScanArtifact.scan_id == scan.id).all()
     kinds = {artifact.kind for artifact in artifacts}
-    assert kinds == {"bytecode", "disassembly", "cfg", "features"}
+    # The fork resolution is an artifact in its own right: it is the
+    # record of *which* fork's rules were applied and how that was
+    # decided, and the report cites it.
+    assert kinds == {
+        "bytecode",
+        "disassembly",
+        "cfg",
+        "features",
+        "fork_resolution",
+    }
 
     bytecode_artifact = next(a for a in artifacts if a.kind == "bytecode")
     assert bytecode_artifact.byte_size == len(SAMPLE_RUNTIME)

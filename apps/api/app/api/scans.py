@@ -216,7 +216,7 @@ def submit_scan(
         target_id=target.id,
         status=ScanStatus.QUEUED,
         requested_by=principal.user_id,
-        fork=payload.fork,
+        fork=payload.fork or "",
         bytecode_source="upload" if inline_bytecode is not None else "rpc",
         queued_at=datetime.now(UTC),
     )
@@ -773,6 +773,8 @@ def download_report(
         contract_address=contract_address,
         chain_id=chain_id,
         fork=scan.fork,
+        fork_source=scan.fork_source,
+        fork_conflict=scan.fork_conflict,
         scan_status=scan.status.value,
         findings=[
             {

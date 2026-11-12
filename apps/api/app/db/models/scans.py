@@ -62,7 +62,38 @@ class Scan(Base):
     requested_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
-    fork: Mapped[str] = mapped_column(String(32), nullable=False, default="cancun")
+    fork: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="",
+        doc=(
+            "The fork whose opcode table the scan was analysed with. "
+            "Empty until the pipeline resolves it, which happens before "
+            "disassembly; a queued scan has no fork yet."
+        ),
+    )
+    fork_source: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="requested",
+        server_default="requested",
+        doc=(
+            "How the fork was chosen: 'requested' when the caller named "
+            "one and the bytecode agreed, 'inferred' when it was derived "
+            "from the opcodes the bytecode uses, 'fallback' when the code "
+            "could not be placed at all."
+        ),
+    )
+    fork_conflict: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=false(),
+        doc=(
+            "True when the requested fork and the bytecode disagreed, or "
+            "when the bytecode could not be placed in any fork's table."
+        ),
+    )
     bytecode_source: Mapped[str] = mapped_column(String(64), nullable=False, default="rpc")
     queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -232,6 +232,8 @@ class ReportData:
     contract_address: str
     chain_id: int | None = None
     fork: str = ""
+    fork_source: str = ""
+    fork_conflict: bool = False
     scan_status: str = ""
     findings: tuple[ReportFinding, ...] = ()
     artifacts: tuple[ReportArtifact, ...] = ()
@@ -502,6 +504,8 @@ def build_report_data(
     contract_address: str,
     chain_id: int | None = None,
     fork: str = "",
+    fork_source: str = "",
+    fork_conflict: bool = False,
     scan_status: str = "",
     findings: Sequence[Mapping[str, Any]] = (),
     artifacts: Sequence[Mapping[str, Any]] = (),
@@ -531,6 +535,10 @@ def build_report_data(
         contract_address: The analysed contract's address.
         chain_id: The EIP-155 chain id.
         fork: The EVM fork the analysis targeted.
+        fork_source: How the fork was chosen ('requested', 'inferred' or
+            'fallback').
+        fork_conflict: True when the analysed fork is older than the
+            bytecode requires.
         scan_status: The scan's terminal status.
         findings: The findings, as plain mappings.
         artifacts: The scan's artifacts, as plain mappings.
@@ -580,6 +588,8 @@ def build_report_data(
         contract_address=str(contract_address),
         chain_id=chain_id,
         fork=str(fork),
+        fork_source=str(fork_source),
+        fork_conflict=bool(fork_conflict),
         scan_status=str(scan_status),
         findings=built_findings,
         artifacts=built_artifacts,
@@ -1053,6 +1063,13 @@ def _build_blocks(data: ReportData) -> list[_Block]:
         ("Contract address", data.contract_address or NOT_AVAILABLE),
         ("Chain id", NOT_AVAILABLE if data.chain_id is None else str(data.chain_id)),
         ("Fork", data.fork or NOT_AVAILABLE),
+        ("Fork source", data.fork_source or NOT_AVAILABLE),
+        (
+            "Fork conflict",
+            "yes - the bytecode cannot execute under the analysed fork"
+            if data.fork_conflict
+            else "no",
+        ),
         ("Scan id", data.scan_id or NOT_AVAILABLE),
         ("Scan status", data.scan_status or NOT_AVAILABLE),
         ("Report timestamp", data.timestamp or NOT_AVAILABLE),

@@ -39,6 +39,7 @@ from app.db.models.scans import (
 )
 from app.services import storage
 from app.services.bytecode import BytecodeArtifact, BytecodeUnavailableError, fetch_runtime_bytecode
+from app.services.fork_resolution import resolve_fork
 from app.services.rules import PARSER_VERSION, RULESET_VERSION, RuleFinding, run_rules
 from app.services.slither import SlitherRunner
 from app.services.source_audit import audit_source
@@ -52,6 +53,7 @@ from evm_analysis import (
     extract_features,
     load_fork,
 )
+from evm_analysis.fork_inference import infer_required_fork
 
 log = get_logger(__name__)
 
@@ -445,6 +447,24 @@ def run_scan(session: Session, scan: Scan) -> ScanOutcome:
     scan.status = ScanStatus.DISASSEMBLING
     session.flush()
 
+    # The fork decides which opcodes exist. A caller may name one; when
+    # they do not, it is inferred from the bytecode itself. Either way the
+    # decision is recorded, because a scan analysed under the wrong fork
+    # does not fail -- it quietly reports real opcodes as invalid.
+    requirement = infer_required_fork(artifact.code)
+    resolution = resolve_fork(scan.fork or None, requirement)
+    scan.fork = resolution.fork
+    scan.fork_source = resolution.source
+    scan.fork_conflict = resolution.conflict
+    if resolution.conflict:
+        log.warning(
+            "scan_fork_conflict",
+            scan_id=str(scan.id),
+            fork=resolution.fork,
+            source=resolution.source,
+            reason=resolution.reason,
+        )
+
     try:
         table = load_fork(scan.fork)
         disassembly = disassemble(artifact.code, table)
@@ -475,6 +495,16 @@ def run_scan(session: Session, scan: Scan) -> ScanOutcome:
     findings = run_rules(disassembly, cfg, features)
 
     _store_artifacts(session, scan, artifact, disassembly, cfg, features)
+    session.add(
+        ScanArtifact(
+            scan_id=scan.id,
+            kind="fork_resolution",
+            content_type="application/json",
+            object_key=storage.put_json(
+                f"scans/{scan.id}/fork_resolution.json", resolution.as_dict()
+            ),
+        )
+    )
     _persist_graph(session, scan.id, disassembly, cfg, features)
     persist_findings(session, scan, findings)
 

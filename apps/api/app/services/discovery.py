@@ -39,6 +39,7 @@ from app.services.blockscout import (
     DiscoveredContract,
 )
 from app.services.chains import SUPPORTED_CHAINS
+from app.services.promotion import promote_contracts
 
 log = logging.getLogger("cyberstratum.discovery")
 
@@ -60,6 +61,8 @@ class DiscoveryOutcome:
         contracts_found: How many contracts the routes returned.
         contracts_new: How many were not in the workspace before.
         contracts_updated: How many were re-verified since the last cycle.
+        scans_queued: How many scans the cycle queued for the contracts
+            it found.
         failures: The per-chain failures, as ``{chain_id: reason}``.
         errors: The same failures, in the shape stored on the run.
     """
@@ -70,6 +73,7 @@ class DiscoveryOutcome:
     contracts_found: int = 0
     contracts_new: int = 0
     contracts_updated: int = 0
+    scans_queued: int = 0
     failures: dict[int, str] = field(default_factory=dict)
 
     @property
@@ -367,7 +371,7 @@ class DiscoveryService:
             )
             name = chain.name if chain is not None else f"chain-{chain_id}"
             try:
-                found, new, updated = await self._sweep_chain(
+                found, new, updated, queued = await self._sweep_chain(
                     chain_id, name, target_workspace, run
                 )
             except BlockscoutUnavailableError as exc:
@@ -385,6 +389,7 @@ class DiscoveryService:
             outcome.contracts_found += found
             outcome.contracts_new += new
             outcome.contracts_updated += updated
+            outcome.scans_queued += queued
 
         run.status = outcome.status
         run.finished_at = datetime.now(UTC)
@@ -393,18 +398,20 @@ class DiscoveryService:
         run.contracts_found = outcome.contracts_found
         run.contracts_new = outcome.contracts_new
         run.contracts_updated = outcome.contracts_updated
+        run.scans_queued = outcome.scans_queued
         run.errors = outcome.errors
         self.session.flush()
 
         log.info(
             "discovery cycle %s: %d chains covered, %d failed, %d contracts "
-            "(%d new, %d updated)",
+            "(%d new, %d updated), %d scans queued",
             run.id,
             outcome.chains_covered,
             outcome.chains_failed,
             outcome.contracts_found,
             outcome.contracts_new,
             outcome.contracts_updated,
+            outcome.scans_queued,
         )
         return outcome
 
@@ -414,7 +421,7 @@ class DiscoveryService:
         chain_name: str,
         workspace: Workspace,
         run: DiscoveryRun,
-    ) -> tuple[int, int, int]:
+    ) -> tuple[int, int, int, int]:
         """Sweep one chain.
 
         The cursor is advanced *before* the contracts are analysed, so a
@@ -422,15 +429,15 @@ class DiscoveryService:
         again on every cycle.
 
         Returns:
-            How many contracts were found, how many were new, and how many
-            were updated.
+            How many contracts were found, how many were new, how many
+            were updated, and how many scans were queued for them.
         """
         chain_row = _ensure_chain(self.session, chain_id, chain_name)
         cursor = _cursor_for(self.session, chain_row, workspace.id)
 
         contracts = await self.client.list_contracts(chain_id)
         if not contracts:
-            return (0, 0, 0)
+            return (0, 0, 0, 0)
 
         # The cursor moves before anything downstream can fail.
         cursor.last_address = contracts[-1].address.lower()
@@ -449,7 +456,32 @@ class DiscoveryService:
         new_count, updated_count = persist_contracts(
             self.session, workspace, chain_row, run, contracts
         )
-        return (len(contracts), new_count, updated_count)
+
+        # The feed's job is not complete until the contracts it found
+        # have been analysed. Everything this sweep touched -- new and
+        # re-verified alike -- is offered to the promotion pass, which
+        # decides what has not been seen before and keeps the queue
+        # inside its limits.
+        touched = list(
+            self.session.execute(
+                select(ContractTarget).where(
+                    ContractTarget.workspace_id == workspace.id,
+                    ContractTarget.chain_id == chain_row.id,
+                    ContractTarget.discovery_run_id == run.id,
+                )
+            )
+            .scalars()
+            .all()
+        )
+        promotion = promote_contracts(
+            self.session, workspace, chain_row, touched
+        )
+        if promotion.errors:
+            log.warning(
+                "discovery: %d contracts could not be queued for scanning",
+                promotion.failed,
+            )
+        return (len(contracts), new_count, updated_count, promotion.queued)
 
 
 __all__ = [

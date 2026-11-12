@@ -228,6 +228,50 @@ now covered by a test that fails without the fix.
       missed. It now reads both layouts, derives degree and communities
       from the graph when they are not stored, and labels communities from
       `.graphify_labels.json`.
+- [x] **The product decisions that shape the next round are recorded**:
+      every newly verified contract is scanned automatically (not a
+      sample); the ML labels come from human triage inside CyberStratum;
+      the data sources stay Blockscout-only; and nothing paid is bought.
+      The consequences are specific: chain expansion has to be found by
+      probing, the queue needs its own limits, and the labels need a
+      review surface before any model can be trained on them.
+- [x] **The chain list is being widened by probing, because the paid
+      Blockscout instance registry answers 402.** `scripts/probe_blockscout_hosts.py`
+      reads the public chain registry, derives candidate hosts and asks
+      each one, once, a second apart, with a descriptive User-Agent.
+      Redirects are followed, `403` is recorded as *unknown* rather than
+      *dead*, `429` is honoured, and no credential is ever sent. The
+      first batch of 260 hosts found one chain we did not have
+      (`rootstock-testnet.blockscout.com`, chain 31) and two of our own
+      routes answering `403` from a WAF (`gnosisscan.io`,
+      `explorer.immutable.com`) -- recorded, not hidden, because a route
+      that is blocked today is a route that fails silently tomorrow.
+- [x] **The feed's ordering was measured rather than assumed.** The
+      per-chain instance API answers newest-first, with a stable cursor
+      (`smart_contract_id`) and one overlapping item between pages. So
+      page 1 of each chain catches every new verification, and the older
+      tail needs a cursor walk -- two different modes, not one.
+- [x] **The analysis fork is now decided, not assumed.** `scans.fork` was
+      hard-coded to `cancun`, which is wrong on zkSync, on Fantom and on
+      every chain that predates Shanghai, and a wrong fork does not fail
+      loudly -- it reports real opcodes as invalid. The bytecode itself
+      now bounds the fork: `evm_analysis.fork_inference` computes the
+      earliest fork that could execute the code (`PUSH0` -> shanghai,
+      `TSTORE` -> cancun, a `PUSH1 0x5f` immediate is not a `PUSH0`), and
+      `app.services.fork_resolution` applies the policy: an explicit
+      request is honoured even when it is older than the code, because
+      asking for an older fork is a deliberate question -- but the
+      disagreement is recorded on the scan and printed in the report.
+      Revisions `a2c4e6f8b190` (`fork_source`, `fork_conflict`) and
+      `b3d5f7a9c281` (`scans_queued`) carry it.
+- [x] **The feed now finishes the job it starts.** `app.services.promotion`
+      queues a scan for every newly verified contract, skips the ones
+      already analysed, looks again only when a contract was re-verified
+      (the source may have changed under the same address), and keeps the
+      queue inside two limits: a per-cycle cap and a cap on how many
+      scans may be waiting. The scans are filed in the product's own
+      discovery workspace; promoting a contract into a tenant's workspace
+      stays a human decision.
 - [x] **The working copy is WSL only.** The Windows copy at
       `E:/projects/cyberstratum` is frozen as a fallback and is no longer
       edited: two copies of a live database and two test environments

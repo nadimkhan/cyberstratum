@@ -321,6 +321,50 @@ Google OAuth client and redirect URI, and the Netlify site. Those are
 recorded in `docs/DEPLOYMENT.md` and their values are not in the
 repository.
 
+### 6.4 The data round opens
+
+Four decisions were taken and they decide what is built next: every
+newly verified contract is scanned automatically, the ML labels come from
+human triage inside CyberStratum, the data sources stay Blockscout-only,
+and nothing paid is bought.
+
+Three pieces of that are done. The chain list is being widened by
+probing, because the Blockscout instance registry now answers 402
+without a plan. The feed's ordering has been measured: the per-chain
+instance API is newest-first with a stable cursor, so page 1 catches
+every new verification and the older tail needs a cursor walk of its
+own. And the analysis fork is no longer assumed: the bytecode bounds it,
+an explicit request is honoured, and the disagreement between the two is
+recorded on the scan.
+
+What is still open, in the order it blocks the next:
+
+1. **A review surface.** Human triage is where the labels come from, so
+   the product needs a way to say *confirmed*, *false positive* or
+   *needs more evidence*, attributed to a person, with a reason and a
+   timestamp. `findings.status` exists; the reviewer, the reason and the
+   audit trail do not.
+2. **A knowledge base.** A classifier stores weights, not fixes. The
+   "error, its details and its solution" is a table: detector, what it
+   means, why it matters, how to fix it, and the patterns that are known
+   to be false positives.
+3. **Precision gates.** Before any model ships: per-detector precision
+   measured on reviewed labels, calibrated thresholds with an
+   abstention state, and a time-based split on top of the family split,
+   because live chain data has temporal correlation and a random split
+   leaks.
+4. **Context-gated rules.** `delegatecall`, `selfdestruct` and
+   `tx.origin` are patterns, not bugs. Gating them by context -- is
+   `tx.origin` used for authorization, is the target attacker-controlled,
+   is the contract a proxy -- is the single biggest lever on the false
+   positive rate, and it is cheaper than any model.
+5. **The older tail.** The feed sees new verifications quickly; a cursor
+   walk is needed for the long tail of contracts verified before the
+   feed existed.
+6. **A scheduler.** The cycle is still triggered by hand or by the API.
+   A systemd timer, in the shape of the update-check timer that already
+   exists, is the deployment answer.
+
 ## 7. How this document relates to the others
 
 | Document | Scope |

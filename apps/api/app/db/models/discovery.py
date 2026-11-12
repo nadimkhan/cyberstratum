@@ -121,6 +121,9 @@ class DiscoveryRun(Base):
     contracts_updated: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default=text("0")
     )
+    scans_queued: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
     errors: Mapped[list[dict[str, object]] | None] = mapped_column(JSONB)
     notes: Mapped[str | None] = mapped_column(Text)
 

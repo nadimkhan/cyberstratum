@@ -39,7 +39,14 @@ class ScanCreateRequest(BaseModel):
 
     contract_address: str = Field(description="Deployed contract address (0x-prefixed, 20 bytes).")
     chain_id: int = Field(default=1, ge=1, description="EVM chain id.")
-    fork: str = Field(default="cancun", description="EVM fork / opcode table to use.")
+    fork: str | None = Field(
+        default=None,
+        description=(
+            "EVM fork / opcode table to use. Leave it unset and the fork is "
+            "inferred from the opcodes the bytecode uses, which is correct "
+            "for chains this product has not characterised yet."
+        ),
+    )
     label: str | None = Field(default=None, max_length=200)
     workspace_id: uuid.UUID | None = Field(
         default=None,
@@ -84,7 +91,9 @@ class ScanCreateRequest(BaseModel):
 
     @field_validator("fork")
     @classmethod
-    def _validate_fork(cls, value: str) -> str:
+    def _validate_fork(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         normalized = value.lower()
         if normalized not in FORKS:
             raise ValueError(f"fork must be one of {', '.join(FORKS)}")
@@ -136,6 +145,8 @@ class ScanSummary(BaseModel):
     total_findings: int = 0
     status: ScanStatus
     fork: str
+    fork_source: str = "requested"
+    fork_conflict: bool = False
     bytecode_source: str
     queued_at: datetime | None = None
     started_at: datetime | None = None
