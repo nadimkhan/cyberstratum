@@ -1,0 +1,639 @@
+{
+  "generated_at": "2026-11-12T16:19:37+00:00",
+  "method": "Candidate hosts derived from the public chain registries (chainid.network, Etherscan V2 chainlist) and probed one at a time with a descriptive User-Agent. No credential was sent.",
+  "totals": {
+    "probed": 4660,
+    "by_status": {
+      "blocked": 5,
+      "live": 59,
+      "not_blockscout": 2,
+      "not_found": 4593,
+      "unreachable": 1
+    }
+  },
+  "batches": [
+    {
+      "started_at": "2026-11-12T13:43:15Z",
+      "finished_at": "2026-11-12T13:47:41Z",
+      "candidates": 8011,
+      "probed": 260
+    },
+    {
+      "started_at": "2026-11-12T13:49:02Z",
+      "finished_at": "2026-11-12T14:26:56Z",
+      "candidates": 7751,
+      "probed": 2200
+    },
+    {
+      "started_at": "2026-11-12T14:55:44Z",
+      "finished_at": "2026-11-12T15:34:48Z",
+      "candidates": 5551,
+      "probed": 2200
+    }
+  ],
+  "chains": [
+    {
+      "host": "andromeda-explorer.metis.io",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "arbitrum-nova.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "astar-zkevm.blockscout.com",
+      "chain_id": 3776,
+      "chain_name": "Astar zkEVM",
+      "status": "unreachable",
+      "http_status": null,
+      "detail": "",
+      "batch": "batch"
+    },
+    {
+      "host": "astar.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "awaji.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "base.blockscout.com",
+      "chain_id": 8453,
+      "chain_name": "Base",
+      "status": "blocked",
+      "http_status": 403,
+      "detail": "403 from a WAF; treat as unknown, verify by hand",
+      "batch": "batch"
+    },
+    {
+      "host": "blackfortscan.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "blockscout.lisk.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "celo.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "creditcoin.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "cronos-testnet.blockscout.com",
+      "chain_id": 338,
+      "chain_name": "Cronos Testnet",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "eden.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "etc.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "eth.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "evm.flow.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.derive.xyz",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.doma.xyz",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.etherlink.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.fuse.io",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.hpp.io",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.immutable.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "blocked",
+      "http_status": 403,
+      "detail": "403 from a WAF; treat as unknown, verify by hand",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.inkonchain.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.layerk.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.mainnet.aurora.dev",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.mode.network",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.optimism.io",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.orderly.network",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.playblock.io",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.plume.org",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.reya.network",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.roninchain.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.stabilityprotocol.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.tac.build",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "explorer.worldmobile.io",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "filecoin.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "fuse.blockscout.com",
+      "chain_id": 122,
+      "chain_name": "Fuse Mainnet",
+      "status": "not_blockscout",
+      "http_status": 200,
+      "detail": "answered, but not with the Blockscout v2 schema",
+      "batch": "batch"
+    },
+    {
+      "host": "gensyn-mainnet.explorer.alchemy.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "gnosis.blockscout.com",
+      "chain_id": 100,
+      "chain_name": "Gnosis",
+      "status": "blocked",
+      "http_status": 403,
+      "detail": "403 from a WAF; treat as unknown, verify by hand",
+      "batch": "batch"
+    },
+    {
+      "host": "gnosisscan.io",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "blocked",
+      "http_status": 403,
+      "detail": "403 from a WAF; treat as unknown, verify by hand",
+      "batch": "batch"
+    },
+    {
+      "host": "hsk.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "iota-evm.blockscout.com",
+      "chain_id": 8822,
+      "chain_name": "IOTA EVM",
+      "status": "not_blockscout",
+      "http_status": 200,
+      "detail": "answered, but not with the Blockscout v2 schema",
+      "batch": "batch"
+    },
+    {
+      "host": "kitescan.ai",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "megaeth.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "mizuhiki.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "neon.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "numine.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "orderly.blockscout.com",
+      "chain_id": 291,
+      "chain_name": "Orderly Mainnet",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "pepe.blockscout.com",
+      "chain_id": 411,
+      "chain_name": "Pepe Chain Mainnet",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "pepuscan.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "phoenix.lightlink.io",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "robinhoodchain.blockscout.com",
+      "chain_id": 4663,
+      "chain_name": "Robinhood Chain",
+      "status": "blocked",
+      "http_status": 403,
+      "detail": "403 from a WAF; treat as unknown, verify by hand",
+      "batch": "batch"
+    },
+    {
+      "host": "rootstock-testnet.blockscout.com",
+      "chain_id": 31,
+      "chain_name": "Rootstock Testnet",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "rootstock.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "scan.mocachain.org",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "scrollscan.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "shapescan.xyz",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "soneium-minato.blockscout.com",
+      "chain_id": 1946,
+      "chain_name": "Soneium Testnet Minato",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "soneium.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "unichain.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "worldchain-mainnet.explorer.alchemy.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "www.crossscan.io",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "www.datanetscan.io",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "zetachain-testnet.blockscout.com",
+      "chain_id": 7001,
+      "chain_name": "ZetaChain Testnet",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "zetascan.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "zilliqa.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "zksync-sepolia.blockscout.com",
+      "chain_id": 300,
+      "chain_name": "zkSync Sepolia Testnet",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    },
+    {
+      "host": "zksync.blockscout.com",
+      "chain_id": null,
+      "chain_name": "already in registry",
+      "status": "live",
+      "http_status": 200,
+      "detail": "Blockscout v2 smart-contracts answered",
+      "batch": "batch"
+    }
+  ]
+}

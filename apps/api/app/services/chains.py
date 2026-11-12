@@ -28,8 +28,16 @@ Key measurements (2026-10-28):
   eight sequential calls with no delay all returned 200.
 * ``filter=verified`` costs 12-79 s against 0.4-0.7 s for the same query
   without it. It is never used.
-* Per-chain instances answer 54 of the 60 chains. Cloudflare blocks Polygon,
+* Per-chain instances answer 58 of the 66 chains. Cloudflare blocks Polygon,
   Base, Arbitrum, Robinhood and Arc; Matchain's instance is down.
+
+Re-measured on 2026-11-12 by probing 4,660 candidate hosts one at a time
+(the Blockscout instance registry itself now answers 402 without a paid
+plan, so the chain list is found by probing rather than by reading it).
+The survey is committed at ``docs/chain-probe/survey.json``, the raw
+reports live in ``var/chain-probe/``, and ``scripts/summarise_chain_probe.py``
+turns one into the other and cross-checks the result against this
+registry.
 * PRO answers 402 for chains its plan does not cover (Polygon, Base, zkSync)
   and 404 for chains it does not support (Metis, Stability, Aurora).
 """
@@ -143,6 +151,7 @@ INSTANCE_HOSTS: Final[dict[int, str]] = {
     1: "eth.blockscout.com",
     10: "explorer.optimism.io",
     30: "rootstock.blockscout.com",
+    31: "rootstock-testnet.blockscout.com",
     61: "etc.blockscout.com",
     122: "explorer.fuse.io",
     130: "unichain.blockscout.com",
@@ -257,6 +266,7 @@ SUPPORTED_CHAINS: Final[tuple[Chain, ...]] = (
     _chain(1, "Ethereum", "ethereum", "Ethereum"),
     _chain(10, "OP Mainnet", "optimism", "Optimism"),
     _chain(30, "Rootstock", "rootstock", "Ethereum"),
+    _chain(31, "Rootstock Testnet", "rootstock_testnet", "Ethereum"),
     _chain(61, "Ethereum Classic", "ethereum_classic", "Ethereum"),
     _chain(100, "Gnosis", "gnosis", "Gnosis"),
     _chain(122, "Fuse", "fuse", "Ethereum"),

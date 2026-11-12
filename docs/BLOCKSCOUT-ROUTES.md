@@ -198,6 +198,33 @@ ever used as a link target, never as a source of truth.
 
 ## The conclusion that matters
 
+## Re-measured 2026-11-12
+
+The instance registry answers **402 Payment Required** without a paid
+plan, so the chain list was re-derived by probing instead of by reading
+it. 4,660 candidate hosts were probed one at a time; the method, the
+outcome meanings and the record are in
+[`docs/chain-probe/README.md`](chain-probe/README.md), with the survey
+itself in [`survey.json`](chain-probe/survey.json).
+
+| | |
+|---|---|
+| Hosts probed | 4,660 |
+| Live instances | 59 |
+| Blocked (403 — alive but refusing our agent) | 5 |
+| Not a Blockscout | 2 |
+| Unreachable | 1 |
+| Answered 404 | 4,593 |
+
+The registry now carries **66 chains**: 58 with a working per-chain
+instance, 6 reachable only through PRO, and 2 with no route at all. Every
+one of the 58 was seen live by the survey, and the survey's live chains
+are all in the registry — a check that now runs as part of the test
+suite, so the two cannot drift apart quietly.
+
+The numbers in the sections above are the 2026-10-28 measurement and are
+left as they were recorded.
+
 Combining both routes, **58 of the 60 chains are reachable**:
 
 | Category | Count | Chains |
