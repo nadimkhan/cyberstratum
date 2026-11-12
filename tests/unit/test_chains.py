@@ -83,6 +83,7 @@ EXPECTED_CHAIN_IDS = frozenset(
         6497,
         6498,
         7000,
+        7001,
         8021,
         8453,
         97741,
@@ -151,6 +152,7 @@ EXPECTED_INSTANCE_HOSTS = {
     6497: "awaji.blockscout.com",
     6498: "mizuhiki.blockscout.com",
     7000: "zetascan.com",
+    7001: "zetachain-testnet.blockscout.com",
     8021: "numine.blockscout.com",
     97741: "pepuscan.com",
     98866: "explorer.plume.org",
@@ -182,7 +184,7 @@ EXPECTED_BLOCKED_HOSTS = {
 
 def test_registry_covers_the_full_chain_scope() -> None:
     """The registry covers the chains the surveys found."""
-    assert len(SUPPORTED_CHAINS) == 64
+    assert len(SUPPORTED_CHAINS) == 65
     assert {chain.chain_id for chain in SUPPORTED_CHAINS} == EXPECTED_CHAIN_IDS
 
 
@@ -225,7 +227,7 @@ def test_explorer_host_is_set_for_the_verified_instances_only() -> None:
         if chain.explorer_host is not None
     }
     assert hosted == EXPECTED_INSTANCE_HOSTS
-    assert len(hosted) == 56
+    assert len(hosted) == 57
     # A blocked instance is recorded as blocked, not as a working host.
     for chain_id in BLOCKED_INSTANCE_HOSTS:
         assert chain_id not in hosted
