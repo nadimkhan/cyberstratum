@@ -1039,3 +1039,29 @@ category can be judged, so no model may be installed.
 The machinery is therefore complete and the corpus is not. The gate is
 what turns a thin corpus into a refusal rather than into a confident
 model, which is the whole point of having it.
+
+### 15 The selfdestruct round — a rule that must follow the fork
+
+`SELFDESTRUCT` changed what it does in Cancun: under EIP-6780 the
+contract's code survives and only the balance is forwarded. The rule was
+still saying "the contract can destroy itself" on every chain, which on a
+modern chain states something the chain no longer does.
+
+The rule now narrows with the fork:
+
+| Fork | Severity | Confidence | What it says |
+|---|---|---|---|
+| before Cancun | medium | 0.60 | the contract can destroy itself and forward its balance |
+| Cancun and later | low | 0.45 | the code survives; the balance can still be swept |
+| unknown | medium | 0.60 | the old wording, because an unknown fork is not "at least" anything |
+
+The narrowed finding carries the fork in its evidence and says in its
+limitation that the one remaining case — a contract created in the same
+transaction — cannot be shown from runtime bytecode.
+
+The guidance catalogue entry was rewritten to match (version 2): what it
+means, why it matters, how to fix it and when it is expected are all
+now fork-aware.
+
+Four tests pin the narrowing, including that a later fork still narrows
+and that the opcode offset is still reported.

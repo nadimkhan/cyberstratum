@@ -27,13 +27,13 @@
     {
       "detector_id": "baseline.selfdestruct",
       "title": "SELFDESTRUCT reachable",
-      "what_it_means": "The contract can destroy itself, sending its balance to an address it chooses.",
-      "why_it_matters": "A destroyed contract's code stays at its address but can never run again, so every function that moves funds becomes permanently unreachable. If the trigger is reachable by an attacker, the contract can be killed.",
-      "how_to_fix": "Remove the SELFDESTRUCT from any path a user can reach. Where it exists for a migration, gate it behind an address that no user can become, and migrate funds rather than destroying the contract.",
-      "false_positive_patterns": "On chains where SELFDESTRUCT is disabled or altered by a later fork, the opcode does not do what the source suggests; on Cancun and later, sending ether in the same transaction as a SELFDESTRUCT does not destroy the contract. A SELFDESTRUCT that is unreachable -- behind an impossible condition, or only callable by an immutable owner -- is not a live risk, though it is still worth removing.",
+      "what_it_means": "The contract contains SELFDESTRUCT. Before Cancun, the contract can destroy itself and send its balance to an address it chooses. From Cancun onwards (EIP-6780) the contract's code survives: only the balance is forwarded, unless the contract was created in the same transaction, which the runtime bytecode cannot show.",
+      "why_it_matters": "Before Cancun, a destroyed contract's code stays at its address but can never run again, so every function that moves funds becomes permanently unreachable. If the trigger is reachable by an attacker, the contract can be killed. From Cancun onwards the funds can still be swept away by whoever reaches the path, so the risk is the balance rather than the contract's functions -- which is why the finding narrows with the fork instead of repeating the older claim.",
+      "how_to_fix": "Remove the SELFDESTRUCT from any path a user can reach. Where it exists for a migration, gate it behind an address that no user can become, and migrate funds rather than destroying the contract. On Cancun and later, replace it with an explicit withdrawal of the balance if the balance is what the path is about.",
+      "false_positive_patterns": "A SELFDESTRUCT that is unreachable -- behind an impossible condition, or only callable by an immutable owner -- is not a live risk, though it is still worth removing. On Cancun and later the code is not destroyed at all, so a finding about the contract's code being unusable does not apply; the balance can still be swept, so a finding about the funds does.",
       "references": "SWC-106; EIP-6780 (the Cancun change to SELFDESTRUCT)",
       "default_severity": "medium",
-      "version": "1"
+      "version": "2"
     },
     {
       "detector_id": "baseline.call_before_state_write",

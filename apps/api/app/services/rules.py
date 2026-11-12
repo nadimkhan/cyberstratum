@@ -18,6 +18,7 @@ from app.services.context import (
 from evm_analysis.cfg import ControlFlowGraph
 from evm_analysis.disassembler import Disassembly
 from evm_analysis.features import ContractFeatures
+from evm_analysis.opcodes import FORK_ORDER
 
 #: Version of the rule set recorded on every scan.
 RULESET_VERSION = "0.1.0"
@@ -126,13 +127,66 @@ def _delegatecall(
     )
 
 
+#: The fork in which EIP-6780 changed what SELFDESTRUCT does.
+SELFDESTRUCT_NARROWING_FORK = "cancun"
+
+
+def _fork_is_at_least(fork: str, target: str) -> bool:
+    """Whether *fork* is *target* or a later fork.
+
+    An unknown fork is not "at least" anything: the caller has to decide
+    what to do about it, and a rule that guesses would be guessing about
+    the chain rather than about the code.
+    """
+    if fork not in FORK_ORDER or target not in FORK_ORDER:
+        return False
+    return FORK_ORDER.index(fork) >= FORK_ORDER.index(target)
+
+
 def _selfdestruct(
     disassembly: Disassembly, cfg: ControlFlowGraph, features: ContractFeatures
 ) -> RuleFinding | None:
-    """Flag SELFDESTRUCT, which can destroy a contract and forward its balance."""
+    """Flag SELFDESTRUCT, and say what it actually does on this fork.
+
+    Before Cancun, SELFDESTRUCT destroys the contract's code and
+    forwards the remaining balance to the target address. From Cancun
+    onwards (EIP-6780) the code survives and only the balance moves,
+    unless the contract was created in the same transaction -- which the
+    runtime bytecode cannot show. A finding that says "the contract can
+    destroy itself" on a modern chain states something the chain no
+    longer does, so the finding narrows with the fork instead of
+    repeating an outdated claim.
+    """
     offsets = [instr.offset for instr in disassembly.instructions if instr.name == "SELFDESTRUCT"]
     if not offsets:
         return None
+
+    if _fork_is_at_least(disassembly.fork, SELFDESTRUCT_NARROWING_FORK):
+        return RuleFinding(
+            detector_id="baseline.selfdestruct",
+            category="selfdestruct_usage",
+            title="Contract can forward its balance on SELFDESTRUCT",
+            description=(
+                "The contract contains SELFDESTRUCT. From Cancun onwards the "
+                "contract's code is not destroyed: the opcode only forwards the "
+                "remaining balance to the target address. Whoever reaches the path "
+                "can still sweep the balance away."
+            ),
+            severity=Severity.LOW,
+            confidence=0.45,
+            evidence={
+                "offsets": offsets,
+                "signals": ["selfdestruct", "balance_forwarding_only"],
+                "fork": disassembly.fork,
+            },
+            limitations=(
+                "From Cancun onwards the code survives SELFDESTRUCT unless the "
+                "contract was created in the same transaction, which the runtime "
+                "bytecode cannot show. Access control around the path was not "
+                "verified."
+            ),
+        )
+
     return RuleFinding(
         detector_id="baseline.selfdestruct",
         category="selfdestruct_usage",
