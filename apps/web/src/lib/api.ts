@@ -752,6 +752,8 @@ export async function listFindings(params?: {
   severity?: string;
   status?: string;
   category?: string;
+  detectorId?: string;
+  chainId?: number;
   scanId?: string;
   limit?: number;
   offset?: number;
@@ -760,6 +762,8 @@ export async function listFindings(params?: {
   if (params?.severity) query.set("severity", params.severity);
   if (params?.status) query.set("status", params.status);
   if (params?.category) query.set("category", params.category);
+  if (params?.detectorId) query.set("detector_id", params.detectorId);
+  if (params?.chainId !== undefined) query.set("chain_id", String(params.chainId));
   if (params?.scanId) query.set("scan_id", params.scanId);
   if (params?.limit !== undefined) query.set("limit", String(params.limit));
   if (params?.offset !== undefined) query.set("offset", String(params.offset));
@@ -780,11 +784,32 @@ export async function listFindings(params?: {
   };
 }
 
+/**
+ * How many findings one detector raised.
+ *
+ * The detector is what the issue *is*; the severity is how bad it is.
+ * Knowing which detectors fire most often is how the catalogue gets
+ * read, and it is the list a reviewer works down.
+ */
+export interface DetectorCount {
+  detectorId: string;
+  count: number;
+}
+
+/** How many findings were raised on one chain. */
+export interface ChainFindingCount {
+  chainId: number;
+  chainName: string;
+  count: number;
+}
+
 export interface FindingsSummary {
   total: number;
   bySeverity: SeverityCounts;
   byStatus: Record<string, number>;
   averageConfidence: number;
+  byDetector: DetectorCount[];
+  byChain: ChainFindingCount[];
 }
 
 /** Aggregate finding counts by severity and triage status. */
@@ -929,16 +954,15 @@ export function normaliseWorkspaces(value: unknown): WorkspaceSummary[] {
   return workspaces;
 }
 
-export async function getFindingsSummary(params?: {
-  scanId?: string;
-}): Promise<ApiResult<FindingsSummary>> {
-  const query = new URLSearchParams();
-  if (params?.scanId) query.set("scan_id", params.scanId);
-  const suffix = query.toString() ? `?${query.toString()}` : "";
-  const result = await request<unknown>(`/findings/summary${suffix}`);
-  if (!result.ok) return result;
-
-  const record = asRecord(result.data);
+/**
+ * Normalises the findings summary.
+ *
+ * The summary answers three questions at once: how bad the findings
+ * are, which detectors raised them, and which chains they came from.
+ * The last two are what turn a number into a list of work.
+ */
+export function normaliseFindingsSummary(value: unknown): FindingsSummary {
+  const record = asRecord(value);
   const bySeverity = emptySeverityCounts();
   for (const entry of pickArray(record, ["by_severity", "bySeverity"])) {
     const row = asRecord(entry);
@@ -956,17 +980,47 @@ export async function getFindingsSummary(params?: {
     byStatus[status] = (byStatus[status] ?? 0) + count;
   }
 
+  const byDetector: DetectorCount[] = pickArray(record, ["by_detector", "byDetector"]).map(
+    (entry) => {
+      const row = asRecord(entry);
+      return {
+        detectorId: pickString(row, ["detector_id", "detectorId"]) ?? "unknown",
+        count: pickNumber(row, ["count"]) ?? 0,
+      };
+    },
+  );
+  const byChain: ChainFindingCount[] = pickArray(record, ["by_chain", "byChain"]).map(
+    (entry) => {
+      const row = asRecord(entry);
+      return {
+        chainId: pickNumber(row, ["chain_id", "chainId"]) ?? 0,
+        chainName: pickString(row, ["chain_name", "chainName"]) ?? "Unknown chain",
+        count: pickNumber(row, ["count"]) ?? 0,
+      };
+    },
+  );
+
   const severityTotal = Object.values(bySeverity).reduce((sum, n) => sum + n, 0);
   return {
-    ok: true,
-    data: {
-      total: pickNumber(record, ["total"]) ?? severityTotal,
-      bySeverity,
-      byStatus,
-      averageConfidence:
-        pickNumber(record, ["average_confidence", "averageConfidence"]) ?? 0,
-    },
+    total: pickNumber(record, ["total"]) ?? severityTotal,
+    bySeverity,
+    byStatus,
+    averageConfidence:
+      pickNumber(record, ["average_confidence", "averageConfidence"]) ?? 0,
+    byDetector,
+    byChain,
   };
+}
+
+export async function getFindingsSummary(params?: {
+  scanId?: string;
+}): Promise<ApiResult<FindingsSummary>> {
+  const query = new URLSearchParams();
+  if (params?.scanId) query.set("scan_id", params.scanId);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const result = await request<unknown>(`/findings/summary${suffix}`);
+  if (!result.ok) return result;
+  return { ok: true, data: normaliseFindingsSummary(result.data) };
 }
 
 /* ------------------------------------------------------------------ */
@@ -1929,6 +1983,7 @@ export { bulkVerdictProblem };
 
 export const __testing = {
   normaliseFinding,
+  normaliseFindingsSummary,
   normaliseDiscoveryCursor,
   normaliseDiscoveryRun,
   normaliseScanSource,

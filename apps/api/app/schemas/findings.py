@@ -104,6 +104,27 @@ class StatusCount(BaseModel):
     count: int
 
 
+class DetectorCount(BaseModel):
+    """Number of findings raised by one detector.
+
+    The detector is what an issue *is*; the severity is how bad it is.
+    Knowing which detectors fire most often is how the catalogue gets
+    read, so the breakdown is a product of the detector catalogue and
+    not a free-text label.
+    """
+
+    detector_id: str
+    count: int
+
+
+class ChainFindingCount(BaseModel):
+    """Number of findings raised on one chain."""
+
+    chain_id: int
+    chain_name: str
+    count: int
+
+
 class SeverityBreakdown(BaseModel):
     """Aggregate counts across findings."""
 
@@ -111,6 +132,8 @@ class SeverityBreakdown(BaseModel):
     by_severity: list[SeverityCount] = Field(default_factory=list)
     by_status: list[StatusCount] = Field(default_factory=list)
     average_confidence: float = 0.0
+    by_detector: list[DetectorCount] = Field(default_factory=list)
+    by_chain: list[ChainFindingCount] = Field(default_factory=list)
 
 
 class FindingListResponse(BaseModel):

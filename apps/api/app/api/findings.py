@@ -27,11 +27,13 @@ from sqlalchemy import func, select
 
 from app.core.security import CurrentPrincipal, SessionDep, read_scope
 from app.db.enums import FindingStatus, Severity
-from app.db.models.identity import AuditEvent
-from app.db.models.scans import Finding
+from app.db.models.identity import AuditEvent, Chain, ContractTarget
+from app.db.models.scans import Finding, Scan
 from app.schemas.findings import (
     BulkFindingReviewRequest,
     BulkFindingReviewResponse,
+    ChainFindingCount,
+    DetectorCount,
     FindingListResponse,
     FindingRead,
     FindingReviewRequest,
@@ -41,6 +43,10 @@ from app.schemas.findings import (
 )
 
 router = APIRouter(prefix="/api/v1/findings", tags=["findings"])
+
+#: How many detectors the breakdown names. The full list is available
+#: through the findings list itself.
+TOP_DETECTORS = 20
 
 
 @router.get("", response_model=FindingListResponse, summary="List findings")
@@ -52,10 +58,12 @@ def list_findings(
     severity: Severity | None = Query(default=None),
     status_filter: FindingStatus | None = Query(default=None, alias="status"),
     category: str | None = Query(default=None),
+    detector_id: str | None = Query(default=None),
+    chain_id: int | None = Query(default=None),
     scan_id: uuid.UUID | None = Query(default=None),
     workspace_id: uuid.UUID | None = Query(default=None),
 ) -> FindingListResponse:
-    """List findings with optional severity/status/category filters.
+    """List findings with optional severity/status/category/detector/chain filters.
 
     The list only ever contains the caller's own findings. A
     ``workspace_id`` naming another workspace is refused with ``403``.
@@ -79,6 +87,25 @@ def list_findings(
     if scan_id is not None:
         stmt = stmt.where(Finding.scan_id == scan_id)
         count_stmt = count_stmt.where(Finding.scan_id == scan_id)
+    if detector_id is not None:
+        stmt = stmt.where(Finding.detector_id == detector_id)
+        count_stmt = count_stmt.where(Finding.detector_id == detector_id)
+    if chain_id is not None:
+        # A chain filter needs the scan and the target it was taken
+        # against, so the query walks finding -> scan -> target -> chain.
+        stmt = (
+            stmt.join(Scan, Scan.id == Finding.scan_id)
+            .join(ContractTarget, ContractTarget.id == Scan.target_id)
+            .join(Chain, Chain.id == ContractTarget.chain_id)
+            .where(Chain.chain_id == chain_id)
+        )
+        count_stmt = (
+            count_stmt.select_from(Finding)
+            .join(Scan, Scan.id == Finding.scan_id)
+            .join(ContractTarget, ContractTarget.id == Scan.target_id)
+            .join(Chain, Chain.id == ContractTarget.chain_id)
+            .where(Chain.chain_id == chain_id)
+        )
 
     total = session.scalar(count_stmt) or 0
     rows = session.scalars(stmt.offset(offset).limit(limit)).all()
@@ -297,10 +324,35 @@ def severity_breakdown(
         select(func.coalesce(func.avg(Finding.confidence), 0.0)).where(*filters)
     ).all()
 
+    detector_rows = session.execute(
+        select(Finding.detector_id, func.count())
+        .where(*filters)
+        .group_by(Finding.detector_id)
+        .order_by(func.count().desc(), Finding.detector_id.asc())
+        .limit(TOP_DETECTORS)
+    ).all()
+    chain_rows = session.execute(
+        select(Chain.chain_id, Chain.name, func.count())
+        .select_from(Finding)
+        .join(Scan, Scan.id == Finding.scan_id)
+        .join(ContractTarget, ContractTarget.id == Scan.target_id)
+        .join(Chain, Chain.id == ContractTarget.chain_id)
+        .where(*filters)
+        .group_by(Chain.chain_id, Chain.name)
+        .order_by(func.count().desc(), Chain.chain_id.asc())
+    ).all()
+
     by_severity = [
         SeverityCount(severity=severity, count=count) for severity, count in severity_rows
     ]
     by_status = [StatusCount(status=st, count=count) for st, count in status_rows]
+    by_detector = [
+        DetectorCount(detector_id=detector_id, count=count) for detector_id, count in detector_rows
+    ]
+    by_chain = [
+        ChainFindingCount(chain_id=chain_id, chain_name=chain_name, count=count)
+        for chain_id, chain_name, count in chain_rows
+    ]
     total = sum(item.count for item in by_severity)
 
     return SeverityBreakdown(
@@ -308,6 +360,8 @@ def severity_breakdown(
         by_severity=by_severity,
         by_status=by_status,
         average_confidence=round(float(confidence_rows[0][0]), 4) if confidence_rows else 0.0,
+        by_detector=by_detector,
+        by_chain=by_chain,
     )
 
 

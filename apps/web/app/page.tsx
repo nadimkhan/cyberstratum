@@ -46,6 +46,13 @@ export default async function DashboardPage({
       (summaryResult.data.byStatus["triage"] ?? 0)
     : 0;
 
+  // The summary names which detectors fire and which chains they fire on.
+  // Both breakdowns link into the findings list with the filter already
+  // applied, so the overview is a way into the work and not a dead end.
+  const summary = summaryResult.ok ? summaryResult.data : null;
+  const topDetectors = summary ? summary.byDetector.slice(0, 8) : [];
+  const topChains = summary ? summary.byChain.slice(0, 8) : [];
+
   const scoredScans = scans.filter((scan) => scan.totalFindings > 0);
   const averageRiskScore =
     scoredScans.length > 0
@@ -158,6 +165,52 @@ export default async function DashboardPage({
           ))}
         </ul>
       </section>
+
+      {topDetectors.length > 0 ? (
+        <section aria-labelledby="detectors-heading" className="space-y-3">
+          <h2 id="detectors-heading" className="text-lg font-semibold text-[var(--cs-fg)]">
+            What we find most
+          </h2>
+          <ul className="space-y-1">
+            {topDetectors.map((row) => (
+              <li key={row.detectorId}>
+                <Link
+                  href={`/findings?detector=${encodeURIComponent(row.detectorId)}`}
+                  className="flex items-baseline justify-between gap-3 rounded-md border border-[var(--cs-border)] bg-[var(--cs-surface)] px-3 py-2 text-sm hover:border-[var(--cs-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
+                >
+                  <span className="font-mono text-xs text-[var(--cs-fg)]">{row.detectorId}</span>
+                  <span className="font-mono text-sm tabular-nums text-[var(--cs-muted)]">
+                    {row.count}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {topChains.length > 0 ? (
+        <section aria-labelledby="chains-heading" className="space-y-3">
+          <h2 id="chains-heading" className="text-lg font-semibold text-[var(--cs-fg)]">
+            Where the findings are
+          </h2>
+          <ul className="space-y-1">
+            {topChains.map((row) => (
+              <li key={row.chainId}>
+                <Link
+                  href={`/findings?chain=${row.chainId}`}
+                  className="flex items-baseline justify-between gap-3 rounded-md border border-[var(--cs-border)] bg-[var(--cs-surface)] px-3 py-2 text-sm hover:border-[var(--cs-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
+                >
+                  <span className="text-[var(--cs-fg)]">{row.chainName}</span>
+                  <span className="font-mono text-sm tabular-nums text-[var(--cs-muted)]">
+                    {row.count}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section aria-labelledby="recent-scans-heading" className="space-y-3">
         <div className="flex items-center justify-between">

@@ -1458,3 +1458,40 @@ instead of going quiet.
 The page reads the same two endpoints the rest of the application
 uses; it adds no new API surface beyond the cursor's next page, which
 the cursor route did not previously expose.
+
+### 27 What we find most, and where
+
+The summary said how bad the findings were and how many were still
+undecided. It did not say *which* issues the catalogue keeps raising,
+nor which chains they come from -- so the number on the overview was a
+number and not a list of work.
+
+The summary now carries two more breakdowns:
+
+| Breakdown | Live (1,483 findings) |
+|---|---|
+| `by_detector` | 20 detectors named -- `baseline.delegatecall` 219, `slither.assembly` 217, `baseline.unresolved_jumps` 177, `slither.solc_version` 155 |
+| `by_chain` | Chain 1 1145, OP Mainnet 290, Astar 30, Rootstock 18 |
+
+Both are honest about the corpus they describe: the detector list is
+capped at twenty (the whole list stays available through the findings
+list itself) and the chain list names every chain the findings came
+from.
+
+The findings list can now be narrowed by detector and by chain, and
+the overview links into it with the filter already applied:
+
+- `/findings?detector=baseline.delegatecall` -- 219 findings, all of
+  them from that detector;
+- `/findings?chain_id=1` -- the 1,145 findings from that chain;
+- a chain with nothing on it answers `0`, not an error.
+
+The filters compose: the severity filter is kept when the detector or
+chain filter is applied, so narrowing by one does not silently drop
+the other. The chain filter walks finding -> scan -> target -> chain,
+because a finding does not know its chain itself.
+
+This is what makes the catalogue usable rather than merely complete.
+A detector that fires two hundred times on one chain is a different
+problem from a detector that fires twice on forty chains, and the
+number alone cannot tell them apart.
