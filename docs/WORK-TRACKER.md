@@ -1247,3 +1247,122 @@ a document; now it is a number the build can see.
 | Coverage | Before | After |
 |---|---|---|
 | Slither detectors with advice | 24/101 | **48/101** |
+
+### 21 The bulk round — one verdict for a whole group of findings
+
+The reviewed corpus was empty for a reason that was not the model's: a
+reviewer who has read one `slither.naming_convention` finding and
+decided that it is a style question has decided the same thing about
+the other sixty-six of its kind, but the product gave them no way to
+say so except sixty-seven separate decisions. The label is the
+expensive part, so the action had to be made once.
+
+**What was built.**
+
+* `POST /api/v1/findings/review-bulk` settles every open finding of one
+  detector with one verdict, under the rules of a single verdict: `new`
+  is not a verdict, a false positive needs a reason, and a finding that
+  has already been settled is never overwritten — it is counted and left
+  alone. Each finding it touches gets its own audit event, and the
+  action commits rather than only flushing.
+* `GET /api/v1/workspaces` names the workspaces a caller may act in and
+  how many findings in each are still open. A bulk verdict belongs to
+  one tenant, so the reviewer says whose findings they are settling, and
+  the action is refused when that is not known.
+* The web UI: a workspace picker on every group in `/triage`, the reason
+  box, and two buttons. The rules live in one client-safe module, so
+  the browser and the server cannot disagree about them.
+
+**The mistake, and the undo.** The first live proof called the endpoint
+with the administrative service key — the key that acts across every
+tenant — and settled **67 real findings** as false positives. That is
+fabricated ground truth, and the corpus was wrong until it was put
+right. Every one of the 67 was restored to `new` with its reviewer,
+time and reason cleared, and their 67 audit events were deleted; the
+corpus was then measured back to its previous state (1 413 new, 1
+confirmed, 1 false positive, the two original reviews intact). The
+lesson is now a rule in the code rather than a memory: a bulk action is
+keyed by detector id, and a detector id is not a tenant, so the action
+may not run without a named workspace. The service key is refused with
+`403` unless it names one.
+
+**A credential bug found on the way.** The web front end presented the
+service key *and* the session token together on every call. The backend
+refuses a request carrying both — a request that presents two
+credentials has no defined subject — so every signed-in page was one
+step away from a `401`. The front end now presents exactly one: the
+session when there is one, the service key otherwise.
+
+| | Before | After |
+|---|---|---|
+| Verdicts a reviewer can record on a group of findings | 1 per finding | **1 for the whole group** |
+| Ways for a bulk action to reach another tenant | unbounded | **refused (403) without a named workspace** |
+| Backend tests for the bulk action | 0 | **13** |
+| Front-end tests for the shared verdict rules | 0 | **4** |
+| Reviewed findings in the live corpus after the proof | 2 | **2 (the 67 were restored)** |
+
+### 22 The catalogue gap, closed
+
+The gap the audit measured -- 48 of Slither's 101 detectors answered -- is
+now closed. The remaining 53 detectors now carry the same four-part
+entry as the rest: what the pattern means, why it matters, what to
+change, and when it is *not* a problem. The last of them are the quiet
+ones, and they are worth having precisely because they are quiet: a
+right-to-left override character in a token name, `msg.value` counted
+once per iteration, a state variable that shadows another one, a
+constructor that was never implemented.
+
+* **The audit now reports full coverage.**
+  `python -m app.cli.guidance_audit` prints `101/101`, an empty
+  `missing` list and an empty `unknown` list, and `--strict` exits
+  zero. The number that was a sentence in a document is now a number
+  the build can see, and it is the number the build wants.
+* **The advice is served and rendered.** The knowledge endpoint answers
+  with **109** entries -- the 101 Slither detectors, the six baseline
+  detectors and the two Mythril ones -- and the same advice appears
+  under the finding in the scan page, in the findings list and in the
+  triage queue.
+* **Writing it was work, not filler.** Each entry says what the
+  pattern is in the contract, what an attacker gains, what to change,
+  and the case where the pattern is expected. The false-positive half
+  is the half that saves a reviewer their afternoon, so it was written
+  for every entry rather than left as a generic disclaimer.
+
+| Coverage | Before | After |
+|---|---|---|
+| Slither detectors with advice | 48/101 | **101/101** |
+| Guidance entries served by `/api/v1/knowledge` | 56 | **109** |
+| `guidance_audit --strict` exit code | 1 | **0** |
+
+### 23 The whole walk, in one command
+
+Every part of this product has been proved on its own -- discovery, the
+fetch, the scan, the coverage, the advice, the review. What was missing
+was a single command that walks the whole thing on the running stack,
+so that "it works" is a thing you can run rather than a thing you
+remember.
+
+`scripts/wsl/e2e_full_workflow.py` does that, in ten steps:
+
+| Step | What it proves | The answer it gave |
+|---|---|---|
+| 1 | The stack answers | api 200, web 200 |
+| 2 | The corpus is there and tenant-shaped | `default` 40 open, `discovery` 1373 open, 1415 findings |
+| 3 | Every finding carries advice | 109 entries served, none of the detectors in the first page unanswered |
+| 4 | The scan queue produced scans | the latest scan and its limitations are readable |
+| 5 | A reviewer settles a finding and a group | one verdict: 200; one verdict for the group: applied 1, skipped 1 |
+| 6 | A settled finding is not settled twice | applied 0, skipped 2 |
+| 7 | The service key cannot act across tenants | 403, with the reason in words |
+| 8 | The proof leaves nothing behind | 0 findings left behind |
+| 9 | The labels are the ones that count | 2 reviewed findings in the live corpus |
+| 10 | The model refuses itself | the learning cycle exits **2**: `promotable: false`, `records: 1` |
+
+The review in step 5 happens in a workspace the script creates and
+deletes. A reviewed label is a human decision, and the script is not a
+human; what it proves is that the *mechanism* records a decision
+correctly, not that any particular finding deserves the label.
+
+Step 10 is the important one. The corpus has two reviewed findings
+from one settled contract, and the learning cycle says so and stops:
+there is no validation split, so no category can be judged. That
+refusal is the product working, not failing.

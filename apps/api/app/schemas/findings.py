@@ -147,7 +147,50 @@ class FindingReviewRequest(BaseModel):
     )
 
 
+class BulkFindingReviewRequest(BaseModel):
+    """One verdict applied to every open finding of one detector.
+
+    A reviewer who has decided that one naming-convention finding is a
+    style question has decided the same thing about the others of its
+    kind. Recording that once, for all of them, is what makes a
+    reviewed corpus possible at all.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    detector_id: str = Field(min_length=1, max_length=120)
+    status: FindingStatus = Field(
+        description=(
+            "The verdict: 'confirmed', 'false_positive', "
+            "'needs_more_evidence' or 'triage'."
+        )
+    )
+    note: str | None = Field(
+        default=None,
+        max_length=2000,
+        description="Why. Required for a false-positive verdict.",
+    )
+    limit: int = Field(
+        default=200,
+        ge=1,
+        le=500,
+        description="How many findings one action may settle.",
+    )
+
+
+class BulkFindingReviewResponse(BaseModel):
+    """What a bulk verdict changed, and what it left alone."""
+
+    detector_id: str
+    status: FindingStatus
+    applied: int = 0
+    skipped: int = 0
+    finding_ids: list[uuid.UUID] = Field(default_factory=list)
+
+
 __all__ = [
+    "BulkFindingReviewRequest",
+    "BulkFindingReviewResponse",
     "FindingListResponse",
     "FindingRead",
     "FindingReviewRequest",

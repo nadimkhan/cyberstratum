@@ -30,6 +30,8 @@ from app.db.enums import FindingStatus, Severity
 from app.db.models.identity import AuditEvent
 from app.db.models.scans import Finding
 from app.schemas.findings import (
+    BulkFindingReviewRequest,
+    BulkFindingReviewResponse,
     FindingListResponse,
     FindingRead,
     FindingReviewRequest,
@@ -161,6 +163,108 @@ def review_finding(
     # something say so.
     session.commit()
     return FindingRead.model_validate(finding)
+
+
+@router.post(
+    "/review-bulk",
+    response_model=BulkFindingReviewResponse,
+    summary="Settle every open finding of one detector",
+)
+def review_findings_bulk(
+    payload: BulkFindingReviewRequest,
+    session: SessionDep,
+    principal: CurrentPrincipal,
+    workspace_id: uuid.UUID | None = Query(default=None),
+) -> BulkFindingReviewResponse:
+    """Apply one verdict to every open finding of one detector.
+
+    The rules are the rules of a single verdict: ``new`` is not a
+    verdict, a false positive needs a reason, and a finding belonging to
+    another tenant is never touched. A finding that has already been
+    settled is not overwritten -- it is counted and left alone, because
+    a reviewed label is not something to refresh without a reason.
+
+    The scope is always exactly one workspace: the caller's own, or the
+    one they named. A bulk action that reaches every tenant is not a
+    verdict, so the administrative service key has to name the
+    workspace it acts in.
+    """
+    if payload.status is FindingStatus.NEW:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="'new' is not a review verdict; use 'triage' for an untouched finding",
+        )
+    note = (payload.note or "").strip()
+    if payload.status is FindingStatus.FALSE_POSITIVE and not note:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "a false-positive verdict needs a reason: without one it "
+                "cannot be told apart from a mistaken verdict"
+            ),
+        )
+
+    scope = read_scope(principal, workspace_id)
+    if scope is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "a bulk verdict must name the workspace it acts in: the service key "
+                "acts across every tenant, and a verdict that reaches every tenant "
+                "is not a verdict"
+            ),
+        )
+    base_filters = [
+        Finding.detector_id == payload.detector_id,
+        Finding.workspace_id == scope,
+    ]
+
+    settled_stmt = (
+        select(func.count())
+        .select_from(Finding)
+        .where(
+            *base_filters,
+            Finding.status.in_([FindingStatus.CONFIRMED, FindingStatus.FALSE_POSITIVE]),
+        )
+    )
+    settled = session.scalar(settled_stmt) or 0
+
+    open_stmt = select(Finding).where(
+        *base_filters,
+        Finding.status.notin_([FindingStatus.CONFIRMED, FindingStatus.FALSE_POSITIVE]),
+    )
+    rows = session.scalars(open_stmt.limit(payload.limit)).all()
+
+    now = datetime.now(UTC)
+    for finding in rows:
+        finding.status = payload.status
+        finding.reviewed_by = principal.user_id
+        finding.reviewed_at = now
+        finding.review_note = note or None
+        session.add(
+            AuditEvent(
+                workspace_id=finding.workspace_id,
+                actor_user_id=principal.user_id,
+                action="finding.reviewed",
+                resource_type="finding",
+                resource_id=str(finding.id),
+                metadata_redacted={
+                    "status": payload.status.value,
+                    "hasNote": bool(note),
+                    "bulk": True,
+                    "detectorId": payload.detector_id,
+                },
+            )
+        )
+    session.flush()
+    session.commit()
+    return BulkFindingReviewResponse(
+        detector_id=payload.detector_id,
+        status=payload.status,
+        applied=len(rows),
+        skipped=settled,
+        finding_ids=[finding.id for finding in rows],
+    )
 
 
 @router.get("/summary", response_model=SeverityBreakdown, summary="Severity breakdown")

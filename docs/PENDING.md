@@ -21,6 +21,10 @@ leaving it to rot in the main list.
 | `[!]` | Blocked — the reason is stated inline and it is also listed in §4 |
 
 **Last updated:** 2026-11-13
+**One command proves the whole product:** `.venv/bin/python scripts/wsl/e2e_full_workflow.py`
+walks the running stack end to end -- the corpus, the advice, a review in a throwaway
+workspace, the tenant refusal, and the model's refusal to promote itself. Ten steps,
+one answer each; see tracker §23.
 **Rule that governs every item below:** an engine that did not produce a
 verdict is reported as *no verdict / skipped / error* — never as *clean*.
 Applies to Mythril, Slither, the ML model, the correspondence proof, and the
@@ -350,7 +354,14 @@ What is still open, in the order it blocks the next:
    installed model is applied to every scan as a *ranking aid* — it adds
    a score to a finding and changes nothing else. What is still missing
    is the evidence it needs: enough reviewed findings for the gate to
-   have something to measure.
+   have something to measure. The label is now cheap to record: one
+   verdict settles a whole group of findings of the same detector
+   (`POST /api/v1/findings/review-bulk`, and the workspace picker on
+   `/triage`), because a reviewer who has read one naming-convention
+   finding has decided the same thing about the others of its kind. A
+   bulk action must name the workspace it acts in, so it cannot settle
+   another tenant's findings by accident — and the labels it writes are
+   still human decisions, which is the only thing the gate accepts.
 2. **A knowledge base — now covering every detector the product emits.**
    The seed carries **32** entries: the six baseline detectors, the 24
    Slither detectors the corpus has produced, and the two Mythril
@@ -362,8 +373,11 @@ What is still open, in the order it blocks the next:
    measured rather than remembered: `python -m app.cli.guidance_audit`
    reports the coverage of Slither's 101 detectors against the seed,
    names the ones with no advice, and `--strict` turns the gap into a
-   non-zero exit. 48 of the 101 have advice; the remaining 53 are the
-   breadth that is still missing.
+   non-zero exit. **All 101 have advice**: the catalogue gap that the
+   audit measured is closed, and the audit now reports `101/101` with
+   `--strict` exiting zero. The seed serves 109 entries in total --
+   the 101 Slither detectors, the six baseline detectors and the two
+   Mythril ones.
 3. **Precision gates.** The gate itself is done: per-category precision
    on the validation split, a per-category threshold chosen to reach the
    precision floor, abstention for the categories that cannot reach it,

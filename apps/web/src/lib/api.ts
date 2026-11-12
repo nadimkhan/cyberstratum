@@ -5,6 +5,7 @@ import {
   toSeverity,
 } from "./severity";
 import { toReviewStatus, toScanStatus, toStageStatus } from "./status";
+import { bulkVerdictProblem } from "./bulk-review";
 import { CORRESPONDENCE_STATUSES } from "./types";
 import type {
   Artifact,
@@ -22,6 +23,7 @@ import type {
   ScanSummary,
   Severity,
   SeverityCounts,
+  WorkspaceSummary,
 } from "./types";
 
 /**
@@ -100,10 +102,16 @@ async function currentSessionToken(): Promise<string | null> {
  * existing service-key behaviour.
  */
 async function authHeaders(): Promise<Record<string, string>> {
-  const headers: Record<string, string> = API_KEY ? { "X-API-Key": API_KEY } : {};
   const token = await currentSessionToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-  return headers;
+  if (token) {
+    // A session is a tenant credential: it is scoped to the workspace
+    // the session was issued for. The service key is a separate,
+    // administrative credential, and the backend refuses a request that
+    // presents both -- so a signed-in visitor is a tenant and nothing
+    // more.
+    return { Authorization: `Bearer ${token}` };
+  }
+  return API_KEY ? { "X-API-Key": API_KEY } : {};
 }
 
 export type ApiErrorKind = "network" | "http" | "parse" | "not_found";
@@ -721,6 +729,91 @@ export async function reviewFinding(
       reviewNote: pickString(record, ["review_note", "reviewNote"]),
     },
   };
+}
+
+/**
+ * Apply one verdict to every open finding of one detector.
+ *
+ * The reason for a false positive is required by the backend, and the
+ * client says so before the request is made rather than after it
+ * fails.
+ */
+export async function reviewFindingsBulk(
+  detectorId: string,
+  verdict: { status: ReviewVerdict; note?: string | null },
+  workspaceId?: string | null,
+): Promise<ApiResult<{ applied: number; skipped: number }>> {
+  const note = (verdict.note ?? "").trim();
+  const problem = bulkVerdictProblem(verdict.status, note);
+  if (problem) {
+    return {
+      ok: false,
+      error: {
+        kind: "http",
+        status: 422,
+        message: problem,
+        detail:
+          "Without one it cannot be told apart from a mistaken verdict, and neither is usable as ground truth.",
+      },
+    };
+  }
+
+  const query = new URLSearchParams();
+  if (workspaceId) query.set("workspace_id", workspaceId);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+
+  const result = await request<unknown>(`/findings/review-bulk${suffix}`, {
+    method: "POST",
+    body: JSON.stringify({ detector_id: detectorId, status: verdict.status, note: note || null }),
+  });
+  if (!result.ok) return result;
+
+  const record = asRecord(result.data);
+  return {
+    ok: true,
+    data: {
+      applied: pickNumber(record, ["applied"]) ?? 0,
+      skipped: pickNumber(record, ["skipped"]) ?? 0,
+    },
+  };
+}
+
+/**
+ * List the workspaces the caller may act in.
+ *
+ * A verdict belongs to one tenant, so a reviewer who settles a whole
+ * group of findings has to know whose findings they are settling. Each
+ * entry carries how many findings are still open in that workspace.
+ */
+export async function listWorkspaces(): Promise<ApiResult<WorkspaceSummary[]>> {
+  const result = await request<unknown>("/workspaces");
+  if (!result.ok) return result;
+  return { ok: true, data: normaliseWorkspaces(result.data) };
+}
+
+/**
+ * Turn a workspaces answer into the shape the product uses.
+ *
+ * A workspace without an id cannot be acted in, so it is dropped rather
+ * than shown as an entry that cannot be chosen.
+ */
+export function normaliseWorkspaces(value: unknown): WorkspaceSummary[] {
+  const raw: unknown[] = Array.isArray(value)
+    ? value
+    : pickArray(asRecord(value), ["items", "workspaces"]);
+  const workspaces: WorkspaceSummary[] = [];
+  for (const entry of raw) {
+    const row = asRecord(entry);
+    const id = pickString(row, ["id", "workspace_id"]);
+    if (!id) continue;
+    workspaces.push({
+      id,
+      name: pickString(row, ["name"]) ?? id,
+      slug: pickString(row, ["slug"]) ?? id,
+      openFindings: pickNumber(row, ["open_findings", "openFindings"]) ?? 0,
+    });
+  }
+  return workspaces;
 }
 
 export async function getFindingsSummary(params?: {
@@ -1715,8 +1808,12 @@ function normaliseCreatedScan(value: unknown): CreatedScan {
 }
 
 /** Exported for tests: normalise raw backend payloads into the taxonomy. */
+export { bulkVerdictProblem };
+
 export const __testing = {
   normaliseFinding,
+  normaliseWorkspaces,
+  bulkVerdictProblem,
   normaliseGuidance,
   normaliseScanSummary,
   normaliseScanDetail,

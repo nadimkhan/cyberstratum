@@ -1,11 +1,13 @@
 import { ApiUnreachable } from "@/components/ApiUnreachable";
+import { BulkReviewPanel } from "@/components/BulkReviewPanel";
 import { EmptyState } from "@/components/EmptyState";
 import { FindingReviewPanel } from "@/components/FindingReviewPanel";
 import { GuidancePanel } from "@/components/GuidancePanel";
 import { ReviewStatusBadge } from "@/components/StatusBadge";
 import { SeverityBadge } from "@/components/SeverityBadge";
-import { API_BASE_URL, describeApiError, getGuidanceMap, listFindings } from "@/lib/api";
+import { API_BASE_URL, describeApiError, getGuidanceMap, listFindings, listWorkspaces } from "@/lib/api";
 import { formatDateTime, shortAddress } from "@/lib/format";
+import type { Finding } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -20,19 +22,33 @@ export const metadata = { title: "Triage" };
  * evidence. A confirmed finding and a false positive are both finished
  * work and are not shown here.
  *
+ * The findings are grouped by detector, because a reviewer thinks in
+ * detectors: one naming-convention finding teaches you what the other
+ * seventeen of its kind mean. Each group carries the advice for its
+ * detector and one action that settles the whole group.
+ *
  * The page is server-rendered and the verdict controls are a client
  * component, so the service key never reaches the browser and the
  * session cookie never leaves it.
  */
 export default async function TriagePage() {
-  const [result, guidanceResult] = await Promise.all([
+  const [result, guidanceResult, workspacesResult] = await Promise.all([
     listFindings({ limit: 200 }),
     getGuidanceMap(),
+    listWorkspaces(),
   ]);
   // A verdict recorded here becomes a label the model learns from, so the
   // reviewer is shown what the detector means -- and when the pattern is
   // expected -- before they settle it.
   const guidance = guidanceResult.ok ? guidanceResult.data : {};
+
+  // A bulk verdict belongs to one tenant, so the reviewer chooses the
+  // workspace whose findings they are settling. The workspace with the
+  // most open findings is offered first, because that is the one the
+  // queue was built from.
+  const workspaces = workspacesResult.ok ? workspacesResult.data : [];
+  const defaultWorkspace =
+    workspaces.slice().sort((a, b) => b.openFindings - a.openFindings)[0]?.id ?? null;
 
   if (!result.ok) {
     return (
@@ -59,6 +75,20 @@ export default async function TriagePage() {
       finding.reviewStatus !== "false_positive",
   );
 
+  // Grouped by detector: one group is one kind of finding, and the
+  // advice and the bulk action belong to the group rather than to each
+  // individual row.
+  const groups = new Map<string, Finding[]>();
+  for (const finding of open) {
+    const key = finding.detectorId ?? "unknown";
+    const bucket = groups.get(key);
+    if (bucket) {
+      bucket.push(finding);
+    } else {
+      groups.set(key, [finding]);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <header>
@@ -77,62 +107,80 @@ export default async function TriagePage() {
           action={{ label: "Queue a scan", href: "/scans/new" }}
         />
       ) : (
-        <ul className="space-y-3">
-          {open.map((finding) => (
-            <li
-              key={finding.id}
-              className="space-y-3 rounded-lg border border-[var(--cs-border)] bg-[var(--cs-surface)] p-4"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <SeverityBadge severity={finding.severity} />
-                <ReviewStatusBadge status={finding.reviewStatus} />
-                <span className="text-sm font-medium text-[var(--cs-fg)]">
-                  {finding.title}
+        <div className="space-y-8">
+          {[...groups.entries()].map(([detectorId, findings]) => (
+            <section key={detectorId} className="space-y-3">
+              <header className="flex flex-wrap items-baseline gap-2">
+                <h2 className="text-sm font-semibold text-[var(--cs-fg)]">{detectorId}</h2>
+                <span className="text-xs text-[var(--cs-muted)]">
+                  {findings.length} open finding{findings.length === 1 ? "" : "s"}
                 </span>
-              </div>
+              </header>
 
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-[var(--cs-muted)] sm:grid-cols-4">
-                <div>
-                  <dt className="inline font-medium">Detector: </dt>
-                  <dd className="inline">{finding.detectorId ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt className="inline font-medium">Contract: </dt>
-                  <dd className="inline">
-                    {shortAddress(finding.contractAddress)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="inline font-medium">Chain: </dt>
-                  <dd className="inline">{finding.chainId ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt className="inline font-medium">Found: </dt>
-                  <dd className="inline">{formatDateTime(finding.createdAt)}</dd>
-                </div>
-              </dl>
+              {guidance[detectorId] ? <GuidancePanel guidance={guidance[detectorId]} /> : null}
 
-              {finding.description ? (
-                <p className="text-sm text-[var(--cs-fg)]">{finding.description}</p>
-              ) : null}
-
-              {finding.limitations ? (
-                <p className="text-xs text-[var(--cs-muted)]">
-                  <span className="font-medium">Limitations: </span>
-                  {finding.limitations}
-                </p>
-              ) : null}
-
-              {finding.detectorId ? <GuidancePanel guidance={guidance[finding.detectorId]} /> : null}
-
-              <FindingReviewPanel
-                findingId={finding.id}
-                currentStatus={finding.reviewStatus}
-                currentNote={finding.reviewNote}
+              <BulkReviewPanel
+                detectorId={detectorId}
+                count={findings.length}
+                workspaces={workspaces}
+                workspaceId={defaultWorkspace}
               />
-            </li>
+
+              <ul className="space-y-3">
+                {findings.map((finding) => (
+                  <li
+                    key={finding.id}
+                    className="space-y-3 rounded-lg border border-[var(--cs-border)] bg-[var(--cs-surface)] p-4"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <SeverityBadge severity={finding.severity} />
+                      <ReviewStatusBadge status={finding.reviewStatus} />
+                      <span className="text-sm font-medium text-[var(--cs-fg)]">
+                        {finding.title}
+                      </span>
+                    </div>
+
+                    <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-[var(--cs-muted)] sm:grid-cols-4">
+                      <div>
+                        <dt className="inline font-medium">Detector: </dt>
+                        <dd className="inline">{finding.detectorId ?? "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="inline font-medium">Contract: </dt>
+                        <dd className="inline">{shortAddress(finding.contractAddress)}</dd>
+                      </div>
+                      <div>
+                        <dt className="inline font-medium">Chain: </dt>
+                        <dd className="inline">{finding.chainId ?? "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="inline font-medium">Found: </dt>
+                        <dd className="inline">{formatDateTime(finding.createdAt)}</dd>
+                      </div>
+                    </dl>
+
+                    {finding.description ? (
+                      <p className="text-sm text-[var(--cs-fg)]">{finding.description}</p>
+                    ) : null}
+
+                    {finding.limitations ? (
+                      <p className="text-xs text-[var(--cs-muted)]">
+                        <span className="font-medium">Limitations: </span>
+                        {finding.limitations}
+                      </p>
+                    ) : null}
+
+                    <FindingReviewPanel
+                      findingId={finding.id}
+                      currentStatus={finding.reviewStatus}
+                      currentNote={finding.reviewNote}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

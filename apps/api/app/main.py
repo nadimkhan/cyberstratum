@@ -16,6 +16,7 @@ from app.api.health import router as health_router
 from app.api.knowledge import router as knowledge_router
 from app.api.models import router as models_router
 from app.api.scans import router as scans_router
+from app.api.workspaces import router as workspaces_router
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging, get_logger
@@ -82,6 +83,7 @@ def create_app() -> FastAPI:
     app.include_router(discovery_router)
     app.include_router(auth_router)
     app.include_router(models_router)
+    app.include_router(workspaces_router)
 
     @app.middleware("http")
     async def _request_id_middleware(request: Request, call_next):  # type: ignore[no-untyped-def]

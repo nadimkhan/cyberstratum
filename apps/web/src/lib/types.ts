@@ -303,3 +303,11 @@ export interface Guidance {
   defaultSeverity: Severity;
   version: string;
 }
+
+/** One workspace and how much of it is still waiting to be reviewed. */
+export interface WorkspaceSummary {
+  id: string;
+  name: string;
+  slug: string;
+  openFindings: number;
+}
