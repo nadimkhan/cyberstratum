@@ -156,6 +156,10 @@ def review_finding(
         )
     )
     session.flush()
+    # The request-scoped session is closed, not committed, when the request
+    # ends: a flush alone would be thrown away. Endpoints that persist
+    # something say so.
+    session.commit()
     return FindingRead.model_validate(finding)
 
 

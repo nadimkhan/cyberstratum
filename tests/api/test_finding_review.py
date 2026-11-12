@@ -28,6 +28,7 @@ from app.db.models.identity import (
     WorkspaceMember,
 )
 from app.db.models.scans import Finding, Scan
+from sqlalchemy.orm import Session as OrmSession
 
 
 @dataclass(frozen=True)
@@ -150,6 +151,50 @@ def test_a_verdict_is_recorded_with_its_reviewer_and_reason(
     assert body["review_note"] == "the reentrancy is reachable"
     assert body["reviewed_at"] is not None
     assert body["reviewed_by"] == str(tenant.user.id)
+
+
+@pytest.fixture()
+def commit_recorder(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Record every commit the request path makes.
+
+    The request-scoped session is closed rather than committed when a
+    request ends, so an endpoint that only flushes loses its work. The
+    test session is bound to a transaction that is rolled back afterwards,
+    so a test cannot see the difference by reading the row back: the
+    unflushed-but-visible state looks the same as a committed one. This
+    fixture watches the commit itself.
+    """
+    commits: list[str] = []
+    original = OrmSession.commit
+
+    def spy(self: OrmSession, *args: object, **kwargs: object) -> None:
+        commits.append("commit")
+        original(self, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(OrmSession, "commit", spy)
+    return commits
+
+
+def test_the_verdict_is_committed_and_not_only_flushed(
+    client: TestClient,
+    tenant: Tenant,
+    commit_recorder: list[str],
+    db_session: Session,
+    scan: Scan,
+) -> None:
+    """A review that is only flushed is a review that never happened."""
+    finding = _add_finding(db_session, scan)
+    db_session.flush()
+    commit_recorder.clear()
+
+    response = client.post(
+        f"/api/v1/findings/{finding.id}/review",
+        headers=tenant.headers,
+        json={"status": "confirmed", "note": "the reentrancy is reachable"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert commit_recorder, "the endpoint flushed but never committed"
 
 
 def test_a_false_positive_without_a_reason_is_refused(
