@@ -7,10 +7,11 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.db.enums import CorrespondenceStatus, ScanJobStatus, ScanStatus
 from app.schemas.findings import FindingRead
+from app.services.source_compile import MAX_SOURCE_BYTES
 
 ADDRESS_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
 
@@ -38,7 +39,14 @@ class ScanCreateRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    contract_address: str = Field(description="Deployed contract address (0x-prefixed, 20 bytes).")
+    contract_address: str | None = Field(
+        default=None,
+        description=(
+            "Deployed contract address (0x-prefixed, 20 bytes). Required unless "
+            "source_code is supplied; a pasted source is filed under an address "
+            "derived from the source itself."
+        ),
+    )
     chain_id: int = Field(default=1, ge=1, description="EVM chain id.")
     fork: str | None = Field(
         default=None,
@@ -64,13 +72,58 @@ class ScanCreateRequest(BaseModel):
             "supplied bytes are the analysis input (design doc section 6.1)."
         ),
     )
+    source_code: str | None = Field(
+        default=None,
+        description=(
+            "Optional Solidity source. It is compiled on the server and the "
+            "resulting runtime bytecode is analysed, exactly as a deployed "
+            "contract's bytecode is. The source map that comes with it is "
+            "what lets a finding point at a line of the developer's code."
+        ),
+    )
+    solc_version: str | None = Field(
+        default=None,
+        description=(
+            "The solc version to compile source_code with, such as 0.8.26. "
+            "The newest installed compiler is used when this is unset."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _one_input(self) -> ScanCreateRequest:
+        if not self.contract_address and not self.bytecode_hex and not self.source_code:
+            raise ValueError(
+                "supply contract_address, bytecode_hex or source_code: a scan "
+                "needs something to analyse"
+            )
+        if self.source_code and self.bytecode_hex:
+            raise ValueError(
+                "supply either source_code or bytecode_hex, not both: they are "
+                "two different answers to the same question"
+            )
+        return self
 
     @field_validator("contract_address")
     @classmethod
-    def _validate_address(cls, value: str) -> str:
+    def _validate_address(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         if not ADDRESS_RE.match(value):
             raise ValueError("contract_address must be a 0x-prefixed 20-byte hex address")
         return value.lower()
+
+    @field_validator("source_code")
+    @classmethod
+    def _validate_source(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not value.strip():
+            raise ValueError("source_code must not be empty")
+        if len(value.encode("utf-8")) > MAX_SOURCE_BYTES:
+            raise ValueError(
+                f"source_code is over the {MAX_SOURCE_BYTES} byte limit"
+            )
+        return value
 
     @field_validator("bytecode_hex")
     @classmethod

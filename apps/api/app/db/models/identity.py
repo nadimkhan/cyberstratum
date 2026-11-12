@@ -185,6 +185,15 @@ class ContractTarget(Base):
             "these bytes and never contacts an RPC."
         ),
     )
+    inline_bytecode_source: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+        doc=(
+            "How the inline bytecode was obtained: 'upload' when the bytes were "
+            "pasted, 'compiled' when the server compiled the developer's source "
+            "and analysed what came out."
+        ),
+    )
     bytecode_object_key: Mapped[str | None] = mapped_column(String(512))
     source_uri: Mapped[str | None] = mapped_column(String(512))
     abi_object_key: Mapped[str | None] = mapped_column(String(512))

@@ -16,8 +16,9 @@ recorded on the scan row.
 
 from __future__ import annotations
 
+import json
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -28,6 +29,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.db.enums import FindingStatus, ScanJobStatus, ScanStatus
+from app.db.models.identity import ContractTarget
 from app.db.models.scans import (
     BasicBlock,
     CfgEdge,
@@ -45,6 +47,7 @@ from app.services.rules import PARSER_VERSION, RULESET_VERSION, RuleFinding, run
 from app.services.slither import SlitherRunner
 from app.services.source_audit import audit_source
 from app.services.source_fetch import SourceArtifact, fetch_verified_source
+from app.services.source_lines import annotate_evidence, build_offset_lines
 from evm_analysis import (
     ContractFeatures,
     ControlFlowGraph,
@@ -158,6 +161,8 @@ def persist_findings(
     scan: Scan,
     findings: Sequence[RuleFinding],
     source: str = "rule",
+    source_lines: Mapping[int, int] | None = None,
+    source_file: str | None = None,
 ) -> None:
     """Replace the findings of a scan with the newly produced ones.
 
@@ -168,6 +173,10 @@ def persist_findings(
 
     The findings are *replaced* rather than appended, so re-running a scan
     does not leave a stale finding behind.
+
+    ``source_lines`` maps a bytecode offset to a line of the developer's
+    source. When it is given, a finding that points at a bytecode offset
+    also points at the line that offset came from.
     """
     if source == "rule":
         session.execute(delete(Finding).where(Finding.scan_id == scan.id))
@@ -179,6 +188,11 @@ def persist_findings(
             )
         )
     for finding in findings:
+        evidence = finding.evidence
+        if source_lines:
+            evidence = annotate_evidence(
+                evidence, source_lines, source_file=source_file
+            )
         session.add(
             Finding(
                 workspace_id=scan.workspace_id,
@@ -192,7 +206,7 @@ def persist_findings(
                 severity=finding.severity,
                 confidence=finding.confidence,
                 status=FindingStatus.NEW,
-                evidence_json=finding.evidence,
+                evidence_json=evidence,
                 limitations=finding.limitations or None,
             )
         )
@@ -296,13 +310,55 @@ def _store_artifacts(
     )
 
 
+def _pasted_source_artifact(target: ContractTarget) -> SourceArtifact | None:
+    """Rebuild the developer's pasted source, when the scan has one.
+
+    A pasted source is not fetched from an explorer: it is read back out
+    of the product's own storage, together with the provenance the
+    compilation left behind. The compiler version matters -- Slither
+    needs the same compiler the bytecode was built with, or it reads a
+    different contract than the one that was analysed.
+    """
+    if target.inline_bytecode_source != "compiled":
+        return None
+    object_key = target.source_object_key
+    if not object_key:
+        return None
+    try:
+        raw = storage.get_bytes(object_key)
+    except Exception as exc:  # noqa: BLE001 - a missing source is a skip, not a failure
+        log.warning("pasted_source_unreadable", error=str(exc))
+        return None
+
+    source = raw.decode("utf-8", errors="replace")
+    metadata: dict[str, Any] = {}
+    if target.provenance:
+        try:
+            parsed = json.loads(target.provenance)
+        except json.JSONDecodeError:
+            parsed = {}
+        if isinstance(parsed, dict):
+            metadata = parsed
+
+    name = str(metadata.get("source_name") or "Contract.sol")
+    return SourceArtifact(
+        code=source,
+        files={name: source},
+        language="Solidity",
+        compiler_version=str(metadata.get("solc") or ""),
+        source_uri="pasted",
+        source_kind="pasted",
+        verified=False,
+    )
+
+
 def _audit_verified_source(
     session: Session,
     scan: Scan,
     chain_id: int,
     address: str,
 ) -> tuple[list[RuleFinding], str | None]:
-    """Run the source engine over a contract's verified source.
+    """Run the source engine over a contract's source.
 
     The source engine is supplementary. A contract whose source cannot be
     fetched, whose Slither is not installed, or which does not compile is
@@ -319,14 +375,18 @@ def _audit_verified_source(
         The source findings, and the reason the audit was skipped when it
         did not run.
     """
-    if not address:
-        return ([], "no_address")
+    target = scan.target
 
-    try:
-        artifact: SourceArtifact | None = fetch_verified_source(chain_id, address)
-    except Exception as exc:  # noqa: BLE001 - the source engine never fails a scan
-        log.warning("scan_source_fetch_failed", scan_id=str(scan.id), error=str(exc))
-        return ([], "source_fetch_failed")
+    artifact = _pasted_source_artifact(target)
+    if artifact is None:
+        if not address:
+            return ([], "no_address")
+
+        try:
+            artifact = fetch_verified_source(chain_id, address)
+        except Exception as exc:  # noqa: BLE001 - the source engine never fails a scan
+            log.warning("scan_source_fetch_failed", scan_id=str(scan.id), error=str(exc))
+            return ([], "source_fetch_failed")
 
     if artifact is None:
         return ([], "no_source")
@@ -401,6 +461,45 @@ def _store_source_artifact(session: Session, scan: Scan, artifact: SourceArtifac
     )
 
 
+def _compiled_source_lines(
+    target: ContractTarget, disassembly: Any
+) -> tuple[dict[int, int], str | None]:
+    """Map bytecode offsets to source lines, for a compiled source.
+
+    Only a source this server compiled qualifies: there, the source map
+    came out of the same compiler run that produced the bytes being
+    analysed, so the mapping is true by construction.
+
+    Returns:
+        The offset-to-line map (empty when there is no honest mapping)
+        and the name of the source file.
+    """
+    if target.inline_bytecode_source != "compiled" or not target.provenance:
+        return ({}, None)
+    try:
+        metadata = json.loads(target.provenance)
+    except json.JSONDecodeError:
+        return ({}, None)
+    if not isinstance(metadata, dict):
+        return ({}, None)
+
+    source_map = metadata.get("source_map")
+    object_key = target.source_object_key
+    if not isinstance(source_map, str) or not source_map or not object_key:
+        return ({}, None)
+
+    try:
+        source = storage.get_bytes(object_key).decode("utf-8", errors="replace")
+    except Exception as exc:  # noqa: BLE001 - a missing source is not a failure
+        log.warning("compiled_source_unreadable", error=str(exc))
+        return ({}, None)
+
+    offsets = [instruction.offset for instruction in disassembly.instructions]
+    lines = build_offset_lines(source, source_map, offsets)
+    name = metadata.get("source_name")
+    return (lines, str(name) if isinstance(name, str) and name else None)
+
+
 def run_scan(session: Session, scan: Scan) -> ScanOutcome:
     """Execute the full pipeline for ``scan`` and persist the results.
 
@@ -418,10 +517,13 @@ def run_scan(session: Session, scan: Scan) -> ScanOutcome:
     inline = target.inline_bytecode
     if inline:
         # The user supplied the bytecode: analyse exactly those bytes and
-        # contact nothing (design doc section 6.1).
+        # contact nothing (design doc section 6.1). Whether those bytes
+        # were pasted or compiled from the developer's source is recorded
+        # rather than assumed, because a compiled source also carries the
+        # source map that puts findings on lines.
         artifact = BytecodeArtifact(
             code=inline,
-            source="upload",
+            source=target.inline_bytecode_source or "upload",
             source_uri=None,
             address=address or None,
         )
@@ -507,7 +609,14 @@ def run_scan(session: Session, scan: Scan) -> ScanOutcome:
         )
     )
     _persist_graph(session, scan.id, disassembly, cfg, features)
-    persist_findings(session, scan, findings)
+    source_lines, source_file = _compiled_source_lines(target, disassembly)
+    persist_findings(
+        session,
+        scan,
+        findings,
+        source_lines=source_lines,
+        source_file=source_file,
+    )
 
     # The source engine is a second opinion on the same contract. It runs
     # after the bytecode analysis, and a failure there never undoes the

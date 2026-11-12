@@ -52,11 +52,23 @@ def upsert_target(
     address: str,
     label: str | None,
     inline_bytecode: bytes | None = None,
+    inline_bytecode_source: str | None = None,
+    source_object_key: str | None = None,
+    provenance: str | None = None,
 ) -> ContractTarget:
     """Return the existing target for ``address`` or create one.
 
     When ``inline_bytecode`` is given, it is stored on the target so that
     the worker analyses exactly those bytes instead of contacting an RPC.
+
+    ``inline_bytecode_source`` says how those bytes came to be: the
+    developer pasted them, or the server compiled the developer's source
+    and these are what came out. The two are not interchangeable -- a
+    compiled source carries a source map, which is what lets a finding
+    point at a line -- so the difference is recorded rather than assumed.
+
+    ``source_object_key`` and ``provenance`` describe the source the
+    bytes came from, when there was one.
     """
     target = session.scalars(
         select(ContractTarget).where(
@@ -74,6 +86,9 @@ def upsert_target(
             bytecode_type="runtime",
             authorization_status="unknown",
             inline_bytecode=inline_bytecode,
+            inline_bytecode_source=inline_bytecode_source,
+            source_object_key=source_object_key,
+            provenance=provenance,
         )
         session.add(target)
         session.flush()
@@ -82,6 +97,12 @@ def upsert_target(
             target.label = label
         if inline_bytecode is not None:
             target.inline_bytecode = inline_bytecode
+        if inline_bytecode_source is not None:
+            target.inline_bytecode_source = inline_bytecode_source
+        if source_object_key is not None:
+            target.source_object_key = source_object_key
+        if provenance is not None:
+            target.provenance = provenance
         session.flush()
     return target
 
@@ -95,6 +116,9 @@ def create_scan(
     label: str | None = None,
     requested_by: uuid.UUID | None = None,
     inline_bytecode: bytes | None = None,
+    inline_bytecode_source: str | None = None,
+    source_object_key: str | None = None,
+    provenance: str | None = None,
     asset: TrackedAsset | None = None,
     fork: str = "",
     queue_name: str | None = None,
@@ -105,7 +129,17 @@ def create_scan(
     is what turns a one-off scan into a tracked history: without it, the
     findings of yesterday's scan are unreachable from the address.
     """
-    target = upsert_target(session, workspace, chain, address, label, inline_bytecode)
+    target = upsert_target(
+        session,
+        workspace,
+        chain,
+        address,
+        label,
+        inline_bytecode,
+        inline_bytecode_source=inline_bytecode_source,
+        source_object_key=source_object_key,
+        provenance=provenance,
+    )
 
     scan = Scan(
         workspace_id=workspace.id,
@@ -114,7 +148,11 @@ def create_scan(
         status=ScanStatus.QUEUED,
         requested_by=requested_by,
         fork=fork,
-        bytecode_source="upload" if inline_bytecode is not None else "rpc",
+        bytecode_source=(
+            (inline_bytecode_source or "upload")
+            if inline_bytecode is not None
+            else "rpc"
+        ),
         queued_at=datetime.now(UTC),
     )
     session.add(scan)

@@ -23,6 +23,7 @@ conventions defined in :mod:`app.core.security`:
 
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Any
 
@@ -71,6 +72,7 @@ from app.services.report import (
     report_sha256,
 )
 from app.services.scan_requests import create_scan, resolve_chain, upsert_target
+from app.services.source_compile import CompilationError, compile_source, pasted_address
 from app.worker import enqueue_correspondence, enqueue_mythril, enqueue_scan
 
 log = get_logger(__name__)
@@ -196,19 +198,66 @@ def submit_scan(
     chain = _resolve_chain(session, payload.chain_id)
 
     inline_bytecode: bytes | None = None
-    if payload.bytecode_hex is not None:
-        inline_bytecode = bytes.fromhex(payload.bytecode_hex)
+    inline_bytecode_source: str | None = None
+    source_object_key: str | None = None
+    provenance: str | None = None
+    address = payload.contract_address or ""
 
-    asset = _track_asset(session, workspace, chain, payload.contract_address, payload.label)
+    if payload.source_code is not None:
+        # The developer pasted source. It is compiled here, on the server,
+        # and what the compiler produced is what gets analysed -- the same
+        # bytes a chain would have returned for a deployed contract.
+        try:
+            compiled = compile_source(
+                payload.source_code,
+                solc_version=payload.solc_version,
+            ).compiled
+        except CompilationError as exc:
+            # The compiler's own message is what the developer needs to
+            # read next, so it is passed through rather than summarised.
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            ) from exc
+
+        inline_bytecode = compiled.runtime_bytecode
+        inline_bytecode_source = "compiled"
+        source_object_key = storage.put_bytes(
+            f"pasted/{storage.sha256_hex(payload.source_code.encode('utf-8'))}.sol",
+            payload.source_code.encode("utf-8"),
+        )
+        provenance = json.dumps(
+            {
+                "kind": "pasted_source",
+                "contract": compiled.contract_name,
+                "solc": compiled.solc_version,
+                "source_name": compiled.source_name,
+                "source_map": compiled.source_map,
+                "warnings": list(compiled.warnings),
+            }
+        )
+        if not address:
+            # A pasted contract is not deployed anywhere, but it still
+            # needs an identity: the same source filed under the same
+            # address, so that its history accumulates.
+            address = pasted_address(payload.source_code)
+    elif payload.bytecode_hex is not None:
+        inline_bytecode = bytes.fromhex(payload.bytecode_hex)
+        inline_bytecode_source = "upload"
+
+    asset = _track_asset(session, workspace, chain, address, payload.label)
 
     scan, job = create_scan(
         session,
         workspace=workspace,
         chain=chain,
-        address=payload.contract_address,
+        address=address,
         label=payload.label,
         requested_by=principal.user_id,
         inline_bytecode=inline_bytecode,
+        inline_bytecode_source=inline_bytecode_source,
+        source_object_key=source_object_key,
+        provenance=provenance,
         asset=asset,
         fork=payload.fork or "",
         queue_name=get_queue().name,
