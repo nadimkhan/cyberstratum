@@ -29,6 +29,7 @@ from typing import Any
 from rq import SimpleWorker, Worker
 from rq.worker import BaseWorker
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging, get_logger
@@ -76,6 +77,36 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+def _missing_scan(
+    session: Session,
+    job: ScanJob | None,
+    scan_id: str,
+    event: str,
+) -> dict[str, object]:
+    """Record a job whose scan no longer exists.
+
+    This is the expected result of a cascade delete -- a workspace
+    removed while its scans were queued -- and not an error. It is also
+    not a success: the work never happened, so the job row says so.
+    Marking it failed stops the audit trail from claiming a scan that was
+    never performed.
+
+    The function returns normally rather than raising, because a missing
+    scan will not appear on a retry, and RQ's retries would spend three
+    attempts discovering that.
+    """
+    log.info(event, scan_id=scan_id, reason="the scan no longer exists")
+    if job is not None:
+        job.status = ScanJobStatus.FAILED
+        job.finished_at = _now()
+        job.resource_usage = {
+            **(job.resource_usage or {}),
+            "error": "the scan no longer exists",
+        }
+        session.flush()
+    return {"scan_id": scan_id, "status": "not_found", "finding_count": 0}
+
+
 def process_scan_job(scan_id: str, job_id: str | None = None) -> dict[str, object]:
     """Execute one scan job.
 
@@ -90,19 +121,19 @@ def process_scan_job(scan_id: str, job_id: str | None = None) -> dict[str, objec
     parsed_job_id = uuid.UUID(job_id) if job_id else None
 
     with session_scope() as session:
-        scan = session.get(Scan, parsed_scan_id)
-        if scan is None:
-            log.error("scan_not_found", scan_id=scan_id)
-            return {"scan_id": scan_id, "status": "not_found", "finding_count": 0}
-
         job: ScanJob | None = None
         if parsed_job_id is not None:
             job = session.get(ScanJob, parsed_job_id)
-            if job is not None:
-                job.status = ScanJobStatus.STARTED
-                job.started_at = _now()
-                job.attempt += 1
-                session.flush()
+
+        scan = session.get(Scan, parsed_scan_id)
+        if scan is None:
+            return _missing_scan(session, job, scan_id, "scan_not_found")
+
+        if job is not None:
+            job.status = ScanJobStatus.STARTED
+            job.started_at = _now()
+            job.attempt += 1
+            session.flush()
 
         scan.status = ScanStatus.QUEUED
         scan.queued_at = scan.queued_at or _now()
@@ -290,19 +321,21 @@ def process_mythril_job(scan_id: str, job_id: str | None = None) -> dict[str, ob
     parsed_job_id = uuid.UUID(job_id) if job_id else None
 
     with session_scope() as session:
-        scan = session.get(Scan, parsed_scan_id)
-        if scan is None:
-            log.error("mythril_scan_not_found", scan_id=scan_id)
-            return {"scan_id": scan_id, "status": "not_found", "finding_count": 0}
-
         job: ScanJob | None = None
         if parsed_job_id is not None:
             job = session.get(ScanJob, parsed_job_id)
-            if job is not None:
-                job.status = ScanJobStatus.STARTED
-                job.started_at = _now()
-                job.attempt += 1
-                session.flush()
+
+        scan = session.get(Scan, parsed_scan_id)
+        if scan is None:
+            return _missing_scan(
+                session, job, scan_id, "mythril_scan_not_found"
+            )
+
+        if job is not None:
+            job.status = ScanJobStatus.STARTED
+            job.started_at = _now()
+            job.attempt += 1
+            session.flush()
 
         bytecode = _load_runtime_bytecode(session, scan)
         if bytecode is None:
@@ -475,19 +508,21 @@ def process_correspondence_job(scan_id: str, job_id: str | None = None) -> dict[
     parsed_job_id = uuid.UUID(job_id) if job_id else None
 
     with session_scope() as session:
-        scan = session.get(Scan, parsed_scan_id)
-        if scan is None:
-            log.error("correspondence_scan_not_found", scan_id=scan_id)
-            return {"scan_id": scan_id, "status": "not_found"}
-
         job: ScanJob | None = None
         if parsed_job_id is not None:
             job = session.get(ScanJob, parsed_job_id)
-            if job is not None:
-                job.status = ScanJobStatus.STARTED
-                job.started_at = _now()
-                job.attempt += 1
-                session.flush()
+
+        scan = session.get(Scan, parsed_scan_id)
+        if scan is None:
+            return _missing_scan(
+                session, job, scan_id, "correspondence_scan_not_found"
+            )
+
+        if job is not None:
+            job.status = ScanJobStatus.STARTED
+            job.started_at = _now()
+            job.attempt += 1
+            session.flush()
 
         target = scan.target
         address = target.address if target is not None else None

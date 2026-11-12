@@ -11,13 +11,14 @@ from typing import Any
 import pytest
 from sqlalchemy.orm import Session
 
-from app.db.enums import ScanJobStatus, ScanStatus
-from app.db.models.scans import Scan
+from app.db.enums import ScanJobStatus, ScanJobType, ScanStatus
+from app.db.models.scans import Scan, ScanJob
 from app.services import pipeline as pipeline_service
 from app.services.bytecode import BytecodeArtifact, BytecodeUnavailableError
 from app.worker import (
     WORKER_NAME,
     WorkerAlreadyRunningError,
+    _missing_scan,
     _process_is_alive,
     clear_stale_worker_registrations,
     process_scan_job,
@@ -49,6 +50,55 @@ def worker_session(monkeypatch: pytest.MonkeyPatch, db_session: Session) -> Iter
 
     monkeypatch.setattr("app.worker.session_scope", fake_scope)
     yield db_session
+
+
+def test_a_missing_scan_is_information_not_an_error(
+    worker_session: Session, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A scan that is gone is an expected outcome, not an error.
+
+    It is what a cascade delete leaves behind, and it used to be logged
+    as an error, which trained everyone reading the logs to ignore
+    errors.
+    """
+    result = process_scan_job(str(uuid.uuid4()))
+
+    assert result["status"] == "not_found"
+    output = capsys.readouterr().out
+    assert "scan_not_found" in output
+    # The renderer differs between the test session and the running
+    # service, so the level is matched as a word rather than as JSON.
+    assert "info" in output
+    assert "error" not in output
+
+
+def test_a_missing_scan_marks_a_live_job_failed(
+    db_session: Session, workspace: Any, target: Any
+) -> None:
+    """If a job row is still there, the work did not happen.
+
+    The foreign key cascades, so in practice a job cannot outlive its
+    scan; this covers the race, and pins the contract of the helper.
+    """
+    scan = _make_scan(db_session, workspace.id, target.id)
+    job = ScanJob(
+        scan_id=scan.id,
+        job_type=ScanJobType.SCAN,
+        status=ScanJobStatus.QUEUED,
+    )
+    db_session.add(job)
+    db_session.flush()
+
+    result = _missing_scan(db_session, job, str(scan.id), "scan_not_found")
+    db_session.flush()
+
+    assert result["status"] == "not_found"
+    db_session.expire_all()
+    refreshed = db_session.get(ScanJob, job.id)
+    assert refreshed is not None
+    assert refreshed.status is ScanJobStatus.FAILED
+    assert refreshed.resource_usage is not None
+    assert "no longer exists" in str(refreshed.resource_usage.get("error"))
 
 
 def _make_scan(session: Session, workspace_id: uuid.UUID, target_id: uuid.UUID) -> Scan:

@@ -395,6 +395,14 @@ now covered by a test that fails without the fix.
       e2e suite caught one such false negative in the narrowing itself:
       an underflowed argument frame was being read as a constant target,
       which would have turned a stack underflow into a false all-clear.
+- [x] **A scan that is gone is information, not an error.** The worker
+      logged `scan_not_found` at error level and let the job complete as
+      a success. A missing scan is the expected result of a cascade
+      delete -- it is what a removed workspace leaves behind -- and
+      logging it as an error trains everyone who reads the logs to
+      ignore errors. It is now logged at info, and if a job row is still
+      standing it is recorded as failed, because the work did not happen
+      and the audit trail should not claim otherwise.
 - [x] **The working copy is WSL only.** The Windows copy at
       `E:/projects/cyberstratum` is frozen as a fallback and is no longer
       edited: two copies of a live database and two test environments
