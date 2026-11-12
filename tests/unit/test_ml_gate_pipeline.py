@@ -27,8 +27,7 @@ def _write_dataset(path: Path, families: int = 40) -> Path:
         for index in range(families):
             positive = index % 2 == 0
             labels = {
-                label: (positive if label == "has_delegatecall" else False)
-                for label in LABELS
+                label: (positive if label == "has_delegatecall" else False) for label in LABELS
             }
             # The positives carry a DELEGATECALL; the negatives do not.
             code = "f4" if positive else "00"

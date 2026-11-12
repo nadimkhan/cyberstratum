@@ -135,12 +135,8 @@ def render_model_card(
         add(f"- **Reason:** {gate.get('reason', 'unknown')}")
         shipped = gate.get("shipped_categories") or []
         abstained = gate.get("abstained_categories") or []
-        add(
-            f"- **May speak about:** {', '.join(shipped) if shipped else 'no category'}"
-        )
-        add(
-            f"- **Must stay quiet about:** {', '.join(abstained) if abstained else 'no category'}"
-        )
+        add(f"- **May speak about:** {', '.join(shipped) if shipped else 'no category'}")
+        add(f"- **Must stay quiet about:** {', '.join(abstained) if abstained else 'no category'}")
         add("")
         add("| Category | Decision | Precision | Recall | Support | Why |")
         add("|---|---|---|---|---|---|")

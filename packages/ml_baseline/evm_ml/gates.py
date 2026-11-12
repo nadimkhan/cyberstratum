@@ -39,8 +39,9 @@ no setting of the dial that makes it safe.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -57,8 +58,25 @@ __all__ = [
 
 #: The thresholds the gate tries, from permissive to strict.
 THRESHOLD_GRID: tuple[float, ...] = (
-    0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50,
-    0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95,
+    0.05,
+    0.10,
+    0.15,
+    0.20,
+    0.25,
+    0.30,
+    0.35,
+    0.40,
+    0.45,
+    0.50,
+    0.55,
+    0.60,
+    0.65,
+    0.70,
+    0.75,
+    0.80,
+    0.85,
+    0.90,
+    0.95,
 )
 
 STATUS_SHIP = "ship"
@@ -209,11 +227,10 @@ def select_thresholds(
         best: tuple[float, float] | None = None
         for threshold in THRESHOLD_GRID:
             precision, recall = _precision_recall(scores, truth, threshold)
-            if precision >= min_precision:
-                # Keep the highest threshold that qualifies: it flags
-                # fewer contracts for the same guarantee.
-                if best is None or threshold > best[0]:
-                    best = (threshold, recall)
+            # Keep the highest threshold that qualifies: it flags fewer
+            # contracts for the same guarantee.
+            if precision >= min_precision and (best is None or threshold > best[0]):
+                best = (threshold, recall)
         chosen[label] = best[0] if best is not None else default
     return chosen
 
@@ -303,9 +320,7 @@ def gate_categories(
             )
         elif recall < config.min_recall:
             status = STATUS_ABSTAIN
-            reason = (
-                f"recall {recall:.2f} is below the floor {config.min_recall:.2f}"
-            )
+            reason = f"recall {recall:.2f} is below the floor {config.min_recall:.2f}"
         else:
             status = STATUS_SHIP
             reason = (
@@ -325,21 +340,12 @@ def gate_categories(
             )
         )
 
-    gate.shipped_categories = [
-        d.category for d in gate.decisions if d.status == STATUS_SHIP
-    ]
-    gate.abstained_categories = [
-        d.category for d in gate.decisions if d.status != STATUS_SHIP
-    ]
+    gate.shipped_categories = [d.category for d in gate.decisions if d.status == STATUS_SHIP]
+    gate.abstained_categories = [d.category for d in gate.decisions if d.status != STATUS_SHIP]
     blocked = len(gate.abstained_categories)
     gate.promotable = bool(gate.shipped_categories) and blocked <= config.allowed_abstained
     if gate.shipped_categories:
-        gate.reason = (
-            f"{len(gate.shipped_categories)} categor(ies) may ship; "
-            f"{blocked} stay quiet"
-        )
+        gate.reason = f"{len(gate.shipped_categories)} categor(ies) may ship; {blocked} stay quiet"
     else:
-        gate.reason = (
-            "no category reached the precision floor, so the model may not be promoted"
-        )
+        gate.reason = "no category reached the precision floor, so the model may not be promoted"
     return gate

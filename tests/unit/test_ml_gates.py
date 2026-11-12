@@ -9,7 +9,6 @@ noisy is silenced, and a category that passes is allowed to speak.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from evm_ml.dataset import Sample
 from evm_ml.evaluate import evaluate
@@ -123,9 +122,7 @@ def test_the_threshold_is_the_most_conservative_one_that_meets_the_floor() -> No
     samples.append(_sample("n-high", {"unchecked_call": False}))
     probabilities.append({"unchecked_call": 0.7})
 
-    thresholds = select_thresholds(
-        samples, probabilities, ["unchecked_call"], min_precision=0.80
-    )
+    thresholds = select_thresholds(samples, probabilities, ["unchecked_call"], min_precision=0.80)
 
     # At 0.8 the false positive is not flagged, so precision is 1.0.
     assert thresholds["unchecked_call"] >= 0.8
@@ -135,9 +132,7 @@ def test_a_category_with_no_positives_gets_the_default_threshold() -> None:
     samples = [_sample(f"n{index}", {"unchecked_call": False}) for index in range(10)]
     probabilities = [{"unchecked_call": 0.1} for _ in samples]
 
-    thresholds = select_thresholds(
-        samples, probabilities, ["unchecked_call"], min_precision=0.80
-    )
+    thresholds = select_thresholds(samples, probabilities, ["unchecked_call"], min_precision=0.80)
 
     assert thresholds["unchecked_call"] == 0.5
 

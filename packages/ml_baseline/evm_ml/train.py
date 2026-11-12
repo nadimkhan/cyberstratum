@@ -20,8 +20,8 @@ from typing import Any
 
 from .dataset import LABEL_CATEGORIES, Dataset, Sample, load_dataset, split_dataset
 from .evaluate import evaluate, latency_profile
-from .gates import GateConfig, GateReport, gate_categories
 from .features import FeatureBuilder, FeatureConfig
+from .gates import GateConfig, GateReport, gate_categories
 from .manifest import ArtifactManifest, library_versions, now_iso
 from .model import save_adapter, train_adapter
 from .modelcard import render_model_card
@@ -147,9 +147,7 @@ def run_training(
     )
 
     if test_samples and test_report is not None:
-        test_report.latency = latency_profile(
-            lambda batch: _predict(adapter, batch), test_samples
-        )
+        test_report.latency = latency_profile(lambda batch: _predict(adapter, batch), test_samples)
 
     vocabulary = builder.vocabulary_summary()
     # The term lists can be very large; the manifest records the size and a
@@ -272,9 +270,7 @@ def run_training(
         "manifest_fingerprint": manifest.fingerprint(),
         "promotable": bool(gate.promotable) if gate is not None else False,
         "shipped_categories": list(gate.shipped_categories) if gate is not None else [],
-        "abstained_categories": (
-            list(gate.abstained_categories) if gate is not None else []
-        ),
+        "abstained_categories": (list(gate.abstained_categories) if gate is not None else []),
         "gate_reason": gate.reason if gate is not None else "no validation split",
     }
 
@@ -328,8 +324,7 @@ def main(argv: list[str] | None = None) -> int:
         # The artifact is written so it can be inspected, but a model
         # that failed the gate must not be promoted by accident.
         print(
-            "GATE: the model may not be promoted: "
-            f"{result['gate_reason']}",
+            f"GATE: the model may not be promoted: {result['gate_reason']}",
             file=sys.stderr,
         )
         return 2
