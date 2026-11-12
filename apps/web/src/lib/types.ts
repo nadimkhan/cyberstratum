@@ -229,6 +229,12 @@ export interface Finding {
   limitations: string | null;
   reproductionStatus: string | null;
   experimental: boolean;
+  /** Who made the review verdict, when one has been made. */
+  reviewedBy: string | null;
+  /** When the review verdict was made. */
+  reviewedAt: string | null;
+  /** Why the verdict was made. A false-positive verdict always has one. */
+  reviewNote: string | null;
 }
 
 export interface CreateScanInput {

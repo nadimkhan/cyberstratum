@@ -436,6 +436,62 @@ export interface FindingsSummary {
 }
 
 /** Aggregate finding counts by severity and triage status. */
+/* ------------------------------------------------------------------ */
+/* Review (human verdict)                                             */
+/* ------------------------------------------------------------------ */
+
+/** The verdicts a reviewer may record. */
+export type ReviewVerdict = "confirmed" | "false_positive" | "needs_more_evidence" | "triage";
+
+/**
+ * Record a human verdict on a finding.
+ *
+ * This is where the machine learning labels come from, so the call is
+ * made from the server: the session cookie stays in the browser, the
+ * service key stays in the server, and the verdict is attributed to the
+ * person who signed in.
+ *
+ * A false-positive verdict needs a reason, and the backend refuses it
+ * without one. The client says so before the request is made rather
+ * than after it fails.
+ */
+export async function reviewFinding(
+  id: string,
+  verdict: { status: ReviewVerdict; note?: string | null },
+): Promise<ApiResult<{ status: string; reviewNote: string | null }>> {
+  const note = (verdict.note ?? "").trim();
+  if (verdict.status === "false_positive" && !note) {
+    return {
+      ok: false,
+      error: {
+        kind: "http",
+        status: 422,
+        message: "A false-positive verdict needs a reason.",
+        detail:
+          "Without one it cannot be told apart from a mistaken verdict, and neither is usable as ground truth.",
+      },
+    };
+  }
+
+  const result = await request<unknown>(
+    `/findings/${encodeURIComponent(id)}/review`,
+    {
+      method: "POST",
+      body: JSON.stringify({ status: verdict.status, note: note || null }),
+    },
+  );
+  if (!result.ok) return result;
+
+  const record = asRecord(result.data);
+  return {
+    ok: true,
+    data: {
+      status: pickString(record, ["status"]) ?? verdict.status,
+      reviewNote: pickString(record, ["review_note", "reviewNote"]),
+    },
+  };
+}
+
 export async function getFindingsSummary(params?: {
   scanId?: string;
 }): Promise<ApiResult<FindingsSummary>> {
@@ -1356,6 +1412,9 @@ function normaliseFinding(value: unknown): Finding {
       "is_experimental",
       "ml_based",
     ]),
+    reviewedBy: pickString(record, ["reviewed_by", "reviewedBy"]),
+    reviewedAt: toIsoString(record, ["reviewed_at", "reviewedAt"]),
+    reviewNote: pickString(record, ["review_note", "reviewNote"]),
   };
 }
 

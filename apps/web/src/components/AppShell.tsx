@@ -5,6 +5,7 @@ const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/", label: "Overview" },
   { href: "/scans", label: "Scans" },
   { href: "/findings", label: "Findings" },
+  { href: "/triage", label: "Triage" },
   { href: "/reproducibility", label: "Reproducibility" },
   { href: "/scans/new", label: "New scan" },
 ];
