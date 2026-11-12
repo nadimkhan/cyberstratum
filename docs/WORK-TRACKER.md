@@ -1630,3 +1630,34 @@ declaration. The administrative key without a workspace was refused with
 `in_scope`; the PDF carried the scope statement; the page rendered
 "Authorised scope" and "In scope". The proof workspace and its grant
 were removed afterwards.
+
+### 31 The scope, declared in the product
+
+The registry landed as an API first, which made it true but not usable:
+there was nowhere in the product to declare a scope, and nowhere to read
+one back. A declaration that can only be made with `curl` is a
+declaration most workspaces will never make, and a workspace that never
+declares one stays `unknown` forever.
+
+So the scope is now a page. `/scope` shows what a workspace has
+declared, and lets it declare more. The workspace is chosen, not
+assumed — a declaration belongs to one tenant, and an operator who does
+not say whose scope they are reading is reading the wrong one.
+
+The form refuses what the registry would refuse, and says why before
+the request is made: a kind it does not know, a value with nothing in
+it, a chain grant with no chain id, a contract grant whose address is
+not an address. The refusals live in a shared module so the browser
+and the tests say the same thing.
+
+The browser posts to a server-side proxy, so the service key stays out
+of the client bundle and the session cookie stays in the browser. The
+proxy refuses a declaration with no workspace named, and passes the
+reviewer's choice through untouched — the same rule the backend
+enforces, in the same words.
+
+Proved live: a declaration made through the browser-facing proxy was
+stored, and the page showed it — the address, the workspace it belongs
+to, and that the safe harbour had been accepted. A declaration with no
+workspace named was refused with `422`. The proof workspace and its
+grant were removed afterwards.

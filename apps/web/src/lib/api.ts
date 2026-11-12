@@ -7,8 +7,14 @@ import {
 import { toReviewStatus, toScanStatus, toStageStatus } from "./status";
 import { bulkVerdictProblem } from "./bulk-review";
 import { CORRESPONDENCE_STATUSES } from "./types";
+import {
+  SCOPE_GRANT_KINDS,
+  type ScopeGrantKind,
+} from "@/lib/scope";
 import type {
+  ScopeGrantSummary,
   ScopeStatus,
+  ScopeStatusSummary,
   LearningStatus,
   Artifact,
   CorrespondenceProof,
@@ -1998,6 +2004,8 @@ function normaliseCreatedScan(value: unknown): CreatedScan {
 export { bulkVerdictProblem };
 
 export const __testing = {
+  normaliseScopeGrants,
+  normaliseScopeStatus,
   toScopeStatus,
   normaliseLearningStatus,
   normaliseFinding,
@@ -2069,4 +2077,140 @@ export async function getLearningStatus(): Promise<ApiResult<LearningStatus>> {
   const result = await request<unknown>("/learning/status");
   if (!result.ok) return result;
   return { ok: true, data: normaliseLearningStatus(result.data) };
+}
+
+/**
+ * List the authorised scope a workspace has declared.
+ *
+ * The workspace is named in the request: a declaration that applied to
+ * every workspace at once would not be a declaration. The backend
+ * refuses a request that does not name one.
+ */
+export async function listScopeGrants(
+  workspaceId: string,
+): Promise<ApiResult<ScopeGrantSummary[]>> {
+  const result = await request<unknown>(
+    `/scope/grants?workspace_id=${encodeURIComponent(workspaceId)}`,
+  );
+  if (!result.ok) return result;
+  return { ok: true, data: normaliseScopeGrants(result.data) };
+}
+
+/**
+ * Read the authorisation the registry holds for one target.
+ */
+export async function getScopeStatus(
+  workspaceId: string,
+  address: string,
+  chainId: number,
+): Promise<ApiResult<ScopeStatusSummary>> {
+  const query = new URLSearchParams({
+    workspace_id: workspaceId,
+    address,
+    chain_id: String(chainId),
+  });
+  const result = await request<unknown>(`/scope/status?${query.toString()}`);
+  if (!result.ok) return result;
+  return { ok: true, data: normaliseScopeStatus(result.data) };
+}
+
+/**
+ * Turn the grants answer into the shape the product uses.
+ *
+ * A grant of a kind the registry does not know is dropped rather than
+ * shown: a row that cannot be acted on is not a row.
+ */
+export function normaliseScopeGrants(value: unknown): ScopeGrantSummary[] {
+  const raw: unknown[] = Array.isArray(value)
+    ? value
+    : pickArray(asRecord(value), ["items", "grants"]);
+  const grants: ScopeGrantSummary[] = [];
+  for (const entry of raw) {
+    const row = asRecord(entry);
+    const id = pickString(row, ["id", "grant_id"]);
+    const kind = pickString(row, ["kind"]);
+    if (!id || !kind) continue;
+    if (!SCOPE_GRANT_KINDS.includes(kind as ScopeGrantKind)) continue;
+    grants.push({
+      id,
+      kind: kind as ScopeGrantKind,
+      value: pickString(row, ["value"]) ?? "",
+      chainId: pickNumber(row, ["chain_id", "chainId"]),
+      safeHarbour: pickBoolean(row, ["safe_harbour", "safeHarbour"]) ?? false,
+      reference: pickString(row, ["reference"]),
+      expiresAt: pickString(row, ["expires_at", "expiresAt"]),
+      createdAt: pickString(row, ["created_at", "createdAt"]) ?? "",
+    });
+  }
+  return grants;
+}
+
+/**
+ * Turn the scope answer into the shape the product uses.
+ *
+ * An answer that cannot be read is `unknown`, never `in_scope`: a
+ * scope that cannot be read must not be read as permission.
+ */
+export function normaliseScopeStatus(value: unknown): ScopeStatusSummary {
+  const record = asRecord(value);
+  const raw = pickString(record, ["status"]) ?? "";
+  const status =
+    raw === "in_scope"
+      ? "in_scope"
+      : raw === "out_of_scope"
+        ? "out_of_scope"
+        : "unknown";
+  return {
+    status,
+    reason: pickString(record, ["reason"]) ?? "",
+    statement: pickString(record, ["statement"]) ?? "",
+    safeHarbour: pickBoolean(record, ["safe_harbour", "safeHarbour"]) ?? false,
+    reference: pickString(record, ["reference"]),
+  };
+}
+
+/**
+ * Declare that something is in bounds for a workspace.
+ *
+ * The workspace is named, because a declaration that applied to every
+ * workspace at once would not be a declaration. The backend refuses a
+ * request that does not name one.
+ */
+export async function createScopeGrant(
+  workspaceId: string,
+  grant: {
+    kind: string;
+    value: string;
+    chainId: number | null;
+    safeHarbour: boolean;
+    reference: string | null;
+  },
+): Promise<ApiResult<ScopeGrantSummary>> {
+  const result = await request<unknown>(
+    `/scope/grants?workspace_id=${encodeURIComponent(workspaceId)}`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        kind: grant.kind,
+        value: grant.value,
+        chain_id: grant.chainId,
+        safe_harbour: grant.safeHarbour,
+        reference: grant.reference,
+      }),
+    },
+  );
+  if (!result.ok) return result;
+
+  const grants = normaliseScopeGrants([result.data]);
+  if (grants.length === 0) {
+    return {
+      ok: false,
+      error: {
+        kind: "parse",
+        status: 502,
+        message: "The registry answered, but not with a declaration this product recognises.",
+      },
+    };
+  }
+  return { ok: true, data: grants[0] };
 }

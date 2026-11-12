@@ -424,3 +424,29 @@ export interface LearningStatus {
     datasetPath: string;
   } | null;
 }
+
+/** One declared authorisation, as the product shows it. */
+export interface ScopeGrantSummary {
+  id: string;
+  kind: "programme" | "contract" | "chain";
+  value: string;
+  chainId: number | null;
+  safeHarbour: boolean;
+  reference: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+/**
+ * What the registry says about a target.
+ *
+ * The three answers are kept apart on purpose: `unknown` is neither
+ * permission nor refusal.
+ */
+export interface ScopeStatusSummary {
+  status: "in_scope" | "out_of_scope" | "unknown";
+  reason: string;
+  statement: string;
+  safeHarbour: boolean;
+  reference: string | null;
+}
