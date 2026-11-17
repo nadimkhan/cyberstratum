@@ -180,9 +180,9 @@ now covered by a test that fails without the fix.
       diff is in place (`70ef088`).
 
 ### P2 — housekeeping
-- [ ] `ruff format` over the whole repository. 44 committed files are still
-      unformatted; `ruff check` and `mypy` are clean, so this is cosmetic, but it
-      wants to be one mechanical pass of its own.
+- [x] `ruff format` over the whole repository — done as one mechanical pass of
+      its own (`c11d2fb`); `ruff format --check` now reports nothing to
+      reformat.
 - [ ] Move the Windows development history (12 scans, 10 scan jobs, 38 findings,
       3 feed cursors, 1 discovery run) into WSL, and decide what happens to the
       Windows working copy. Both need the user's decision; neither is urgent.
@@ -1724,3 +1724,78 @@ and an expired declaration is `unknown` rather than a judgement.
 **Tests:** 13 focused scope tests, including the stored expiry, the
 unreadable expiry, the successful withdrawal, and the cross-workspace
 withdrawal refusal.
+
+## 33. The notices the product can prove
+
+A licence position that lives in a document is a position nobody can check.
+The product now serves the facts it can prove and shows them where a
+reader will look for them.
+
+`GET /api/v1/notices` returns two lists, and the `/notices` page renders
+them.
+
+**Components** — the software this product is built on:
+
+| Component | Version | Licence | Imported | Modified | Handed to customers |
+| --- | --- | --- | --- | --- | --- |
+| Slither | 0.11.6 | AGPL-3.0 | no | no | no |
+| crytic-compile | bundled with Slither | AGPL-3.0-only | no | no | no |
+| Mythril | 0.24.8 | MIT | no | no | no |
+| FastAPI | as installed | MIT | yes | no | yes |
+
+Those three booleans are the whole argument. A component that is not
+imported, not modified and never handed to a customer imposes nothing on
+this product's own source, and the reader can see that rather than being
+asked to trust it. The facts are read from a checked-in inventory and
+served to a caller, like the guidance that sits beside it.
+
+**Datasets** — the corpora this product draws on, with the terms that
+matter for redistribution, kept separate from the tool licences because
+they answer a different question:
+
+| Dataset | Licence | Redistribution |
+| --- | --- | --- |
+| SWC Registry | MIT | permitted with the notice retained |
+| SmartBugs Curated | Apache-2.0 | permitted with the notice and any NOTICE file retained |
+| DeFiHackLabs | Apache-2.0 | permitted with the notice and any NOTICE file retained |
+| Web3Bugs | per-repository audit required | unknown until each repository is audited |
+
+Nothing is treated as permissive by default: Web3Bugs stays explicitly
+unresolved, and derived artifacts stay internal until a decision is
+recorded.
+
+**Mythril was verified, not assumed.** The installed distribution
+(`mythril_analyzer` 0.24.8) and its upstream licence are MIT, not AGPL.
+The copyleft exposure in this product is Slither and `crytic-compile`
+only, so the ADR's AGPL analysis and the `§4.4` legal-review item are
+narrowed accordingly.
+
+**Proved live**, against the running stack:
+
+| Check | Result |
+| --- | --- |
+| `GET /api/v1/notices` with a caller | 4 components, 4 datasets |
+| Slither's three facts | none of them |
+| FastAPI's three facts | imported |
+| Web3Bugs | explicitly unresolved |
+| The `/notices` page | names Slither, `AGPL-3.0`, Mythril, `MIT`, SWC Registry, and says plainly that Slither is never imported, never modified and never shipped |
+| The stack after the proof | stopped; nothing left listening on 8000 or 3100 |
+
+**Files:** `apps/api/app/data/third_party_notices.json`,
+`apps/api/app/services/notices.py`, `apps/api/app/schemas/notices.py`,
+`apps/api/app/api/notices.py`, `apps/api/app/main.py`,
+`tests/api/test_notices.py`, `apps/web/src/lib/types.ts`,
+`apps/web/src/lib/api.ts`, `apps/web/src/lib/api-notices.test.ts`,
+`apps/web/src/components/AppShell.tsx`, `apps/web/app/notices/page.tsx`,
+`docs/adr/0013-licensing-fastapi-mit-and-slither-agpl.md`,
+`docs/PENDING.md`.
+
+**Tests:** 7 focused notices tests, and 3 frontend tests for the
+normaliser.
+
+**Commit:** `a173366`.
+
+**What this does not do.** It does not decide the legal question in
+`§4.4`, and it does not make any dataset's terms more permissive than
+they are. It records what is true so that the remaining decisions are
+made on facts.
