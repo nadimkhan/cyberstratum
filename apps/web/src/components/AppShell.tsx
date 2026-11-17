@@ -9,6 +9,7 @@ const NAV_ITEMS: { href: string; label: string }[] = [
   { href: "/triage", label: "Triage" },
   { href: "/learning", label: "Learning" },
   { href: "/scope", label: "Scope" },
+  { href: "/notices", label: "Notices" },
   { href: "/discovery", label: "Discovery" },
   { href: "/reproducibility", label: "Reproducibility" },
   { href: "/scans/new", label: "New scan" },

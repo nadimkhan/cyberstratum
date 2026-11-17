@@ -12,6 +12,10 @@ import {
   type ScopeGrantKind,
 } from "@/lib/scope";
 import type {
+  NoticesSummary,
+  ThirdPartyComponent,
+  ThirdPartyDataset,
+
   ScopeGrantSummary,
   ScopeStatus,
   ScopeStatusSummary,
@@ -2004,6 +2008,7 @@ function normaliseCreatedScan(value: unknown): CreatedScan {
 export { bulkVerdictProblem };
 
 export const __testing = {
+  normaliseNotices,
   normaliseScopeGrants,
   normaliseScopeStatus,
   toScopeStatus,
@@ -2233,4 +2238,86 @@ export async function withdrawScopeGrant(
   );
   if (!result.ok) return result;
   return { ok: true, data: { withdrawn: true } };
+}
+
+/**
+ * Normalise the third-party notices.
+ *
+ * The mechanical facts are the point: a component that is not imported,
+ * not modified and not handed to a customer imposes nothing on this
+ * product's own licence. A component missing any of those facts is not
+ * described well enough to be believed, so it is left out rather than
+ * guessed at.
+ */
+export function normaliseNotices(value: unknown): NoticesSummary {
+  const record = asRecord(value);
+  const components: ThirdPartyComponent[] = [];
+  for (const entry of pickArray(record, ["components"])) {
+    const row = asRecord(entry);
+    const name = pickString(row, ["name"]);
+    const spdxId = pickString(row, ["spdx_id", "spdxId"]);
+    if (!name || !spdxId) continue;
+    components.push({
+      name,
+      version: pickString(row, ["version"]) ?? "",
+      spdxId,
+      licenseUrl: pickString(row, ["license_url", "licenseUrl"]) ?? "",
+      upstreamUrl: pickString(row, ["upstream_url", "upstreamUrl"]) ?? "",
+      role: pickString(row, ["role"]) ?? "",
+      imported: pickBoolean(row, ["imported"]) ?? false,
+      modified: pickBoolean(row, ["modified"]) ?? false,
+      conveyedToCustomers:
+        pickBoolean(row, ["conveyed_to_customers", "conveyedToCustomers"]) ?? false,
+      usage: pickString(row, ["usage"]) ?? "",
+      note: pickString(row, ["note"]) ?? "",
+    });
+  }
+
+  const datasets: ThirdPartyDataset[] = [];
+  for (const entry of pickArray(record, ["datasets"])) {
+    const row = asRecord(entry);
+    const dataset = pickString(row, ["dataset"]);
+    const spdxId = pickString(row, ["spdx_id", "spdxId"]);
+    if (!dataset || !spdxId) continue;
+    datasets.push({
+      dataset,
+      spdxId,
+      licenseUrl: pickString(row, ["license_url", "licenseUrl"]) ?? "",
+      upstreamUrl: pickString(row, ["upstream_url", "upstreamUrl"]) ?? "",
+      upstreamRevision: pickString(row, ["upstream_revision", "upstreamRevision"]),
+      redistribution: pickString(row, ["redistribution"]) ?? "unspecified",
+      derivedArtifactsMayBeRedistributed:
+        pickBoolean(row, [
+          "derived_artifacts_may_be_redistributed",
+          "derivedArtifactsMayBeRedistributed",
+        ]) ?? false,
+      perRepositoryAuditRequired:
+        pickBoolean(row, [
+          "per_repository_audit_required",
+          "perRepositoryAuditRequired",
+        ]) ?? false,
+      note: pickString(row, ["note"]) ?? "",
+    });
+  }
+
+  return {
+    version: pickString(record, ["version"]) ?? "",
+    description: pickString(record, ["description"]) ?? "",
+    note: pickString(record, ["note"]) ?? "",
+    components,
+    datasets,
+  };
+}
+
+/**
+ * The third-party notices.
+ *
+ * The notice is the product saying who it is built on, so it is served
+ * like the rest of the product's content: to a caller, not to the whole
+ * internet.
+ */
+export async function getNotices(): Promise<ApiResult<NoticesSummary>> {
+  const result = await request<unknown>("/notices");
+  if (!result.ok) return result;
+  return { ok: true, data: normaliseNotices(result.data) };
 }

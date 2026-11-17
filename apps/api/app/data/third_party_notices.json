@@ -1,0 +1,105 @@
+{
+  "version": "1",
+  "description": "Who this product is built on, what licence each part carries, and what we do with it. The mechanical facts are here on purpose: a component that is neither imported, nor modified, nor handed to a customer cannot impose a condition on this product's own licence.",
+  "components": [
+    {
+      "name": "Slither",
+      "version": "0.11.6",
+      "spdx_id": "AGPL-3.0",
+      "license_url": "https://www.gnu.org/licenses/agpl-3.0.html",
+      "upstream_url": "https://github.com/crytic/slither",
+      "role": "Source-level static analysis",
+      "imported": false,
+      "modified": false,
+      "conveyed_to_customers": false,
+      "usage": "Run as an external executable over a process boundary. Its output is read as JSON. Its source is never imported, never vendored, and never modified.",
+      "note": "The only copyleft-licensed component in the stack. The product's own bytecode engine, CFG, resolver, feature extraction and model baseline are our own code and carry no copyleft obligation."
+    },
+    {
+      "name": "crytic-compile",
+      "version": "bundled with Slither",
+      "spdx_id": "AGPL-3.0-only",
+      "license_url": "https://www.gnu.org/licenses/agpl-3.0.html",
+      "upstream_url": "https://github.com/crytic/crytic-compile",
+      "role": "Compilation framework used by Slither",
+      "imported": false,
+      "modified": false,
+      "conveyed_to_customers": false,
+      "usage": "Reached only through Slither. It is not installed in this product's own environment and is never invoked directly.",
+      "note": "Listed because it is part of what the Slither executable is made of, not because this product calls it."
+    },
+    {
+      "name": "Mythril",
+      "version": "0.24.8",
+      "spdx_id": "MIT",
+      "license_url": "https://github.com/ConsenSys/mythril/blob/develop/LICENSE",
+      "upstream_url": "https://github.com/ConsenSys/mythril",
+      "role": "Symbolic execution, manual and on demand only",
+      "imported": false,
+      "modified": false,
+      "conveyed_to_customers": false,
+      "usage": "Run as an external executable over a process boundary, on its own queue, never inside a default scan.",
+      "note": "MIT, so the only obligation it could ever impose is that its notice travels with it if it were shipped."
+    },
+    {
+      "name": "FastAPI",
+      "version": "as installed",
+      "spdx_id": "MIT",
+      "license_url": "https://github.com/tiangolo/fastapi/blob/master/LICENSE",
+      "upstream_url": "https://github.com/tiangolo/fastapi",
+      "role": "The API framework",
+      "imported": true,
+      "modified": false,
+      "conveyed_to_customers": false,
+      "usage": "Imported normally, as a permissive dependency.",
+      "note": "MIT. Its licence file travels with the package."
+    }
+  ],
+  "datasets": [
+    {
+      "dataset": "SWC Registry",
+      "spdx_id": "MIT",
+      "license_url": "https://github.com/SmartContractSecurity/SWC-registry/blob/master/LICENSE",
+      "upstream_url": "https://github.com/SmartContractSecurity/SWC-registry",
+      "upstream_revision": null,
+      "redistribution": "permitted with the notice retained",
+      "derived_artifacts_may_be_redistributed": false,
+      "per_repository_audit_required": false,
+      "note": "The weakness taxonomy and the join key between a detector and a published weakness class. Not yet ingested; the upstream layout is an entries directory, not a registry file."
+    },
+    {
+      "dataset": "SmartBugs Curated",
+      "spdx_id": "Apache-2.0",
+      "license_url": "https://github.com/smartbugs-curated/smartbugs-curated/blob/master/LICENSE",
+      "upstream_url": "https://github.com/smartbugs-curated/smartbugs-curated",
+      "upstream_revision": null,
+      "redistribution": "permitted with the notice and any NOTICE file retained",
+      "derived_artifacts_may_be_redistributed": false,
+      "per_repository_audit_required": false,
+      "note": "The intended evaluation corpus. Not yet ingested. The licence covers use and redistribution of the corpus with its notice; whether derived artifacts may be redistributed in a commercial product is the question still open for legal."
+    },
+    {
+      "dataset": "DeFiHackLabs",
+      "spdx_id": "Apache-2.0",
+      "license_url": "https://github.com/SunWeb3Sec/DevLab/blob/master/LICENSE",
+      "upstream_url": "https://github.com/SunWeb3Sec/DevLab",
+      "upstream_revision": null,
+      "redistribution": "permitted with the notice and any NOTICE file retained",
+      "derived_artifacts_may_be_redistributed": false,
+      "per_repository_audit_required": false,
+      "note": "Exploit proof-of-concepts, intended as the positive half of the evaluation corpus. Not yet ingested."
+    },
+    {
+      "dataset": "Web3Bugs",
+      "spdx_id": "per-repository audit required",
+      "license_url": "https://github.com/smartbugs-curated/web3bugs",
+      "upstream_url": "https://github.com/smartbugs-curated/web3bugs",
+      "upstream_revision": null,
+      "redistribution": "unknown until each repository is audited",
+      "derived_artifacts_may_be_redistributed": false,
+      "per_repository_audit_required": true,
+      "note": "Each repository carries its own licence, so the dataset as a whole has no single licence. A repository whose licence is not yet determined is not a negative example, and its labels are not usable as ground truth."
+    }
+  ],
+  "note": "This record covers the components whose licence bears on what this product may do. It is not a complete dependency inventory; the pinned requirements and their lockfiles are the complete record of what is installed."
+}

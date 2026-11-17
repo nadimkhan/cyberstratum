@@ -69,6 +69,49 @@ the product consumes its JSON output. CyberStratum's own EVM engine is entirely
 our own code and carries no such restriction, so the bytecode half of the product
 is licence-clean regardless of this decision.
 
+## Mythril is not part of this problem
+
+The AGPL analysis above is about Slither and the `crytic-compile` package that
+ships with it. Mythril is a different tool under a different licence, and this
+was verified against the installed distribution rather than assumed:
+
+```
+.venv/Lib/site-packages/mythril_analyzer-*.dist-info/METADATA
+License: MIT
+
+venvs/mythril/licenses/LICENSE  -> MIT
+upstream ConsenSys/mythril/develop/LICENSE -> MIT
+```
+
+Mythril therefore carries no network-copyleft obligation of any kind. It is
+already used as an on-demand, manual lane, it is never part of a default scan,
+and it is installed in its own environment outside the application's. If it is
+ever distributed with the product, the only thing required is that its
+copyright and permission notice are retained.
+
+The copyleft exposure in this product is therefore **Slither and
+`crytic-compile` only**, and it is handled by the separation described above:
+neither is imported, neither is modified, neither is vendored, and neither
+ships with the product.
+
+## The notices are served, not just written down
+
+A licence position that lives only in an ADR is a position nobody can check.
+The product serves the facts it can prove, at `GET /api/v1/notices`, and shows
+them on the `/notices` page:
+
+- each component's name, version, SPDX identifier, licence URL and upstream URL;
+- the three mechanical facts that decide the outcome — `imported`, `modified`,
+  `conveyed_to_customers` — stated as booleans rather than as reassurance;
+- for each dataset: its licence, its upstream revision, what redistribution is
+  permitted, and whether derived artifacts may be redistributed.
+
+A component that is not imported, not modified and not handed to a customer
+imposes nothing on this product's own source, and the reader can see that
+rather than being asked to trust it. The dataset section answers a different
+question — what may this product redistribute — and keeps it separate, because
+a tool licence and a dataset licence are not the same question.
+
 ## Decision
 
 1. **FastAPI stays.** MIT, free, already built on.

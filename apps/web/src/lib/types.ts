@@ -450,3 +450,47 @@ export interface ScopeStatusSummary {
   safeHarbour: boolean;
   reference: string | null;
 }
+
+/**
+ * One component this product is built on.
+ *
+ * The three facts — imported, modified, conveyed — are the ones that
+ * decide whether a component's licence can reach this product's own
+ * source. A notice that only names a licence asks the reader to take
+ * the posture on trust.
+ */
+export interface ThirdPartyComponent {
+  name: string;
+  version: string;
+  spdxId: string;
+  licenseUrl: string;
+  upstreamUrl: string;
+  role: string;
+  imported: boolean;
+  modified: boolean;
+  conveyedToCustomers: boolean;
+  usage: string;
+  note: string;
+}
+
+/** One dataset this product draws on, and the terms it comes with. */
+export interface ThirdPartyDataset {
+  dataset: string;
+  spdxId: string;
+  licenseUrl: string;
+  upstreamUrl: string;
+  upstreamRevision: string | null;
+  redistribution: string;
+  derivedArtifactsMayBeRedistributed: boolean;
+  perRepositoryAuditRequired: boolean;
+  note: string;
+}
+
+/** The whole notice: the components, and the datasets. */
+export interface NoticesSummary {
+  version: string;
+  description: string;
+  note: string;
+  components: ThirdPartyComponent[];
+  datasets: ThirdPartyDataset[];
+}

@@ -192,8 +192,8 @@ not look forgotten.
 |---|---|---|---|---|
 | 4.1 | Real Netlify deployment | A Netlify account, and the public backend URL to set `NEXT_PUBLIC_API_BASE_URL` to | User | §2.2 |
 | 4.2 | Real VPS provisioning | A Linux VPS with a hostname/IP and SSH access | User | §2.3, §2.4, §2.1 |
-| 4.3 | Corpus redistribution terms | Confirmation that SmartBugs Curated / DeFiHackLabs derived artifacts may be redistributed in a commercial product, and the Web3Bugs per-repository licence audit | User / legal | §1.1.10 |
-| 4.4 | Slither AGPL network clause | Legal review of the AGPL-3.0 network clause for a commercial multi-tenant SaaS, given Slither runs out-of-process | Legal | Commercial launch |
+| 4.3 | Corpus redistribution terms | Confirmation that SmartBugs Curated / DeFiHackLabs derived artifacts may be redistributed in a commercial product, and the Web3Bugs per-repository licence audit. The licences and terms are already served on `/notices`; what is missing is the decision, not the record | User / legal | §1.1.10 |
+| 4.4 | Slither AGPL network clause | Legal review of the AGPL-3.0 network clause for a commercial multi-tenant SaaS, given Slither runs out-of-process. Slither and `crytic-compile` are the only copyleft components; Mythril was verified as MIT, so it is not part of this item | Legal | Commercial launch |
 | 4.5 | Netlify / VPS CORS origins | The final deployed origins | User | §2.2, §2.3 |
 
 ---
