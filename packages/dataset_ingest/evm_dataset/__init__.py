@@ -56,6 +56,12 @@ from .manifest import (
 )
 from .promotion import PromotionDecision, can_promote
 from .records import DatasetRecord
+from .smartbugs import (
+    SMARTBUGS_REVISION,
+    fetch_smartbugs_files,
+    ingest_smartbugs,
+    parse_smartbugs,
+)
 from .smoke import smoke_records
 from .split import FamilySplit, SplitError, split_by_family
 
@@ -75,7 +81,11 @@ __all__ = [
     "exact_hash",
     "family_source_shape",
     "FamilySplit",
+    "SMARTBUGS_REVISION",
+    "fetch_smartbugs_files",
     "ingest_dataset",
+    "ingest_smartbugs",
+    "parse_smartbugs",
     "is_unknown_label",
     "KNOWN_DATASET_LICENCES",
     "label_tier_for",

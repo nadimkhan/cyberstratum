@@ -1890,3 +1890,46 @@ is handed.
 The plain `build_manifest()` path is unchanged, so the synthetic smoke corpus
 still builds a manifest for smoke testing. Its labels remain heuristic and are
 never presented as reviewed ground truth.
+
+## 36. The SmartBugs corpus, fetched at a pinned revision
+
+**Done.** The first real upstream corpus is now fetched, hashed and ingested
+through the ordinary door.
+
+- `packages/dataset_ingest/evm_dataset/smartbugs.py` fetches the SmartBugs
+  Curated corpus at `230e649123477eff332742a59a1c7cc6dc286cab`. One request
+  fetches the upstream archive; nothing is written to disk, and only the
+  label file and the Solidity sources are kept.
+- `parse_smartbugs()` turns the corpus into records. Each record keeps the
+  upstream label, the vulnerability categories, the lines the label names,
+  the upstream source and the compiler pragma. A label the archive does not
+  carry is left out, never invented.
+- The upstream labels are `upstream curated`, which is a *heuristic* tier:
+  usable for exploratory training and measurement, never promotion ground
+  truth. The promotion gate refuses the corpus for exactly that reason.
+- `corpus_content_hash()` hashes the fetched corpus over its sorted paths
+  and contents, so two fetches of the same revision agree and a corpus that
+  changed under the same name does not.
+- The manifest now carries the hash of the records *and* the hash of the
+  fetched corpus, and `verify_manifest()` still recomputes the records hash
+  - so a manifest says what it was built from and can be checked against it.
+- `ingest_dataset()` now treats `content_sha256` as an assertion: a hash
+  that does not match the content is a refusal, not a note.
+- The licence record for SmartBugs Curated was wrong about its upstream
+  URL (`smartbugs-curated/smartbugs-curated` does not exist; the corpus is
+  `smartbugs/smartbugs-curated`) and carried an invented revision. It now
+  names the real repository and the commit the corpus was read from, so the
+  corpus can be fetched and ingested. The other two corpora still carry no
+  revision and are still refused.
+- `evm-dataset --smartbugs` is the operator door.
+- `tests/unit/test_smartbugs_loader.py` covers the parsing, the upstream
+  provenance, the heuristic tier, the fork family, the content hash, the
+  manifest terms, the verification of an unchanged and a changed corpus, the
+  refusal of a lying hash, the refusal of a moving revision, and the
+  command-line path.
+
+**Live proof.** 144 files fetched, 143 contracts parsed, all 143 with source
+and a compiler pragma, 64 upstream sources, 120 families, splits 90/28/25,
+corpus SHA-256 `16db2ea109d49887d394014e0335f65174044413e8e97d52b30ab181498737b8`,
+manifest verification true, and promotion refused because the labels are
+not human-reviewed.

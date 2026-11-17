@@ -37,16 +37,23 @@ def ingest_dataset(
     dataset_license: DatasetLicense | None = None,
     upstream_revision: str | None = None,
     content_sha256: str | None = None,
+    corpus_sha256: str | None = None,
     seed: int = 0,
     ratios: Sequence[float] = DEFAULT_RATIOS,
 ) -> DatasetManifest:
     """Ingest one upstream dataset into an immutable manifest.
 
     The licence, the pinned revision and the content hash are all
-    required. When the content hash is not supplied it is computed from
-    the records themselves, and that computed value is what the manifest
-    carries and what :func:`~evm_dataset.manifest.verify_manifest`
-    recomputes.
+    required. The content hash is always computed from the records
+    themselves, and that computed value is what the manifest carries and
+    what :func:`~evm_dataset.manifest.verify_manifest` recomputes.
+
+    ``content_sha256`` is an *assertion*: when it is given it must be the
+    hash of these records, and a mismatch is a refusal rather than a
+    note. ``corpus_sha256`` is the hash of the upstream corpus the
+    records were parsed from; it is recorded in the manifest provenance so
+    the manifest says which bytes were fetched, not only what came out of
+    them.
 
     Raises:
         IngestRefusalError: when the dataset cannot be accounted for.
@@ -67,9 +74,12 @@ def ingest_dataset(
             )
 
     revision = upstream_revision if upstream_revision is not None else licence.upstream_revision
-    content_hash = content_sha256
-    if content_hash is None:
-        content_hash = dataset_content_sha256(ordered)
+    content_hash = dataset_content_sha256(ordered)
+    if content_sha256 is not None and content_sha256 != content_hash:
+        raise IngestRefusalError(
+            dataset,
+            "the recorded content hash does not match the content being ingested",
+        )
 
     require_ingestable(
         dataset=dataset,
@@ -78,6 +88,10 @@ def ingest_dataset(
         content_sha256=content_hash,
     )
 
+    extra: dict[str, Any] = {"content_sha256": content_hash}
+    if corpus_sha256 is not None:
+        extra["corpus_sha256"] = corpus_sha256
+
     provenance = [
         DatasetProvenance(
             dataset=dataset,
@@ -85,7 +99,7 @@ def ingest_dataset(
             source_ref=dataset,
             upstream_revision=revision,
             source_url=licence.upstream_url,
-            extra={"content_sha256": content_hash},
+            extra=extra,
         )
     ]
 
@@ -96,7 +110,3 @@ def ingest_dataset(
         ratios=ratios,
         content_hashes={dataset: content_hash},
     )
-
-
-def _unused(*args: Any) -> None:  # pragma: no cover - keeps linters quiet
-    return None

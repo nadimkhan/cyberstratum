@@ -61,7 +61,7 @@ def test_a_dataset_whose_licence_is_not_settled_is_refused() -> None:
 def test_a_dataset_with_no_pinned_revision_is_refused() -> None:
     """A corpus whose revision nobody has pinned cannot be ingested."""
     with pytest.raises(IngestRefusalError) as error:
-        ingest_dataset(_records(dataset="smartbugs_curated"), dataset="smartbugs_curated")
+        ingest_dataset(_records(dataset="defihacklabs"), dataset="defihacklabs")
     assert "revision" in error.value.reason
 
 

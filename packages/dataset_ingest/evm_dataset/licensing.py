@@ -175,15 +175,15 @@ _SMARTBUGS = DatasetLicense(
     dataset="smartbugs_curated",
     spdx_id="Apache-2.0",
     license_url="https://www.apache.org/licenses/LICENSE-2.0",
-    upstream_url="https://github.com/smartbugs-curated/smartbugs-curated",
-    upstream_revision=None,
+    upstream_url="https://github.com/smartbugs/smartbugs-curated",
+    upstream_revision="230e649123477eff332742a59a1c7cc6dc286cab",
     redistribution="allowed-with-attribution",
     derived_artifacts_may_be_redistributed=True,
     note=(
         "Primary evaluation corpus. Pre-labelled with SWC and CWE identifiers. "
         "Apache-2.0 permits redistribution of derived artifacts with attribution. "
-        "The upstream revision is not pinned yet, so an ingest of this dataset is "
-        "refused until somebody pins it."
+        "The revision is pinned to the commit the corpus was read from, so the "
+        "corpus can be fetched, hashed and ingested."
     ),
 )
 

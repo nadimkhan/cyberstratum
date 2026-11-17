@@ -23,6 +23,7 @@ from .licensing import KNOWN_DATASET_LICENCES, IngestRefusalError
 from .loader import load_jsonl
 from .manifest import build_manifest, verify_manifest
 from .promotion import can_promote
+from .smartbugs import SMARTBUGS_DATASET, SMARTBUGS_REVISION, ingest_smartbugs
 from .smoke import smoke_records
 from .split import split_by_family
 
@@ -61,6 +62,15 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--smartbugs",
+        action="store_true",
+        help=(
+            "Ingest the SmartBugs Curated corpus at its pinned revision. "
+            "The corpus is fetched once, hashed, and ingested through the "
+            "ordinary door."
+        ),
+    )
+    parser.add_argument(
         "--dataset",
         help="The dataset the corpus belongs to (used with --ingest).",
     )
@@ -69,8 +79,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="The pinned upstream revision of the corpus (used with --ingest).",
     )
     parser.add_argument(
-        "--sha256",
-        help="The SHA-256 of the corpus content; computed from the records when omitted.",
+        "--corpus-sha256",
+        help=(
+            "The SHA-256 of the fetched corpus; recorded in the manifest "
+            "provenance so the manifest says which bytes were fetched."
+        ),
     )
     parser.add_argument(
         "--verbose",
@@ -78,6 +91,35 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Enable debug logging.",
     )
     return parser
+
+
+def _run_smartbugs(args: argparse.Namespace) -> int:
+    """Ingest the SmartBugs Curated corpus at its pinned revision.
+
+    A refusal is an error: the corpus is not ingested and no manifest is
+    written.
+    """
+    try:
+        manifest = ingest_smartbugs(
+            revision=SMARTBUGS_REVISION,
+            seed=args.seed,
+            ratios=tuple(args.ratios),
+        )
+    except IngestRefusalError as error:
+        print(f"ingest refused: {error.dataset}: {error.reason}")
+        return 2
+
+    print("=" * 72)
+    print(f"CyberStratum dataset ingestion - {SMARTBUGS_DATASET}")
+    print("=" * 72)
+    print(f"  revision: {SMARTBUGS_REVISION}")
+    print(f"  records: {manifest.record_count}  families: {manifest.family_count}")
+    print(f"  splits: {manifest.split_counts}")
+    print(f"  manifest hash: {manifest.content_hash}")
+    provenance = manifest.provenance[0]
+    print(f"  licence: {provenance['license']['spdx_id']}")
+    print(f"  corpus hash: {provenance['extra'].get('corpus_sha256')}")
+    return 0
 
 
 def _run_ingest(args: argparse.Namespace) -> int:
@@ -100,7 +142,7 @@ def _run_ingest(args: argparse.Namespace) -> int:
             records,
             dataset=args.dataset,
             upstream_revision=args.revision,
-            content_sha256=args.sha256,
+            corpus_sha256=args.corpus_sha256,
             seed=args.seed,
             ratios=tuple(args.ratios),
         )
@@ -133,6 +175,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.ingest:
         return _run_ingest(args)
+    if args.smartbugs:
+        return _run_smartbugs(args)
 
     records = smoke_records()
     ratios = tuple(args.ratios)
