@@ -40,6 +40,13 @@ from app.schemas.findings import (
     SeverityBreakdown,
     SeverityCount,
     StatusCount,
+    WeaknessCount,
+)
+from app.services.weaknesses import (
+    detectors_for_weakness,
+    finding_read,
+    load_taxonomy,
+    weakness_for,
 )
 
 router = APIRouter(prefix="/api/v1/findings", tags=["findings"])
@@ -60,6 +67,7 @@ def list_findings(
     category: str | None = Query(default=None),
     detector_id: str | None = Query(default=None),
     chain_id: int | None = Query(default=None),
+    weakness: str | None = Query(default=None),
     scan_id: uuid.UUID | None = Query(default=None),
     workspace_id: uuid.UUID | None = Query(default=None),
 ) -> FindingListResponse:
@@ -90,6 +98,16 @@ def list_findings(
     if detector_id is not None:
         stmt = stmt.where(Finding.detector_id == detector_id)
         count_stmt = count_stmt.where(Finding.detector_id == detector_id)
+    if weakness is not None:
+        # A class is a set of detectors, so a class narrows the list the
+        # same way a detector does.
+        detector_ids = detectors_for_weakness(weakness)
+        if detector_ids:
+            stmt = stmt.where(Finding.detector_id.in_(detector_ids))
+            count_stmt = count_stmt.where(Finding.detector_id.in_(detector_ids))
+        else:
+            stmt = stmt.where(Finding.id.is_(None))
+            count_stmt = count_stmt.where(Finding.id.is_(None))
     if chain_id is not None:
         # A chain filter needs the scan and the target it was taken
         # against, so the query walks finding -> scan -> target -> chain.
@@ -111,7 +129,7 @@ def list_findings(
     rows = session.scalars(stmt.offset(offset).limit(limit)).all()
 
     return FindingListResponse(
-        items=[FindingRead.model_validate(row) for row in rows],
+        items=[finding_read(row) for row in rows],
         total=total,
         limit=limit,
         offset=offset,
@@ -187,7 +205,7 @@ def review_finding(
     # ends: a flush alone would be thrown away. Endpoints that persist
     # something say so.
     session.commit()
-    return FindingRead.model_validate(finding)
+    return finding_read(finding)
 
 
 @router.post(
@@ -351,6 +369,39 @@ def severity_breakdown(
         ChainFindingCount(chain_id=chain_id, chain_name=chain_name, count=count)
         for chain_id, chain_name, count in chain_rows
     ]
+    # The weakness breakdown needs every detector's count, not only the
+    # top ones, so the class a finding belongs to is never missing
+    # because its detector was not in the top of the list.
+    weakness_rows = session.execute(
+        select(Finding.detector_id, func.count()).where(*filters).group_by(Finding.detector_id)
+    ).all()
+    classes = load_taxonomy()
+    weakness_counts: dict[str, int] = {}
+    unclassified = 0
+    for detector_id, count in weakness_rows:
+        weakness = weakness_for(detector_id)
+        if weakness is None:
+            unclassified += count
+            continue
+        swc_id = str(weakness["swc_id"])
+        weakness_counts[swc_id] = weakness_counts.get(swc_id, 0) + count
+    by_weakness = [
+        WeaknessCount(
+            swc_id=swc_id,
+            title=classes[swc_id].title if swc_id in classes else swc_id,
+            count=count,
+        )
+        for swc_id, count in sorted(weakness_counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+    if unclassified:
+        by_weakness.append(
+            WeaknessCount(
+                swc_id="unclassified",
+                title="No weakness class recorded for the detector",
+                count=unclassified,
+            )
+        )
+
     total = sum(item.count for item in by_severity)
 
     return SeverityBreakdown(
@@ -360,6 +411,7 @@ def severity_breakdown(
         average_confidence=round(float(confidence_rows[0][0]), 4) if confidence_rows else 0.0,
         by_detector=by_detector,
         by_chain=by_chain,
+        by_weakness=by_weakness,
     )
 
 

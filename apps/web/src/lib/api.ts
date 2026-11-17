@@ -11,7 +11,11 @@ import {
   SCOPE_GRANT_KINDS,
   type ScopeGrantKind,
 } from "@/lib/scope";
+
 import type {
+  Weakness,
+
+  WeaknessCount,
   NoticesSummary,
   ThirdPartyComponent,
   ThirdPartyDataset,
@@ -765,6 +769,7 @@ export async function listFindings(params?: {
   status?: string;
   category?: string;
   detectorId?: string;
+  weakness?: string;
   chainId?: number;
   scanId?: string;
   limit?: number;
@@ -775,6 +780,7 @@ export async function listFindings(params?: {
   if (params?.status) query.set("status", params.status);
   if (params?.category) query.set("category", params.category);
   if (params?.detectorId) query.set("detector_id", params.detectorId);
+  if (params?.weakness) query.set("weakness", params.weakness);
   if (params?.chainId !== undefined) query.set("chain_id", String(params.chainId));
   if (params?.scanId) query.set("scan_id", params.scanId);
   if (params?.limit !== undefined) query.set("limit", String(params.limit));
@@ -822,6 +828,7 @@ export interface FindingsSummary {
   averageConfidence: number;
   byDetector: DetectorCount[];
   byChain: ChainFindingCount[];
+  byWeakness: WeaknessCount[];
 }
 
 /** Aggregate finding counts by severity and triage status. */
@@ -1013,6 +1020,18 @@ export function normaliseFindingsSummary(value: unknown): FindingsSummary {
   );
 
   const severityTotal = Object.values(bySeverity).reduce((sum, n) => sum + n, 0);
+  const byWeakness: WeaknessCount[] = pickArray(record, ["by_weakness", "byWeakness"]).map(
+    (entry) => {
+      const row = asRecord(entry);
+      return {
+        swcId: pickString(row, ["swc_id", "swcId"]) ?? "unknown",
+        title: pickString(row, ["title"]) ?? "",
+        count: pickNumber(row, ["count"]) ?? 0,
+      };
+    },
+  );
+
+
   return {
     total: pickNumber(record, ["total"]) ?? severityTotal,
     bySeverity,
@@ -1021,6 +1040,7 @@ export function normaliseFindingsSummary(value: unknown): FindingsSummary {
       pickNumber(record, ["average_confidence", "averageConfidence"]) ?? 0,
     byDetector,
     byChain,
+    byWeakness,
   };
 }
 
@@ -1870,8 +1890,33 @@ export async function fetchScanReport(
   }
 }
 
+/**
+ * Normalise the weakness class of a finding.
+ *
+ * A class without an identifier is not a class, so it is left out
+ * rather than shown as an empty label.
+ */
+export function normaliseWeakness(value: unknown): Weakness | null {
+  const record = asRecord(value);
+  if (!record) return null;
+  const swcId = pickString(record, ["swc_id", "swcId"]);
+  if (!swcId) return null;
+  return {
+    swcId,
+    title: pickString(record, ["title"]) ?? "",
+    severity: pickString(record, ["severity"]),
+    cweIds: pickArray(record, ["cwe_ids", "cweIds"]).filter(
+      (entry): entry is string => typeof entry === "string",
+    ),
+    basis: pickString(record, ["basis"]) ?? "",
+    source: pickString(record, ["source"]) ?? "",
+  };
+}
+
+
 function normaliseFinding(value: unknown): Finding {
   const record = asRecord(value);
+  const weakness = normaliseWeakness(record["weakness"]);
   const evidenceRecord = pickRecord(record, ["evidence"]);
   const byteOffsets = [
     ...pickArray(evidenceRecord, ["byte_offsets", "byteOffsets", "offsets"]),
@@ -1976,6 +2021,7 @@ function normaliseFinding(value: unknown): Finding {
     sourceFile:
       pickString(record, ["source_file", "sourceFile"]) ??
       pickString(evidenceRecord, ["source_file", "sourceFile"]),
+    weakness,
     evidence: signals,
     edgeCounts,
     limitations: pickString(record, ["limitations", "caveats"]),
@@ -2008,6 +2054,7 @@ function normaliseCreatedScan(value: unknown): CreatedScan {
 export { bulkVerdictProblem };
 
 export const __testing = {
+  normaliseWeakness,
   normaliseNotices,
   normaliseScopeGrants,
   normaliseScopeStatus,

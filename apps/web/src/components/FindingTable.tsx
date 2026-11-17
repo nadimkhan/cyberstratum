@@ -221,6 +221,14 @@ export function FindingTable({
                   {finding.detectorVersion ? (
                     <span className="block text-[var(--cs-muted)]">v{finding.detectorVersion}</span>
                   ) : null}
+                  {finding.weakness ? (
+                    <span
+                      className="block text-[var(--cs-muted)]"
+                      title={finding.weakness.basis}
+                    >
+                      {finding.weakness.swcId} {finding.weakness.title}
+                    </span>
+                  ) : null}
                 </td>
                 <td className="px-3 py-2 align-top font-mono text-xs">
                   {finding.functionSignature ?? "—"}

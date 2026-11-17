@@ -295,6 +295,8 @@ export interface Finding {
   sourceLine: number | null;
   /** The source file that line belongs to, when the scan had several. */
   sourceFile: string | null;
+  /** The weakness class this finding's detector corresponds to, when there is one. */
+  weakness: Weakness | null;
 }
 
 /** One file of the source that was analysed. */
@@ -493,4 +495,32 @@ export interface NoticesSummary {
   note: string;
   components: ThirdPartyComponent[];
   datasets: ThirdPartyDataset[];
+}
+
+/**
+ * The weakness class a finding's detector corresponds to.
+ *
+ * The class comes from a frozen registry, and the correspondence says
+ * who is making the claim, so a reader can check it rather than take
+ * it on trust. A finding whose detector has no recorded correspondence
+ * has no class at all.
+ */
+export interface Weakness {
+  swcId: string;
+  title: string;
+  /** The registry's own severity, when it records one. Not this product's severity. */
+  severity: string | null;
+  /** The CWE classes the registry relates this one to. */
+  cweIds: string[];
+  /** Why the detector corresponds to this class. */
+  basis: string;
+  /** Who is making the claim: the tool's documentation, the identifier itself, or us. */
+  source: string;
+}
+
+/** How many findings belong to one weakness class. */
+export interface WeaknessCount {
+  swcId: string;
+  title: string;
+  count: number;
 }

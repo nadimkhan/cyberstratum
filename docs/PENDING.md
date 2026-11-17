@@ -20,7 +20,7 @@ leaving it to rot in the main list.
 | `[x]` | Done — ticked with the commit that landed it |
 | `[!]` | Blocked — the reason is stated inline and it is also listed in §4 |
 
-**Last updated:** 2026-11-13
+**Last updated:** 2026-11-17
 **The developer's code is shown beside the findings.** A scan of pasted
 Solidity now reads its source back from the stored artifact
 (`GET /api/v1/scans/{scan_id}/source`) and the scan page shows it with
@@ -60,7 +60,8 @@ the other project packages so it can never shadow the working tree.
 | 1.1.7 | Family-level splits | Train/validation/test assigned **by family**. No family appears in two splits. Deterministic for a given seed. Every record lands in exactly one split. An empty split is a clear error, not a silent zero. | `[x]` `54fced8` |
 | 1.1.8 | Immutable content-addressed manifest | Manifest hash over a canonical serialisation (sorted keys, fixed separators, sorted record ids). Regenerating from identical inputs yields an identical hash. No wall-clock time, no absolute paths inside the manifest. `verify_manifest` detects a tampered record. | `[x]` `54fced8` |
 | 1.1.9 | Promotion gate | Promotion is permitted **only** from `reviewed` labels, and returns a structured decision with a reason string — not a bare bool. Heuristic and unlabelled data may be used for exploratory training but cannot promote a model. | `[x]` `54fced8` |
-| 1.1.10 | Actual corpus ingest | Fetch SmartBugs Curated and DeFiHackLabs, load the SWC Registry as taxonomy + join key, and audit Web3Bugs per repository. **Blocked until the licence terms are confirmed for redistribution of derived artifacts — see §4.** The machinery is exercised against the smoke corpus, which carries heuristic labels and is **not** reviewed ground truth. | `[!]` §4.3 |
+| 1.1.10 | Actual corpus ingest | Fetch SmartBugs Curated and DeFiHackLabs, load the SWC Registry as taxonomy + join key, and audit Web3Bugs per repository. **Blocked until the licence terms are confirmed for redistribution of derived artifacts — see §4.** The machinery is exercised against the smoke corpus, which carries heuristic labels and is **not** reviewed ground truth. The SWC Registry half is **done**: the registry is frozen at revision `1b6227074ecd180b374e4844153afdda0332f979`, its licence and hash are recorded, and it is served as a taxonomy and a join key (`GET /api/v1/knowledge/weaknesses`). SmartBugs Curated and DeFiHackLabs are still outstanding. | `[!]` §4.3 |
+| 1.1.11 | Ingest refuses what it cannot account for | An ingest must **refuse** a dataset whose licence is missing or unresolved, and must require an upstream revision and a SHA-256. A dataset with an unresolved licence may be represented, but it may never be ingested, and it may never be counted as permissive. | `[ ]` — |
 
 ### 1.2 Mythril as a manual, on-demand action
 

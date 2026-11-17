@@ -1,0 +1,495 @@
+{
+  "version": "1",
+  "dataset": "swc_registry",
+  "description": "The Smart Contract Weakness Classification registry: a weakness taxonomy and a set of canonical identifiers. Used as a join key for findings, not as a training set and not as current guidance.",
+  "spdx_id": "MIT",
+  "license_url": "https://github.com/SmartContractSecurity/SWC-registry/blob/1b6227074ecd180b374e4844153afdda0332f979/LICENSE",
+  "upstream_url": "https://github.com/SmartContractSecurity/SWC-registry",
+  "upstream_revision": "1b6227074ecd180b374e4844153afdda0332f979",
+  "unmaintained": true,
+  "unmaintained_note": "The registry says of itself that the content has not been thoroughly updated since 2020 and points to the EEA EthTrust Security Levels specification for current guidance. CyberStratum keeps the identifiers and the relationships; the severity this product reports for a finding comes from its own detectors, not from this registry.",
+  "entry_count": 37,
+  "entries": [
+    {
+      "swc_id": "SWC-100",
+      "path": "entries/docs/SWC-100.md",
+      "sha256": "b46cee9434cab1f814fdfce3211f4ad66a965f046b568694b80a566490d5b0d9",
+      "title": "Function Default Visibility",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-710"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-101",
+      "path": "entries/docs/SWC-101.md",
+      "sha256": "b3e92ad316f18dbf66dcff84c95e1f4098b9af6f58e266cb976eb6f1441020c3",
+      "title": "Integer Overflow and Underflow",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-682"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-102",
+      "path": "entries/docs/SWC-102.md",
+      "sha256": "1aa990c30eacce2ec150bb21f5439718b81f006c2d5c581b050399985381bf24",
+      "title": "Outdated Compiler Version",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-937"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-103",
+      "path": "entries/docs/SWC-103.md",
+      "sha256": "e3204a86483d80524e6e942a257752896b46907aa943d34cbd395fc3035d5d97",
+      "title": "Floating Pragma",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-664"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-104",
+      "path": "entries/docs/SWC-104.md",
+      "sha256": "e72eb0b426f152f7385b4e6fb5e79d14c0dbe47ea604502fbd416482a786ce4b",
+      "title": "Unchecked Call Return Value",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-252"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-105",
+      "path": "entries/docs/SWC-105.md",
+      "sha256": "772c668d496594cc8cd0d2e426e84cf54e0c87a236bc25295c0b1a6ea8af8fd1",
+      "title": "Unprotected Ether Withdrawal",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-284"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-106",
+      "path": "entries/docs/SWC-106.md",
+      "sha256": "ca414593328cfce559b27c04407f061778f2aa28da800fc7b4e3381a1eed4b3d",
+      "title": "Unprotected SELFDESTRUCT Instruction",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-284"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-107",
+      "path": "entries/docs/SWC-107.md",
+      "sha256": "f4f28ab0c63e31f7281c26455f75d45675f5cde32d0d00ec008309695d70fdcf",
+      "title": "Reentrancy",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-841"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-108",
+      "path": "entries/docs/SWC-108.md",
+      "sha256": "99377c6d6a02e0f2089dd65175bfbfc4549713f57177b077e56f68b19aea9149",
+      "title": "State Variable Default Visibility",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-710"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-109",
+      "path": "entries/docs/SWC-109.md",
+      "sha256": "3d4923dbee597841bbe6702c963a4f46cd1a1b6d5e1659142fd8c42d4e8e7b4e",
+      "title": "Uninitialized Storage Pointer",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-824"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-110",
+      "path": "entries/docs/SWC-110.md",
+      "sha256": "52e96eeb31ffed5fd003f0e72b2962ab7b161b780783e6526b98f729bd0a5cdc",
+      "title": "Assert Violation",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-670"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-111",
+      "path": "entries/docs/SWC-111.md",
+      "sha256": "ae80d6fbad9bb55b61735ef352780a64ac3cb0c493008e0fb16a9059db424699",
+      "title": "Use of Deprecated Solidity Functions",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-477"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-112",
+      "path": "entries/docs/SWC-112.md",
+      "sha256": "75541a2275a65b94994271d19260bd8bc00811874e4bd4ef635231866b697c71",
+      "title": "Delegatecall to Untrusted Callee",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-829"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-113",
+      "path": "entries/docs/SWC-113.md",
+      "sha256": "936a158b0557b0553709def66e290ef411a0acea0c22b0630fd8630ff4fc5fed",
+      "title": "DoS with Failed Call",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-703"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-114",
+      "path": "entries/docs/SWC-114.md",
+      "sha256": "a98c362c30735c6a7b2aba5c12438d23d026c9404cabe3ac8206263e53a6a129",
+      "title": "Transaction Order Dependence",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-362"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-115",
+      "path": "entries/docs/SWC-115.md",
+      "sha256": "f574eb58b903a60289e5a8795649be6212e922b5118cba620580c210d3b91d91",
+      "title": "Authorization through tx.origin",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-477"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-116",
+      "path": "entries/docs/SWC-116.md",
+      "sha256": "a4b5bf54f960298d0ceb3f333fedbc0f8b9ae5cee724c1560b30906ed41dffde",
+      "title": "Block values as a proxy for time",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-829"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-117",
+      "path": "entries/docs/SWC-117.md",
+      "sha256": "fdc7c5786ec1d2dbffec6e6c17b6eff517f920241b51ace4be1062b1e82d9704",
+      "title": "Signature Malleability",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-347"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-118",
+      "path": "entries/docs/SWC-118.md",
+      "sha256": "1db61bd9111d76be77dad0e9a3d4ec440cf87ac80a23a3b8eb403e34488e65db",
+      "title": "Incorrect Constructor Name",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-665"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-119",
+      "path": "entries/docs/SWC-119.md",
+      "sha256": "2f2b832721e5a60fd17fdaee286b66f892463c4ae44f2855f36bf7fd381ffa0a",
+      "title": "Shadowing State Variables",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-710"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-120",
+      "path": "entries/docs/SWC-120.md",
+      "sha256": "00b58f968d294d3122a430dd0ee760e6e4cfafd199f794e244d23cb93effbf4f",
+      "title": "Weak Sources of Randomness from Chain Attributes",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-330"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-121",
+      "path": "entries/docs/SWC-121.md",
+      "sha256": "f6e11dfcb16596978186e6ab310dbcf47959345c54e52b8e577bff6db40d4776",
+      "title": "Missing Protection against Signature Replay Attacks",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-347"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-122",
+      "path": "entries/docs/SWC-122.md",
+      "sha256": "dd75e8248cafd74cc1465727393a862e2ec06e9b409bcd1ddb44f8537ecb64cc",
+      "title": "Lack of Proper Signature Verification",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-345"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-123",
+      "path": "entries/docs/SWC-123.md",
+      "sha256": "b7595ac07e08ce73db431050f33b9415e24da22b2ec4fef086e6334227872d4d",
+      "title": "Requirement Violation",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-573"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-124",
+      "path": "entries/docs/SWC-124.md",
+      "sha256": "52c3e9be214b95b13eb1b5e159e46d765dec5bdfff5a720e5067eecb9e505934",
+      "title": "Write to Arbitrary Storage Location",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-123"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-125",
+      "path": "entries/docs/SWC-125.md",
+      "sha256": "f95d2bb72ad93ca4c79bd6368460f2fe62087e7952b6ff16132dad263db2e11b",
+      "title": "Incorrect Inheritance Order",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-696"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-126",
+      "path": "entries/docs/SWC-126.md",
+      "sha256": "33238674556524bdd3d77398ee85194efcff674df093f58409163c5213ee73cb",
+      "title": "Insufficient Gas Griefing",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-691"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-127",
+      "path": "entries/docs/SWC-127.md",
+      "sha256": "2b25fce044ff8dab6c064706bb660d8985e7354553ec117a67f28b2c7e1f19e2",
+      "title": "Arbitrary Jump with Function Type Variable",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-695"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-128",
+      "path": "entries/docs/SWC-128.md",
+      "sha256": "d125315bc7ca32cffd650f03a657687dc07d12578ca129ca049110c17fc7cd7b",
+      "title": "DoS With Block Gas Limit",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-400"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-129",
+      "path": "entries/docs/SWC-129.md",
+      "sha256": "80becaaa86d0c139035e52bd79a109523bb80230d9f6a21699611ade79740aec",
+      "title": "Typographical Error",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-480"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-130",
+      "path": "entries/docs/SWC-130.md",
+      "sha256": "d5ae85f3a5522cae28ed477f385d949cd009b450e6c8bd530393307de96105aa",
+      "title": "Right-To-Left-Override control character (U+202E)",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-451"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-131",
+      "path": "entries/docs/SWC-131.md",
+      "sha256": "d6eb0537f3d620ee47f5d6b239b433164b6612df6f4e26fad67e0d6955319d7f",
+      "title": "Presence of unused variables",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-1164"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-132",
+      "path": "entries/docs/SWC-132.md",
+      "sha256": "f298168769a6088ca2faea7cc601a3c75172f58d2769f6b7bc5e8310daee069a",
+      "title": "Unexpected Ether balance",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-667"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-133",
+      "path": "entries/docs/SWC-133.md",
+      "sha256": "10be1f38104061706f2ce8d8ccb10330c60d1a6f171810d727faf40fe9af11c1",
+      "title": "Hash Collisions With Multiple Variable Length Arguments",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-294"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-134",
+      "path": "entries/docs/SWC-134.md",
+      "sha256": "bebc2bcfe169175912806bff11e4bd265949d74bc2d0aeb250debd9a20939eba",
+      "title": "Message call with hardcoded gas amount",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-655"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-135",
+      "path": "entries/docs/SWC-135.md",
+      "sha256": "d7d9882d41648704cf1f1cc03640d87e873e507324a229d45a51865c7e0302f5",
+      "title": "Code With No Effects",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-710"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    },
+    {
+      "swc_id": "SWC-136",
+      "path": "entries/docs/SWC-136.md",
+      "sha256": "8dcadd5d652ccd57dd78d2d3e10b5c812c7341fdf1d4aaeef7d6432f753eee3f",
+      "title": "Unencrypted Private Data On-Chain",
+      "severity": null,
+      "cwe_ids": [
+        "CWE-767"
+      ],
+      "related_swc_ids": [],
+      "has_description": true,
+      "unmaintained_notice": true
+    }
+  ]
+}

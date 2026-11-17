@@ -334,12 +334,12 @@
     },
     {
       "detector_id": "mythril.swc_105",
-      "title": "A state variable can be written without permission",
-      "what_it_means": "The contract declares a state variable that is publicly writable, or a setter that does not check who is calling it, so anybody can set it.",
+      "title": "Ether can be withdrawn without permission",
+      "what_it_means": "The contract can be made to hand over its Ether to somebody who was not allowed to take it. Mythril reports this as SWC-105, Unprotected Ether Withdrawal: usually a state variable that is publicly writable, or a setter that does not check who is calling it, so anybody can take control of the withdrawal path.",
       "why_it_matters": "A variable that anyone can set is a variable the protocol does not control. If it holds an address, a price, a fee, or a limit, then an attacker writes the value that suits them and the contract behaves as they intended. The rest of the contract is then correct code following the wrong input.",
       "how_to_fix": "Make the variable `private` or `internal` and expose a function that checks the caller's role before writing it, or make it `public` only when the protocol genuinely intends the value to be set by anybody. Where the value must be set by an administrator, name the role explicitly.",
       "false_positive_patterns": "A variable that is intentionally open -- a fee that the protocol wants the market to set, a flag that anyone may raise -- is not a defect. A variable written only by a constructor or an initialiser is not publicly writable at runtime.",
-      "references": "SWC-105; Solidity documentation: State variables and visibility",
+      "references": "SWC-105 Unprotected Ether Withdrawal (CWE-284); Solidity documentation: State variables and visibility",
       "default_severity": "high",
       "version": "1"
     },

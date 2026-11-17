@@ -1799,3 +1799,60 @@ normaliser.
 `§4.4`, and it does not make any dataset's terms more permissive than
 they are. It records what is true so that the remaining decisions are
 made on facts.
+
+## 34. The weakness taxonomy: what kind of weakness a finding is
+
+**What this adds.** Every finding can now name the class of weakness it
+belongs to, in the vocabulary other tools and other people use, and the
+product says where that class came from.
+
+The classes come from the Smart Contract Weakness Classification registry,
+frozen at upstream revision `1b6227074ecd180b374e4844153afdda0332f979`
+(MIT). Thirty-seven classes are carried, SWC-100 through SWC-136, each with
+its own title, its CWE relations, the upstream path it was read from, and
+the SHA-256 of the file it was read from.
+
+**The registry is a join key, not a measure of severity.** The registry
+records no per-entry severity, so the severity this product reports still
+comes from its own detectors, and the taxonomy says so. The registry also
+says of itself that it is no longer actively maintained since 2020; the
+product carries that statement instead of quietly presenting the taxonomy
+as current guidance.
+
+**Every correspondence says who is making the claim.** Slither `0.11.6`
+names exactly one SWC identifier in its own documentation (`SWC-111`).
+The other correspondences are therefore labelled as what they are:
+`slither-documentation`, `the-identifier-is-the-class`, or
+`cyberstratum-correspondence` — this product's own statement, with the
+reason written beside it. A detector with no recorded correspondence gets
+no class at all, and the product says that rather than inventing one.
+
+**A real error was found and corrected.** `mythril.swc_105` was labelled
+"A state variable can be written without permission". SWC-105 is
+"Unprotected Ether Withdrawal". The guidance now carries the registry's own
+title and separately explains the mechanism Mythril reports, so the class
+and the mechanism are both visible.
+
+**Proved live**, against the running stack:
+
+| Check | Result |
+| --- | --- |
+| `GET /api/v1/knowledge/weaknesses` | 37 classes, `swc_registry`, `MIT`, revision `1b6227074ecd…`, `unmaintained: true` |
+| 200 findings listed | 55 carry a class, each with the claim owner named |
+| The summary breakdown | 10 classes: SWC-112 (219), SWC-102 (155), SWC-115 (22), SWC-116 (4), SWC-105 (2), SWC-106 (2), … |
+| `GET /api/v1/findings?weakness=SWC-112` | only findings of that class; a class nobody corresponds to returns none |
+| The overview | names the classes and links into the findings of each |
+| The findings page | shows the class of every finding and narrows by it |
+
+**Files:** `apps/api/app/data/swc_registry.json`,
+`apps/api/app/data/detector_weaknesses.json`,
+`apps/api/app/services/weaknesses.py`, `apps/api/app/schemas/weaknesses.py`,
+`apps/api/app/api/knowledge.py`, `apps/api/app/api/findings.py`,
+`apps/api/app/schemas/findings.py`, `apps/api/app/data/detector_guidance.json`,
+`tests/api/test_weaknesses.py`, `apps/web/src/lib/types.ts`,
+`apps/web/src/lib/api.ts`, `apps/web/src/lib/api-weakness.test.ts`,
+`apps/web/src/components/FindingTable.tsx`, `apps/web/app/findings/page.tsx`,
+`apps/web/app/page.tsx`, `docs/adr/0021-swc-registry-as-a-frozen-taxonomy.md`.
+
+**Tests:** 11 focused weakness tests, and 2 frontend tests for the
+normaliser.

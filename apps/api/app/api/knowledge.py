@@ -14,7 +14,12 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.core.security import CurrentPrincipal
 from app.schemas.knowledge import GuidanceListResponse, GuidanceRead
+from app.schemas.weaknesses import (
+    WeaknessTaxonomyEntry,
+    WeaknessTaxonomyResponse,
+)
 from app.services.knowledge import guidance_for, load_seed
+from app.services.weaknesses import taxonomy, taxonomy_provenance
 
 router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge"])
 
@@ -26,6 +31,29 @@ def list_guidance(principal: CurrentPrincipal) -> GuidanceListResponse:
     return GuidanceListResponse(
         items=[GuidanceRead.model_validate(entry) for entry in entries],
         total=len(entries),
+    )
+
+
+@router.get(
+    "/weaknesses",
+    response_model=WeaknessTaxonomyResponse,
+    summary="The weakness taxonomy",
+)
+def list_weaknesses(principal: CurrentPrincipal) -> WeaknessTaxonomyResponse:
+    """The weakness classes, and where the taxonomy came from.
+
+    The registry behind these classes is frozen, and says so. It is
+    served here as a vocabulary to join against, not as guidance.
+    """
+    return WeaknessTaxonomyResponse(
+        version="1",
+        description=(
+            "The weakness classes this product joins its findings against, and the "
+            "correspondence between its detectors and those classes."
+        ),
+        provenance=taxonomy_provenance(),
+        items=[WeaknessTaxonomyEntry.model_validate(entry) for entry in taxonomy()],
+        total=len(taxonomy()),
     )
 
 

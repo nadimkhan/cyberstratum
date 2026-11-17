@@ -52,6 +52,7 @@ export default async function DashboardPage({
   const summary = summaryResult.ok ? summaryResult.data : null;
   const topDetectors = summary ? summary.byDetector.slice(0, 8) : [];
   const topChains = summary ? summary.byChain.slice(0, 8) : [];
+  const topWeaknesses = summary ? summary.byWeakness.slice(0, 8) : [];
 
   const scoredScans = scans.filter((scan) => scan.totalFindings > 0);
   const averageRiskScore =
@@ -202,6 +203,35 @@ export default async function DashboardPage({
                   className="flex items-baseline justify-between gap-3 rounded-md border border-[var(--cs-border)] bg-[var(--cs-surface)] px-3 py-2 text-sm hover:border-[var(--cs-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
                 >
                   <span className="text-[var(--cs-fg)]">{row.chainName}</span>
+                  <span className="font-mono text-sm tabular-nums text-[var(--cs-muted)]">
+                    {row.count}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {topWeaknesses.length > 0 ? (
+        <section aria-labelledby="weaknesses-heading" className="space-y-3">
+          <h2 id="weaknesses-heading" className="text-lg font-semibold text-[var(--cs-fg)]">
+            What kind of weakness
+          </h2>
+          <p className="text-xs text-[var(--cs-muted)]">
+            The classes come from the SWC registry, which is a taxonomy and not a measure of
+            severity.
+          </p>
+          <ul className="space-y-1">
+            {topWeaknesses.map((row) => (
+              <li key={row.swcId}>
+                <Link
+                  href={`/findings?weakness=${row.swcId}`}
+                  className="flex items-baseline justify-between gap-3 rounded-md border border-[var(--cs-border)] bg-[var(--cs-surface)] px-3 py-2 text-sm hover:border-[var(--cs-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-accent)]"
+                >
+                  <span className="text-[var(--cs-fg)]">
+                    {row.swcId} {row.title}
+                  </span>
                   <span className="font-mono text-sm tabular-nums text-[var(--cs-muted)]">
                     {row.count}
                   </span>

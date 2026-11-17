@@ -9,6 +9,7 @@ from typing import Any, Protocol, cast
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.db.enums import FindingStatus, Severity
+from app.schemas.weaknesses import WeaknessRead
 
 
 class _FindingRow(Protocol):
@@ -60,6 +61,8 @@ class FindingRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    weakness: WeaknessRead | None = None
+
     @model_validator(mode="before")
     @classmethod
     def _map_evidence(cls, data: object) -> object:
@@ -88,6 +91,21 @@ class FindingRead(BaseModel):
             "created_at": row.created_at,
             "updated_at": row.updated_at,
         }
+
+
+class WeaknessCount(BaseModel):
+    """Number of findings that belong to one weakness class.
+
+    A detector says what pattern was found; the weakness class says what
+    kind of weakness that is, in a vocabulary other tools use too. A
+    finding whose detector has no recorded correspondence is counted
+    apart, because a finding with no class is not the same as a finding
+    in the wrong class.
+    """
+
+    swc_id: str
+    title: str
+    count: int
 
 
 class SeverityCount(BaseModel):
@@ -134,6 +152,7 @@ class SeverityBreakdown(BaseModel):
     average_confidence: float = 0.0
     by_detector: list[DetectorCount] = Field(default_factory=list)
     by_chain: list[ChainFindingCount] = Field(default_factory=list)
+    by_weakness: list[WeaknessCount] = Field(default_factory=list)
 
 
 class FindingListResponse(BaseModel):

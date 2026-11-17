@@ -1,0 +1,286 @@
+{
+  "version": "1",
+  "description": "How each detector corresponds to a weakness class in the SWC registry. Each correspondence says who is making the claim: the tool's own documentation, the identifier itself, or CyberStratum. A detector with no entry here has no weakness class, and the product says so rather than guessing. The registry itself says it is no longer actively maintained, so the identifiers are used as a join key and never as current guidance.",
+  "detectors": [
+    {
+      "detector_id": "baseline.delegatecall",
+      "swc_ids": [
+        "SWC-112"
+      ],
+      "basis": "The detector reports a delegatecall whose target the contract does not control, which is the class the registry names Delegatecall to Untrusted Callee.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "baseline.tx_origin",
+      "swc_ids": [
+        "SWC-115"
+      ],
+      "basis": "The detector reports a contract reading tx.origin where msg.sender belongs, which is the class the registry names Authorization through tx.origin.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "baseline.selfdestruct",
+      "swc_ids": [
+        "SWC-106"
+      ],
+      "basis": "The detector reports a reachable SELFDESTRUCT, which is the class the registry names Unprotected SELFDESTRUCT Instruction.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "baseline.call_before_state_write",
+      "swc_ids": [
+        "SWC-107"
+      ],
+      "basis": "The detector reports an external call made before the state it depends on is written: the ordering reentrancy exploits.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.solc_version",
+      "swc_ids": [
+        "SWC-102"
+      ],
+      "basis": "The detector reports the compiler the contract was built with; the registry class is a compiler that is no longer current.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "mythril.swc_105",
+      "swc_ids": [
+        "SWC-105"
+      ],
+      "basis": "Mythril reports the weakness identifier itself, so the finding and the registry class are the same thing.",
+      "source": "the-identifier-is-the-class"
+    },
+    {
+      "detector_id": "mythril.swc_114",
+      "swc_ids": [
+        "SWC-114"
+      ],
+      "basis": "Mythril reports the weakness identifier itself, so the finding and the registry class are the same thing.",
+      "source": "the-identifier-is-the-class"
+    },
+    {
+      "detector_id": "slither.deprecated_standards",
+      "swc_ids": [
+        "SWC-111"
+      ],
+      "basis": "Slither's own documentation names SWC-111 for this detector.",
+      "source": "slither-documentation"
+    },
+    {
+      "detector_id": "slither.tx_origin",
+      "swc_ids": [
+        "SWC-115"
+      ],
+      "basis": "The detector reports a contract that reads the original sender, which is the class the registry names Authorization through tx.origin.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.suicidal",
+      "swc_ids": [
+        "SWC-106"
+      ],
+      "basis": "The detector reports a contract that can destroy itself, which is the class the registry names Unprotected SELFDESTRUCT Instruction.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.controlled_delegatecall",
+      "swc_ids": [
+        "SWC-112"
+      ],
+      "basis": "The detector reports a delegatecall whose target the caller chooses, which is the class the registry names Delegatecall to Untrusted Callee.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.delegatecall_loop",
+      "swc_ids": [
+        "SWC-112"
+      ],
+      "basis": "The detector reports a delegatecall made inside a loop; the target is not controlled, which is the class the registry names Delegatecall to Untrusted Callee.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.reentrancy_eth",
+      "swc_ids": [
+        "SWC-107"
+      ],
+      "basis": "The detector reports a re-entrant call during an Ether transfer, which is the class the registry names Reentrancy.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.reentrancy_balance",
+      "swc_ids": [
+        "SWC-107"
+      ],
+      "basis": "The detector reports a re-entrant call before the balance is used, which is the class the registry names Reentrancy.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.reentrancy_no_eth",
+      "swc_ids": [
+        "SWC-107"
+      ],
+      "basis": "The detector reports a re-entrant call before the state is updated, which is the class the registry names Reentrancy.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.reentrancy_events",
+      "swc_ids": [
+        "SWC-107"
+      ],
+      "basis": "The detector reports a re-entrant call before the event is emitted, which is the class the registry names Reentrancy.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.reentrancy_unlimited_gas",
+      "swc_ids": [
+        "SWC-107"
+      ],
+      "basis": "The detector reports a re-entrant call that forwards all the gas, which is the class the registry names Reentrancy.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.unchecked_lowlevel",
+      "swc_ids": [
+        "SWC-104"
+      ],
+      "basis": "The detector reports a low-level call whose success is not checked, which is the class the registry names Unchecked Call Return Value.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.unchecked_send",
+      "swc_ids": [
+        "SWC-104"
+      ],
+      "basis": "The detector reports an Ether transfer whose result is not checked, which is the class the registry names Unchecked Call Return Value.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.unchecked_transfer",
+      "swc_ids": [
+        "SWC-104"
+      ],
+      "basis": "The detector reports a token transfer whose result is not checked, which is the class the registry names Unchecked Call Return Value.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.timestamp",
+      "swc_ids": [
+        "SWC-116"
+      ],
+      "basis": "The detector reports a contract that depends on the block timestamp, which is the class the registry names Block values as a proxy for time.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.weak_prng",
+      "swc_ids": [
+        "SWC-120"
+      ],
+      "basis": "The detector reports randomness drawn from chain attributes, which is the class the registry names Weak Sources of Randomness from Chain Attributes.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.gelato_unprotected_randomness",
+      "swc_ids": [
+        "SWC-120"
+      ],
+      "basis": "The detector reports randomness anyone can ask for, which is the class the registry names Weak Sources of Randomness from Chain Attributes.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.pragma",
+      "swc_ids": [
+        "SWC-103"
+      ],
+      "basis": "The detector reports a compiler version that is not pinned, which is the class the registry names Floating Pragma.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.protected_vars",
+      "swc_ids": [
+        "SWC-105"
+      ],
+      "basis": "The detector reports a state variable that can be written without permission; that is the route by which the registry class Unprotected Ether Withdrawal is reached.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.rtlo",
+      "swc_ids": [
+        "SWC-130"
+      ],
+      "basis": "The detector reports a name carrying a right-to-left override character, which is the class the registry names Right-To-Left-Override control character.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.shadowing_state",
+      "swc_ids": [
+        "SWC-119"
+      ],
+      "basis": "The detector reports a state variable that hides another one, which is the class the registry names Shadowing State Variables.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.unused_state",
+      "swc_ids": [
+        "SWC-131"
+      ],
+      "basis": "The detector reports a state variable that is never read, which is the class the registry names Presence of unused variables.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.redundant_statements",
+      "swc_ids": [
+        "SWC-135"
+      ],
+      "basis": "The detector reports a statement with no effect, which is the class the registry names Code With No Effects.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.tautology",
+      "swc_ids": [
+        "SWC-135"
+      ],
+      "basis": "The detector reports a condition that is always true or always false, which leaves code with no effect: the class the registry names Code With No Effects.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.tautological_compare",
+      "swc_ids": [
+        "SWC-135"
+      ],
+      "basis": "The detector reports a value compared with itself, which leaves code with no effect: the class the registry names Code With No Effects.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.boolean_cst",
+      "swc_ids": [
+        "SWC-135"
+      ],
+      "basis": "The detector reports a condition that can never change, which leaves code with no effect: the class the registry names Code With No Effects.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.uninitialized_storage",
+      "swc_ids": [
+        "SWC-109"
+      ],
+      "basis": "The detector reports a storage slot written before it is read, which is the class the registry names Uninitialized Storage Pointer.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.storage_array",
+      "swc_ids": [
+        "SWC-101"
+      ],
+      "basis": "The detector reports a signed integer array stored with a known compiler bug, which is the class the registry names Integer Overflow and Underflow.",
+      "source": "cyberstratum-correspondence"
+    },
+    {
+      "detector_id": "slither.costly_loop",
+      "swc_ids": [
+        "SWC-128"
+      ],
+      "basis": "The detector reports expensive work inside a loop, which can consume the whole block gas: the class the registry names DoS With Block Gas Limit.",
+      "source": "cyberstratum-correspondence"
+    }
+  ]
+}

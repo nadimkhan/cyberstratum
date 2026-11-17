@@ -37,11 +37,17 @@ export default async function FindingsPage({
   const parsedChain = rawChain ? Number(rawChain) : Number.NaN;
   const chainId = Number.isFinite(parsedChain) ? parsedChain : undefined;
 
+  // The weakness class filter comes from the URL as well, so a breakdown
+  // on the overview page links straight to the findings of that class.
+  const rawWeakness = Array.isArray(params.weakness) ? params.weakness[0] : params.weakness;
+  const weakness = rawWeakness?.trim() ? rawWeakness.trim() : undefined;
+
   const [result, guidanceResult, summaryResult] = await Promise.all([
     listFindings({
       severity: severity ?? undefined,
       detectorId: detector,
       chainId,
+      weakness,
       limit: 200,
     }),
     getGuidanceMap(),
@@ -81,9 +87,10 @@ export default async function FindingsPage({
             {result.data.total} finding{result.data.total === 1 ? "" : "s"} in total
             {severity ? `, filtered to ${severity} severity` : ""}
             {detector ? `, from ${detector}` : ""}
+            {weakness ? `, in ${weakness}` : ""}
             {chainId !== undefined ? `, on chain ${chainId}` : ""}.
           </p>
-          {summary && (summary.byDetector.length > 0 || summary.byChain.length > 0) ? (
+          {summary && (summary.byDetector.length > 0 || summary.byChain.length > 0 || summary.byWeakness.length > 0) ? (
             <form
               method="get"
               className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--cs-border)] bg-[var(--cs-surface)] p-3"
@@ -127,6 +134,27 @@ export default async function FindingsPage({
                   {summary.byChain.map((row) => (
                     <option key={row.chainId} value={row.chainId}>
                       {row.chainName} ({row.count})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label
+                  htmlFor="weakness-filter"
+                  className="block text-xs font-medium text-[var(--cs-muted)]"
+                >
+                  Weakness class
+                </label>
+                <select
+                  id="weakness-filter"
+                  name="weakness"
+                  defaultValue={weakness ?? ""}
+                  className="rounded-md border border-[var(--cs-border)] bg-[var(--cs-bg)] px-2 py-1 text-sm text-[var(--cs-fg)]"
+                >
+                  <option value="">Every class</option>
+                  {summary.byWeakness.map((row) => (
+                    <option key={row.swcId} value={row.swcId}>
+                      {row.swcId} — {row.title} ({row.count})
                     </option>
                   ))}
                 </select>
