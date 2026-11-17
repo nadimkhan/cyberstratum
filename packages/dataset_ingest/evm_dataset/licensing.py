@@ -25,9 +25,12 @@ __all__ = [
     "DATASET_LICENCES",
     "DatasetLicense",
     "DatasetProvenance",
+    "IngestRefusalError",
     "KNOWN_DATASET_LICENCES",
+    "is_pinned_revision",
     "license_for",
     "per_repository_audit_required",
+    "require_ingestable",
 ]
 
 
@@ -173,12 +176,14 @@ _SMARTBUGS = DatasetLicense(
     spdx_id="Apache-2.0",
     license_url="https://www.apache.org/licenses/LICENSE-2.0",
     upstream_url="https://github.com/smartbugs-curated/smartbugs-curated",
-    upstream_revision="v1.0.0",
+    upstream_revision=None,
     redistribution="allowed-with-attribution",
     derived_artifacts_may_be_redistributed=True,
     note=(
         "Primary evaluation corpus. Pre-labelled with SWC and CWE identifiers. "
-        "Apache-2.0 permits redistribution of derived artifacts with attribution."
+        "Apache-2.0 permits redistribution of derived artifacts with attribution. "
+        "The upstream revision is not pinned yet, so an ingest of this dataset is "
+        "refused until somebody pins it."
     ),
 )
 
@@ -187,12 +192,14 @@ _DEFIHACKLABS = DatasetLicense(
     spdx_id="Apache-2.0",
     license_url="https://www.apache.org/licenses/LICENSE-2.0",
     upstream_url="https://github.com/SunWeb3Sec/DeFiHackLabs",
-    upstream_revision="v1.0.0",
+    upstream_revision=None,
     redistribution="allowed-with-attribution",
     derived_artifacts_may_be_redistributed=True,
     note=(
         "Real-world exploit proof-of-concepts. Used as a target corpus for recall "
-        "measurement, not as a naively labelled training set. Apache-2.0."
+        "measurement, not as a naively labelled training set. Apache-2.0. "
+        "The upstream revision is not pinned yet, so an ingest of this dataset is "
+        "refused until somebody pins it."
     ),
 )
 
@@ -201,7 +208,7 @@ _SWC_REGISTRY = DatasetLicense(
     spdx_id="MIT",
     license_url="https://opensource.org/license/mit",
     upstream_url="https://github.com/SmartContractSecurity/SWC-registry",
-    upstream_revision="v3.2.0",
+    upstream_revision="1b6227074ecd180b374e4844153afdda0332f979",
     redistribution="allowed-with-attribution",
     derived_artifacts_may_be_redistributed=True,
     note=(
@@ -251,3 +258,79 @@ def license_for(dataset: str) -> DatasetLicense:
 def per_repository_audit_required(dataset: str) -> bool:
     """Return ``True`` when the dataset needs a per-repository audit."""
     return not license_for(dataset).is_resolved
+
+
+#: Revision names that move over time, so they cannot pin a dataset.
+MOVING_REVISIONS: Final[frozenset[str]] = frozenset(
+    {"main", "master", "latest", "head", "trunk", "develop"}
+)
+
+
+class IngestRefusalError(ValueError):
+    """Raised when an ingest cannot be accounted for.
+
+    A dataset whose terms are not settled, whose upstream revision does
+    not pin the content, or whose content has no hash is **refused**. It
+    is not ingested with a warning, and it is never treated as
+    permissive.
+    """
+
+    def __init__(self, dataset: str, reason: str) -> None:
+        super().__init__(f"{dataset}: {reason}")
+        self.dataset = dataset
+        self.reason = reason
+
+
+def is_pinned_revision(revision: str | None) -> bool:
+    """Return ``True`` when the revision pins the content.
+
+    A branch name such as ``main`` moves, so a corpus fetched from it
+    cannot be reproduced and cannot be hashed meaningfully. A commit or a
+    tag can.
+    """
+    if revision is None:
+        return False
+    text = revision.strip()
+    if not text:
+        return False
+    return text.lower() not in MOVING_REVISIONS
+
+
+def _is_sha256(value: str | None) -> bool:
+    """Return ``True`` when the value is a SHA-256 in hex."""
+    if not value:
+        return False
+    text = value.strip().lower()
+    if len(text) != 64:
+        return False
+    return all(character in "0123456789abcdef" for character in text)
+
+
+def require_ingestable(
+    *,
+    dataset: str,
+    dataset_license: DatasetLicense | None = None,
+    upstream_revision: str | None = None,
+    content_sha256: str | None = None,
+) -> DatasetLicense:
+    """Refuse an ingest that cannot be accounted for.
+
+    Returns the licence record when the ingest may proceed, and raises
+    :class:`IngestRefusalError` with a reason when it may not.
+    """
+    if dataset_license is None:
+        raise IngestRefusalError(dataset, "no licence is recorded for this dataset")
+    if dataset_license.dataset != dataset:
+        raise IngestRefusalError(
+            dataset, f"the licence record belongs to {dataset_license.dataset!r}"
+        )
+    if not dataset_license.is_resolved:
+        raise IngestRefusalError(
+            dataset,
+            "the licence is not settled: a per-repository audit is required",
+        )
+    if not is_pinned_revision(upstream_revision):
+        raise IngestRefusalError(dataset, "the upstream revision is not pinned")
+    if not _is_sha256(content_sha256):
+        raise IngestRefusalError(dataset, "no content hash is recorded")
+    return dataset_license

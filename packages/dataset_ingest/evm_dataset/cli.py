@@ -18,7 +18,9 @@ from collections.abc import Sequence
 
 from .dedup import deduplicate
 from .family import assign_family_key
-from .licensing import KNOWN_DATASET_LICENCES
+from .ingest import ingest_dataset
+from .licensing import KNOWN_DATASET_LICENCES, IngestRefusalError
+from .loader import load_jsonl
 from .manifest import build_manifest, verify_manifest
 from .promotion import can_promote
 from .smoke import smoke_records
@@ -50,11 +52,75 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Family ratios for the split (default: 0.7 0.15 0.15).",
     )
     parser.add_argument(
+        "--ingest",
+        metavar="FILE",
+        help=(
+            "Ingest a JSONL corpus instead of the smoke dataset. The corpus is "
+            "refused unless its licence is settled, its upstream revision is "
+            "pinned, and its content can be hashed."
+        ),
+    )
+    parser.add_argument(
+        "--dataset",
+        help="The dataset the corpus belongs to (used with --ingest).",
+    )
+    parser.add_argument(
+        "--revision",
+        help="The pinned upstream revision of the corpus (used with --ingest).",
+    )
+    parser.add_argument(
+        "--sha256",
+        help="The SHA-256 of the corpus content; computed from the records when omitted.",
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Enable debug logging.",
     )
     return parser
+
+
+def _run_ingest(args: argparse.Namespace) -> int:
+    """Ingest a corpus, or refuse it and say why.
+
+    A refusal is an error, not a warning: the corpus is not ingested and
+    no manifest is written.
+    """
+    if not args.dataset:
+        print("ingest refused: no dataset was named")
+        return 2
+
+    records = load_jsonl(args.ingest)
+    if not records:
+        print(f"ingest refused: {args.dataset}: the corpus is empty")
+        return 2
+
+    try:
+        manifest = ingest_dataset(
+            records,
+            dataset=args.dataset,
+            upstream_revision=args.revision,
+            content_sha256=args.sha256,
+            seed=args.seed,
+            ratios=tuple(args.ratios),
+        )
+    except IngestRefusalError as error:
+        print(f"ingest refused: {error.dataset}: {error.reason}")
+        return 2
+
+    print("=" * 72)
+    print(f"CyberStratum dataset ingestion - {args.dataset}")
+    print("=" * 72)
+    print(f"  records: {manifest.record_count}  families: {manifest.family_count}")
+    print(f"  manifest hash: {manifest.content_hash}")
+    for dataset, content_hash in sorted(manifest.content_hashes.items()):
+        print(f"  content hash: {dataset} {content_hash}")
+    for entry in manifest.provenance:
+        licence = entry["license"]
+        print(f"  licence: {licence['spdx_id']}  revision: {entry['upstream_revision']}")
+    verification = verify_manifest(manifest, records)
+    print(f"  self-verification: {'ok' if verification.matches else 'FAILED'}")
+    return 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -64,6 +130,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(levelname)s %(name)s: %(message)s",
     )
+
+    if args.ingest:
+        return _run_ingest(args)
 
     records = smoke_records()
     ratios = tuple(args.ratios)

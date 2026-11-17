@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Any, Final
 
 from .dedup import DeduplicationResult, deduplicate
@@ -35,6 +35,7 @@ __all__ = [
     "ManifestVerification",
     "build_manifest",
     "canonical_json",
+    "dataset_content_sha256",
     "manifest_content_hash",
     "verify_manifest",
 ]
@@ -58,6 +59,17 @@ def manifest_content_hash(payload: Any) -> str:
     return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
 
 
+def dataset_content_sha256(records: Iterable[DatasetRecord]) -> str:
+    """Return the SHA-256 of a dataset's content.
+
+    The hash is taken over the canonical serialisation of the records
+    themselves, in record-id order, so the same corpus always produces
+    the same hash and any change to the content changes it.
+    """
+    ordered = sorted(records, key=lambda record: record.record_id)
+    return manifest_content_hash([asdict(record) for record in ordered])
+
+
 @dataclass(frozen=True)
 class DatasetManifest:
     """An immutable description of one ingested dataset snapshot."""
@@ -75,6 +87,7 @@ class DatasetManifest:
     family_assignment: dict[str, str] = field(default_factory=dict)
     split_assignment: dict[str, str] = field(default_factory=dict)
     provenance: list[dict[str, Any]] = field(default_factory=list)
+    content_hashes: dict[str, str] = field(default_factory=dict)
     seed: int = 0
     ratios: tuple[float, float, float] = DEFAULT_RATIOS
 
@@ -94,6 +107,7 @@ class DatasetManifest:
             "family_assignment": dict(self.family_assignment),
             "split_assignment": dict(self.split_assignment),
             "provenance": [dict(entry) for entry in self.provenance],
+            "content_hashes": dict(self.content_hashes),
             "seed": self.seed,
             "ratios": list(self.ratios),
         }
@@ -156,6 +170,7 @@ def build_manifest(
     *,
     seed: int = 0,
     ratios: Sequence[float] = DEFAULT_RATIOS,
+    content_hashes: dict[str, str] | None = None,
 ) -> DatasetManifest:
     """Build the immutable, content-addressed manifest for ``records``.
 
@@ -197,6 +212,7 @@ def build_manifest(
         family_assignment=family_assignment,
         split_assignment=split_assignment,
         provenance=[entry.to_dict() for entry in entries],
+        content_hashes=dict(content_hashes or {}),
         seed=seed,
         ratios=tuple(ratios),  # type: ignore[arg-type]
     )
@@ -224,11 +240,19 @@ def verify_manifest(
         if provenance is not None
         else [DatasetProvenance.from_dict(entry) for entry in manifest.provenance]
     )
+    ordered = list(records)
+    recomputed_hashes = {
+        dataset: dataset_content_sha256(
+            record for record in ordered if record.source_dataset == dataset
+        )
+        for dataset in manifest.content_hashes
+    }
     recomputed = build_manifest(
-        records,
+        ordered,
         entries,
         seed=manifest.seed,
         ratios=manifest.ratios,
+        content_hashes=recomputed_hashes,
     )
 
     if recomputed.content_hash == manifest.content_hash:

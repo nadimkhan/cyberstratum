@@ -1856,3 +1856,37 @@ and the mechanism are both visible.
 
 **Tests:** 11 focused weakness tests, and 2 frontend tests for the
 normaliser.
+
+## 35. The ingest refuses what it cannot account for
+
+**Done.** The dataset pipeline fails closed instead of ingesting whatever it
+is handed.
+
+- `packages/dataset_ingest/evm_dataset/licensing.py` gained
+  `IngestRefusalError` and `require_ingestable()`: a dataset with no licence
+  record, an unresolved licence (Web3Bugs), an unpinned or moving upstream
+  revision, or an unhashed/unhashable corpus is refused with the dataset name
+  and the reason.
+- `packages/dataset_ingest/evm_dataset/ingest.py` gained `ingest_dataset()`:
+  the single door for an upstream corpus. It checks that every record belongs
+  to the named dataset, then builds the manifest and records the licence, the
+  pinned revision, and the SHA-256 of the content in the manifest provenance.
+- `packages/dataset_ingest/evm_dataset/manifest.py` carries
+  `content_hashes`, so a manifest says what content it was built from and
+  `verify_manifest()` notices when the corpus has changed underneath it.
+- The licence records now tell the truth about their revisions: the SWC
+  registry is pinned to the commit that was actually read
+  (`1b6227074ecd180b374e4844153afdda0332f979`), and SmartBugs Curated and
+  DeFiHackLabs carry no revision until somebody pins one, so an ingest of
+  them is refused rather than silently taken from a moving branch.
+- `packages/dataset_ingest/evm_dataset/cli.py` gained `--ingest FILE
+  --dataset NAME [--revision R] [--sha256 H]`: the operator door. A refused
+  corpus exits 2 and prints `ingest refused: <dataset>: <reason>`.
+- `tests/unit/test_ingest_refusal.py` covers the refusal for an unknown
+  dataset, an unresolved licence, a missing revision, a moving revision, an
+  unhashable corpus, a foreign record, the manifest that records the terms, a
+  changed corpus failing verification, and both command-line paths.
+
+The plain `build_manifest()` path is unchanged, so the synthetic smoke corpus
+still builds a manifest for smoke testing. Its labels remain heuristic and are
+never presented as reviewed ground truth.
